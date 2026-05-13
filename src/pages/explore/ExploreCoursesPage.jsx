@@ -21,6 +21,12 @@ export default function ExploreCoursesPage() {
     [selectedCategory, selectedLevel],
   )
 
+  const courseGridClass = filteredCourses.length <= 1
+    ? 'lg:grid-cols-1 xl:grid-cols-1'
+    : filteredCourses.length === 2
+      ? 'lg:grid-cols-2 xl:grid-cols-2'
+      : 'lg:grid-cols-2 xl:grid-cols-3'
+
   return (
     <motion.section className="space-y-10 pb-16" variants={fadeInUp} initial="hidden" animate="visible">
       <div className="grid gap-6 rounded-[2rem] border border-white/10 bg-slate-950/90 p-8 shadow-glow">
@@ -48,10 +54,17 @@ export default function ExploreCoursesPage() {
             </div>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
-            {filteredCourses.map((course) => (
-              <CourseCard key={course.id} course={course} onViewDetails={() => window.location.assign(`/course/${course.id}`)} />
-            ))}
+          <div className={`grid gap-6 ${courseGridClass}`}>
+            {filteredCourses.length > 0 ? (
+              filteredCourses.map((course) => (
+                <CourseCard key={course.id} course={course} onViewDetails={() => window.location.assign(`/course/${course.id}`)} />
+              ))
+            ) : (
+              <div className="glass-card col-span-full p-8 text-center text-slate-300 shadow-soft">
+                <p className="text-lg font-semibold text-white">No courses match your filters yet.</p>
+                <p className="mt-2 text-sm text-slate-400">Try selecting a different category or skill level.</p>
+              </div>
+            )}
           </div>
         </div>
 

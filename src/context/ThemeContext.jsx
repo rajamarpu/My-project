@@ -1,21 +1,16 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import { setTheme } from '../redux/slices/authSlice.js'
 
 const ThemeContext = createContext(null)
 
 export function ThemeProvider({ children }) {
-  const dispatch = useDispatch()
-  const selectedTheme = useSelector((state) => state.auth.theme)
-  const [theme, setLocalTheme] = useState(selectedTheme || 'dark')
+  const [theme, setLocalTheme] = useState('dark')
 
   useEffect(() => {
     const storedTheme = window.localStorage.getItem('celebrity-academy-theme')
     if (storedTheme) {
       setLocalTheme(storedTheme)
-      dispatch(setTheme(storedTheme))
     }
-  }, [dispatch])
+  }, [])
 
   useEffect(() => {
     document.body.classList.toggle('light', theme === 'light')
@@ -29,11 +24,13 @@ export function ThemeProvider({ children }) {
       toggleTheme() {
         const nextTheme = theme === 'dark' ? 'light' : 'dark'
         setLocalTheme(nextTheme)
-        dispatch(setTheme(nextTheme))
       },
     }),
-    [theme, dispatch],
+    [theme],
   )
+
+  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+}
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }

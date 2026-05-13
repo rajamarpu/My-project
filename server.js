@@ -1,5 +1,6 @@
 import { createServer } from 'node:http'
-import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, readFileSync, writeFileSync, createReadStream, statSync } from 'node:fs'
+import { join, extname } from 'node:path'
 
 const PORT = 4000
 
@@ -10,6 +11,25 @@ const defaultHeaders = {
 }
 
 const DB_FILE = new URL('./database.json', import.meta.url)
+const DIST_DIR = new URL('./dist', import.meta.url)
+
+const distPath = decodeURIComponent(DIST_DIR.pathname)
+
+const getContentType = (ext) => {
+  const types = {
+    '.html': 'text/html',
+    '.css': 'text/css',
+    '.js': 'application/javascript',
+    '.json': 'application/json',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.svg': 'image/svg+xml',
+    '.ico': 'image/x-icon',
+  }
+  return types[ext] || 'text/plain'
+}
 
 const initialDb = {
   users: [
@@ -230,6 +250,35 @@ const server = createServer((req, res) => {
       ? db.attendanceRecords.filter((item) => item.username === username)
       : db.attendanceRecords
     return sendJson(res, { success: true, attendance: filteredRecords })
+  }
+
+  // Serve static files for non-API routes
+  if (!url.startsWith('/api')) {
+    let filePath = join(distPath, url === '/' ? 'index.html' : url)
+    if (filePath.startsWith('/') || filePath.startsWith('\\')) {
+      filePath = filePath.slice(1)
+    }
+    try {
+      const stat = statSync(filePath)
+      if (stat.isFile()) {
+        const ext = extname(filePath)
+        const contentType = getContentType(ext)
+        res.writeHead(200, { 'Content-Type': contentType })
+        createReadStream(filePath).pipe(res)
+        return
+      }
+    } catch (error) {
+      // File not found, serve index.html for SPA routing
+      let indexPath = join(distPath, 'index.html')
+      if (indexPath.startsWith('/') || indexPath.startsWith('\\')) {
+        indexPath = indexPath.slice(1)
+      }
+      if (existsSync(indexPath)) {
+        res.writeHead(200, { 'Content-Type': 'text/html' })
+        createReadStream(indexPath).pipe(res)
+        return
+      }
+    }
   }
 
   return sendJson(res, { success: false, message: 'Route not found.' }, 404)

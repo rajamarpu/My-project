@@ -1,0 +1,11 @@
+{
+  "users": [
+    {
+      "username": "mylogindetails",
+      "password": "mypassword",
+      "role": "admin",
+      "profile": null
+    }
+  ],
+  "attendanceRecords": []
+}
