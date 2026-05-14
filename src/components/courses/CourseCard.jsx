@@ -8,6 +8,7 @@ export default function CourseCard({ course, onViewDetails }) {
   const dispatch = useDispatch()
   const wishlist = useSelector((state) => state.auth.wishlist)
   const active = wishlist.includes(course.id)
+  const image = course.image || course.thumbnail
 
   return (
     <motion.article
@@ -16,7 +17,7 @@ export default function CourseCard({ course, onViewDetails }) {
     >
       <div className="absolute inset-x-0 top-0 h-28 bg-gradient-to-r from-cyan-500/25 via-violet-500/15 to-fuchsia-500/10 blur-3xl" />
       <div className="relative flex items-center gap-4">
-        <img src={course.image} alt={course.title} className="h-20 w-20 rounded-3xl object-cover shadow-xl" />
+        <img src={image} alt={course.title} className="h-20 w-20 rounded-3xl object-cover shadow-xl" />
         <div>
           <span className="rounded-full bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.2em] text-cyan-200">
             {course.level}
@@ -34,7 +35,7 @@ export default function CourseCard({ course, onViewDetails }) {
           <Clock size={16} className="text-cyan-300" /> {course.duration}
         </span>
         <span className="inline-flex items-center gap-2 text-sm">
-          <CheckCircle2 size={16} className="text-green-300" /> {course.enrolled} learners
+          <CheckCircle2 size={16} className="text-green-300" /> {course.enrolled || 0} learners
         </span>
         <span className="inline-flex items-center gap-2 text-sm text-slate-400">
           <Heart size={16} className={cn('transition', active ? 'text-rose-400' : 'text-slate-500')} />

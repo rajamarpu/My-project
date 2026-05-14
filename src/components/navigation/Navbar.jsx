@@ -8,10 +8,9 @@ import { cn } from '../../utils/classNames.js'
 const navItems = [
   { label: 'Home', href: '/' },
   { label: 'Explore Courses', href: '/explore' },
-  { label: 'Celebrity Mentors', href: '/community' },
-  { label: 'Categories', href: '/explore' },
+  { label: 'Trending', href: '/explore/trending' },
+  { label: 'Categories', href: '/explore/categories' },
   { label: 'Community', href: '/community' },
-  { label: 'Pricing', href: '/#pricing' },
 ]
 
 export default function Navbar() {

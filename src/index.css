@@ -22,7 +22,10 @@ body {
 
 body.light {
   color-scheme: light;
-  background: #f8fafc;
+  background:
+    radial-gradient(circle at top left, rgba(14,165,233,0.16), transparent 28%),
+    radial-gradient(circle at 85% 18%, rgba(124,58,237,0.12), transparent 26%),
+    linear-gradient(180deg, #f8fafc 0%, #eef6ff 48%, #f7f3ff 100%);
   color: #0f172a;
 }
 
@@ -44,6 +47,76 @@ body.light {
 
 .glass-card {
   @apply rounded-3xl border border-white/10 bg-white/5 shadow-soft backdrop-blur-xl;
+}
+
+body.light .bg-hero-gradient {
+  background:
+    radial-gradient(circle at top, rgba(14,165,233,0.18), transparent 34%),
+    radial-gradient(circle at right, rgba(124,58,237,0.12), transparent 28%),
+    linear-gradient(180deg, #f8fafc 0%, #eff6ff 100%) !important;
+  color: #0f172a !important;
+}
+
+body.light .glass-card,
+body.light .background-glow,
+body.light [class*="bg-slate-950"],
+body.light [class*="bg-slate-900"] {
+  background-color: rgba(255,255,255,0.78) !important;
+  border-color: rgba(15,23,42,0.10) !important;
+  box-shadow: 0 20px 60px rgba(15,23,42,0.10) !important;
+}
+
+body.light header,
+body.light footer {
+  background-color: rgba(255,255,255,0.78) !important;
+  border-color: rgba(15,23,42,0.10) !important;
+  color: #0f172a !important;
+}
+
+body.light [class*="bg-white/5"],
+body.light [class*="bg-white/10"] {
+  background-color: rgba(15,23,42,0.045) !important;
+  border-color: rgba(15,23,42,0.10) !important;
+}
+
+body.light [class*="text-white"],
+body.light [class*="text-slate-100"],
+body.light [class*="text-slate-200"],
+body.light [class*="text-slate-300"] {
+  color: #0f172a !important;
+}
+
+body.light [class*="text-slate-400"],
+body.light [class*="text-slate-500"] {
+  color: #475569 !important;
+}
+
+body.light [class*="border-white/10"],
+body.light [class*="border-white/20"] {
+  border-color: rgba(15,23,42,0.12) !important;
+}
+
+body.light input,
+body.light textarea,
+body.light select {
+  background-color: rgba(255,255,255,0.86) !important;
+  border-color: rgba(15,23,42,0.12) !important;
+  color: #0f172a !important;
+}
+
+body.light input::placeholder,
+body.light textarea::placeholder {
+  color: #64748b !important;
+}
+
+body.light .btn-secondary {
+  border-color: rgba(15,23,42,0.12) !important;
+  background-color: rgba(255,255,255,0.72) !important;
+  color: #0f172a !important;
+}
+
+body.light .skeleton {
+  background-color: rgba(148,163,184,0.22) !important;
 }
 
 .text-glow {

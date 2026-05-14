@@ -1,10 +1,19 @@
 import { useState } from 'react'
 import Button from '../../components/ui/Button.jsx'
+import { courseAPI } from '../../services/api.js'
 
-const steps = ['Basic Info', 'Upload Thumbnail', 'Add Lessons', 'Resources', 'Quiz', 'Pricing', 'Publish']
+const steps = ['Basic Info', 'Upload Thumbnail', 'Add Lessons', 'Resources', 'Quiz', 'Publish']
 
 export default function CreateCoursePage() {
   const [activeStep, setActiveStep] = useState(1)
+  const [form, setForm] = useState({ title: '', description: '', category: 'Web Development', level: 'Beginner', thumbnail: '' })
+  const [message, setMessage] = useState('')
+
+  const submit = async (event) => {
+    event.preventDefault()
+    const response = await courseAPI.createCourse(form)
+    setMessage(`${response.data.course.title} saved for review.`)
+  }
 
   return (
     <section className="pb-16">
@@ -27,21 +36,31 @@ export default function CreateCoursePage() {
           </div>
         </div>
         <div className="mt-10 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <form className="space-y-5 rounded-[2rem] border border-white/10 bg-slate-950/85 p-6 text-slate-300 shadow-soft">
+          <form onSubmit={submit} className="space-y-5 rounded-[2rem] border border-white/10 bg-slate-950/85 p-6 text-slate-300 shadow-soft">
+            {message && <div className="rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-emerald-200">{message}</div>}
             <div>
               <label className="text-sm text-slate-400">Course title</label>
-              <input className="mt-2 w-full rounded-3xl border border-white/10 bg-slate-900/80 px-4 py-3 text-slate-100 outline-none" placeholder="Cinematic brand storytelling" />
+              <input value={form.title} onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))} className="mt-2 w-full rounded-3xl border border-white/10 bg-slate-900/80 px-4 py-3 text-slate-100 outline-none" placeholder="Cinematic brand storytelling" />
             </div>
             <div>
               <label className="text-sm text-slate-400">Description</label>
-              <textarea className="mt-2 h-32 w-full rounded-3xl border border-white/10 bg-slate-900/80 px-4 py-3 text-slate-100 outline-none" placeholder="Write a premium course summary..."></textarea>
+              <textarea value={form.description} onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))} className="mt-2 h-32 w-full rounded-3xl border border-white/10 bg-slate-900/80 px-4 py-3 text-slate-100 outline-none" placeholder="Write a premium course summary..."></textarea>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <input className="rounded-3xl border border-white/10 bg-slate-900/80 px-4 py-3 text-slate-100 outline-none" placeholder="Duration" />
-              <input className="rounded-3xl border border-white/10 bg-slate-900/80 px-4 py-3 text-slate-100 outline-none" placeholder="Price" />
+              <select value={form.category} onChange={(event) => setForm((prev) => ({ ...prev, category: event.target.value }))} className="rounded-3xl border border-white/10 bg-slate-900/80 px-4 py-3 text-slate-100 outline-none">
+                <option>Web Development</option>
+                <option>Programming</option>
+                <option>Design</option>
+                <option>AI</option>
+              </select>
+              <select value={form.level} onChange={(event) => setForm((prev) => ({ ...prev, level: event.target.value }))} className="rounded-3xl border border-white/10 bg-slate-900/80 px-4 py-3 text-slate-100 outline-none">
+                <option>Beginner</option>
+                <option>Intermediate</option>
+                <option>Advanced</option>
+              </select>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button>Save draft</Button>
+              <Button type="submit">Save for review</Button>
               <Button variant="secondary">Preview</Button>
             </div>
           </form>

@@ -13,6 +13,8 @@ export function ThemeProvider({ children }) {
   }, [])
 
   useEffect(() => {
+    document.documentElement.classList.toggle('light', theme === 'light')
+    document.documentElement.classList.toggle('dark', theme === 'dark')
     document.body.classList.toggle('light', theme === 'light')
     document.body.classList.toggle('dark', theme === 'dark')
     window.localStorage.setItem('celebrity-academy-theme', theme)
@@ -28,9 +30,6 @@ export function ThemeProvider({ children }) {
     }),
     [theme],
   )
-
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
-}
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }

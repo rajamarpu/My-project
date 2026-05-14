@@ -9,6 +9,7 @@ export const loginUser = createAsyncThunk(
       const response = await authAPI.login(credentials)
       if (response.data.success) {
         localStorage.setItem('authToken', response.data.token)
+        localStorage.setItem('refreshToken', response.data.refreshToken)
         return {
           user: response.data.user,
           role: response.data.user.role,
@@ -28,6 +29,7 @@ export const registerUser = createAsyncThunk(
       const response = await authAPI.register(userData)
       if (response.data.success) {
         localStorage.setItem('authToken', response.data.token)
+        localStorage.setItem('refreshToken', response.data.refreshToken)
         return {
           user: response.data.user,
           role: response.data.user.role,
@@ -36,6 +38,18 @@ export const registerUser = createAsyncThunk(
       }
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Registration failed')
+    }
+  },
+)
+
+export const loadCurrentUser = createAsyncThunk(
+  'auth/me',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.getCurrentUser()
+      return response.data.user
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Session expired')
     }
   },
 )
@@ -76,10 +90,43 @@ export const resetPassword = createAsyncThunk(
   },
 )
 
+export const changePassword = createAsyncThunk(
+  'auth/changePassword',
+  async (payload, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.changePassword(payload)
+      return response.data
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Password change failed')
+    }
+  },
+)
+
+export const googleLogin = createAsyncThunk(
+  'auth/googleLogin',
+  async (googleData, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.googleLogin(googleData)
+      if (response.data.success) {
+        localStorage.setItem('authToken', response.data.token)
+        localStorage.setItem('refreshToken', response.data.refreshToken)
+        return {
+          user: response.data.user,
+          role: response.data.user.role,
+          token: response.data.token,
+        }
+      }
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Google login failed')
+    }
+  },
+)
+
 const initialState = {
   user: null,
   role: null,
   token: localStorage.getItem('authToken') || null,
+  initializing: Boolean(localStorage.getItem('authToken')),
   loading: false,
   error: null,
   success: false,
@@ -98,9 +145,11 @@ const authSlice = createSlice({
       state.user = null
       state.role = null
       state.token = null
+      state.initializing = false
       state.wishlist = []
       state.enrolledCourses = []
       localStorage.removeItem('authToken')
+      localStorage.removeItem('refreshToken')
     },
     toggleWishlist(state, action) {
       const courseId = action.payload
@@ -126,8 +175,24 @@ const authSlice = createSlice({
   extraReducers: (builder) => {
     // Login
     builder
+      .addCase(loadCurrentUser.fulfilled, (state, action) => {
+        state.initializing = false
+        state.user = action.payload
+        state.role = action.payload.role
+      })
+      .addCase(loadCurrentUser.rejected, (state) => {
+        state.initializing = false
+        state.user = null
+        state.role = null
+        state.token = null
+        localStorage.removeItem('authToken')
+        localStorage.removeItem('refreshToken')
+      })
+
+    builder
       .addCase(loginUser.pending, (state) => {
         state.loading = true
+        state.initializing = false
         state.error = null
       })
       .addCase(loginUser.fulfilled, (state, action) => {
@@ -138,6 +203,22 @@ const authSlice = createSlice({
         state.success = true
       })
       .addCase(loginUser.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload
+      })
+      .addCase(googleLogin.pending, (state) => {
+        state.loading = true
+        state.initializing = false
+        state.error = null
+      })
+      .addCase(googleLogin.fulfilled, (state, action) => {
+        state.loading = false
+        state.user = action.payload.user
+        state.role = action.payload.role
+        state.token = action.payload.token
+        state.success = true
+      })
+      .addCase(googleLogin.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload
       })

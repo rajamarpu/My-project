@@ -1,11 +1,8 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Button from '../../components/ui/Button.jsx'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
-
-const metrics = [
-  { name: 'Courses', value: 14 },
-  { name: 'Revenue', value: 82 },
-  { name: 'Students', value: 6200 },
-]
+import { dashboardAPI } from '../../services/api.js'
 
 const instructorPermissions = [
   'Create celebrity and technical courses',
@@ -21,6 +18,20 @@ const restrictedPermissions = [
 ]
 
 export default function InstructorDashboard() {
+  const navigate = useNavigate()
+  const [data, setData] = useState(null)
+
+  useEffect(() => {
+    dashboardAPI.getInstructorAnalytics().then((response) => setData(response.data))
+  }, [])
+
+  const metrics = [
+    { name: 'Courses', value: data?.courses?.length || 0 },
+    { name: 'Learners', value: data?.analytics?.reduce((sum, item) => sum + item.learners, 0) || 0 },
+    { name: 'Discussions', value: data?.analytics?.reduce((sum, item) => sum + item.discussions, 0) || 0 },
+  ]
+  const chartData = data?.analytics?.map((item) => ({ name: item.title.slice(0, 14), learners: item.learners })) || []
+
   return (
     <section className="space-y-10 pb-16">
       <div className="glass-card p-8 shadow-glow">
@@ -44,7 +55,10 @@ export default function InstructorDashboard() {
               <p className="text-sm uppercase tracking-[0.24em] text-violet-300">Instructor permissions</p>
               <h2 className="mt-2 text-2xl font-semibold text-white">Your allowed actions</h2>
             </div>
-            <Button variant="secondary">Manage courses</Button>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="secondary" onClick={() => navigate('/instructor/courses')}>Manage courses</Button>
+              <Button variant="secondary" onClick={() => navigate('/instructor/students')}>Students</Button>
+            </div>
           </div>
           <div className="mt-8 grid gap-3 text-slate-300">
             {instructorPermissions.map((item) => (
@@ -68,9 +82,24 @@ export default function InstructorDashboard() {
           <h2 className="mt-2 text-2xl font-semibold text-white">Create your next celebrity course</h2>
           <p className="mt-4 text-slate-400">Publish with AI-guided curricula, course thumbnails, and lesson ordering tools.</p>
           <div className="mt-8 grid gap-4">
-            <Button onClick={() => window.location.assign('/instructor/create')}>Create Course</Button>
-            <Button variant="secondary">Review student feedback</Button>
+            <Button onClick={() => navigate('/instructor/create')}>Create Course</Button>
+            <Button variant="secondary" onClick={() => navigate('/instructor/reviews')}>Review student feedback</Button>
           </div>
+        </div>
+      </div>
+
+      <div className="glass-card p-8 shadow-soft">
+        <p className="text-sm uppercase tracking-[0.24em] text-violet-300">Student analytics</p>
+        <h2 className="mt-2 text-2xl font-semibold text-white">Learner engagement</h2>
+        <div className="mt-8 h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData}>
+              <XAxis dataKey="name" stroke="#94a3b8" />
+              <YAxis stroke="#94a3b8" />
+              <Tooltip contentStyle={{ background: '#0f172a', border: 'none', color: '#f8fafc' }} />
+              <Bar dataKey="learners" fill="#a78bfa" radius={[8, 8, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </section>
