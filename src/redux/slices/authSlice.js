@@ -27,6 +27,7 @@ const authSlice = createSlice({
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('lms-user', JSON.stringify(action.payload.user))
         window.localStorage.setItem('lms-role', action.payload.role)
+        window.localStorage.setItem('lms-last-online', new Date().toLocaleString())
         if (action.payload.token) window.localStorage.setItem('lms-token', action.payload.token)
       }
     },
@@ -36,6 +37,7 @@ const authSlice = createSlice({
       state.token = null
       state.wishlist = []
       if (typeof window !== 'undefined') {
+        window.localStorage.setItem('lms-last-online', new Date().toLocaleString())
         window.localStorage.removeItem('lms-user')
         window.localStorage.removeItem('lms-role')
         window.localStorage.removeItem('lms-token')

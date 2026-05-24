@@ -5,7 +5,7 @@ import Button from '../../components/ui/Button.jsx'
 import { motion } from 'framer-motion'
 import { fadeInUp } from '../../animations/variants.js'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { SlidersHorizontal, X } from 'lucide-react'
+import { Search, SlidersHorizontal, X } from 'lucide-react'
 
 export default function ExploreCoursesPage() {
   const navigate = useNavigate()
@@ -15,16 +15,19 @@ export default function ExploreCoursesPage() {
   const initialCategory = categories.includes(searchParams.get('category')) ? searchParams.get('category') : 'All'
   const [selectedCategory, setSelectedCategory] = useState(initialCategory)
   const [selectedLevel, setSelectedLevel] = useState('All')
+  const [query, setQuery] = useState('')
   const [filtersOpen, setFiltersOpen] = useState(false)
 
    const filteredCourses = useMemo(
      () =>
        celebCourses.filter((course) => {
+         const haystack = [course.title, course.description, course.category, course.level, ...(course.tags || [])].join(' ').toLowerCase()
+         const matchesQuery = !query.trim() || haystack.includes(query.trim().toLowerCase())
          const matchesCategory = selectedCategory === 'All' || course.category === selectedCategory
          const matchesLevel = selectedLevel === 'All' || course.level === selectedLevel
-         return matchesCategory && matchesLevel
+         return matchesQuery && matchesCategory && matchesLevel
        }),
-     [selectedCategory, selectedLevel],
+     [query, selectedCategory, selectedLevel],
    )
 
   return (
@@ -45,6 +48,15 @@ export default function ExploreCoursesPage() {
             {filtersOpen ? 'Hide Filters' : 'Filter Courses'}
           </Button>
         </div>
+        <label className="flex items-center gap-3 rounded-2xl border border-black/10 bg-white px-4 py-3 shadow-soft dark:border-white/10 dark:bg-slate-950/70">
+          <Search size={18} className="text-cyan-500" />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+            placeholder="Search courses, skills, mentors, or categories"
+          />
+        </label>
       </div>
 
       <div className="grid gap-8 xl:grid-cols-[0.9fr_0.35fr]">
@@ -134,6 +146,7 @@ export default function ExploreCoursesPage() {
               <Button
                 variant="secondary"
                 onClick={() => {
+                  setQuery('')
                   setSelectedCategory('All')
                   setSelectedLevel('All')
                 }}

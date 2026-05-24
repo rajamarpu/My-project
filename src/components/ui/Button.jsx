@@ -6,10 +6,7 @@ export default function Button({ variant = 'primary', className, children, ...pr
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg-primary)]',
     variant === 'secondary'
       ? cn(
-          // secondary button
-          'border transition-colors',
-          'dark:border-white/10 dark:bg-white/5 dark:text-white dark:hover:bg-white/10',
-          'light:border-black/10 light:bg-black/5 light:text-slate-900 light:hover:bg-black/10',
+          'border border-[var(--border-color)] bg-[var(--bg-elevated)] text-[var(--text-primary)] transition-colors hover:border-cyan-400/50',
         )
       : cn(
           // primary button

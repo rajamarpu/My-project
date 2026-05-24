@@ -79,6 +79,15 @@ app.use(requestLogger)
 app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: true, legacyHeaders: false }))
 app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false }))
 
+app.get('/', (_req, res) => {
+  res.json({
+    success: true,
+    service: 'ai-lms-api',
+    message: 'Backend is running. Use /api/health for diagnostics.',
+    frontend: 'http://localhost:5173',
+  })
+})
+
 app.get('/api/health', async (_req, res, next) => {
   try {
     await prisma.$queryRaw`SELECT 1`
@@ -100,8 +109,16 @@ app.use((req, res) => res.status(404).json({ success: false, message: `Route not
 
 app.use((err, _req, res, _next) => {
   console.error(err)
-  const status = err.name === 'PrismaClientKnownRequestError' ? 400 : 500
+  const status = err.statusCode || (err.name === 'PrismaClientKnownRequestError' ? 400 : 500)
   res.status(status).json({ success: false, message: err.message || 'Internal server error.' })
+})
+
+server.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Port ${port} is already in use. Stop the existing API process or run npm run ports:stop, then npm run backend.`)
+    process.exit(1)
+  }
+  throw error
 })
 
 connectPrisma()

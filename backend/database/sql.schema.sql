@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     email VARCHAR(255) UNIQUE NOT NULL,
     phone VARCHAR(20) NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('learner', 'instructor', 'admin')),
+    role VARCHAR(20) NOT NULL CHECK (role IN ('learner', 'admin')),
     avatar_url VARCHAR(500) DEFAULT '',
     headline VARCHAR(200) DEFAULT '',
     bio TEXT DEFAULT '',
@@ -23,6 +23,69 @@ CREATE TABLE IF NOT EXISTS users (
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
+
+CREATE TABLE IF NOT EXISTS ai_personalities (
+    id TEXT PRIMARY KEY,
+    name VARCHAR(120) NOT NULL,
+    slug VARCHAR(120) UNIQUE NOT NULL,
+    archetype VARCHAR(160) NOT NULL,
+    "avatarUrl" VARCHAR(500) DEFAULT '',
+    "voiceStyle" TEXT NOT NULL,
+    "teachingStyle" TEXT NOT NULL,
+    traits TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "promptTemplate" TEXT NOT NULL,
+    "isActive" BOOLEAN DEFAULT TRUE,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS courses (
+    id TEXT PRIMARY KEY,
+    title VARCHAR(200) NOT NULL,
+    slug VARCHAR(220) UNIQUE NOT NULL,
+    description TEXT NOT NULL,
+    category VARCHAR(80) NOT NULL,
+    level VARCHAR(20) DEFAULT 'BEGINNER' CHECK (level IN ('BEGINNER', 'INTERMEDIATE', 'ADVANCED')),
+    "thumbnailUrl" VARCHAR(500) DEFAULT '',
+    "videoPreviewUrl" VARCHAR(500) DEFAULT '',
+    "isPublished" BOOLEAN DEFAULT TRUE,
+    "createdById" INTEGER REFERENCES users(id) ON DELETE SET NULL,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS lessons (
+    id TEXT PRIMARY KEY,
+    "courseId" TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    title VARCHAR(200) NOT NULL,
+    description TEXT,
+    type VARCHAR(20) DEFAULT 'VIDEO' CHECK (type IN ('VIDEO', 'QUIZ', 'ARTICLE')),
+    "videoUrl" VARCHAR(500),
+    "durationMin" INTEGER DEFAULT 0,
+    "sortOrder" INTEGER DEFAULT 0,
+    "quizJson" JSONB,
+    "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS enrollments (
+    id TEXT PRIMARY KEY,
+    "userId" INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    "courseId" TEXT NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+    "personalityId" TEXT REFERENCES ai_personalities(id) ON DELETE SET NULL,
+    "completionPct" INTEGER DEFAULT 0,
+    "hoursStudied" DOUBLE PRECISION DEFAULT 0,
+    "quizAverage" INTEGER DEFAULT 0,
+    "streakDays" INTEGER DEFAULT 0,
+    "enrolledAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    "completedAt" TIMESTAMP,
+    UNIQUE("userId", "courseId")
+);
+
+CREATE INDEX IF NOT EXISTS idx_courses_category ON courses(category);
+CREATE INDEX IF NOT EXISTS idx_courses_published ON courses("isPublished");
+CREATE INDEX IF NOT EXISTS idx_lessons_course ON lessons("courseId", "sortOrder");
+CREATE INDEX IF NOT EXISTS idx_enrollments_course ON enrollments("courseId");
+CREATE INDEX IF NOT EXISTS idx_enrollments_personality ON enrollments("personalityId");
 
 -- Login activity audit table
 CREATE TABLE IF NOT EXISTS login_activities (

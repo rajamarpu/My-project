@@ -1,21 +1,13 @@
-import axios from 'axios'
-
-const api = axios.create({
-  baseURL: '/api',
-  timeout: 8000,
-})
-
-api.interceptors.request.use((config) => {
-  const token = window.localStorage.getItem('lms-token')
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
+import api from '../api/client.js'
 
 export const fetchCourses = async () => api.get('/courses')
 export const fetchCourseById = async (id) => api.get(`/courses/${id}`)
+export const enrollCourseRequest = async (id, payload = {}) => api.post(`/courses/${id}/enroll`, payload)
 export const loginRequest = async (payload) => api.post('/auth/login', payload)
 export const registerRequest = async (payload) => api.post('/auth/register', payload)
 export const fetchMe = async () => api.get('/auth/me')
+export const socialLoginUrl = (provider, role = 'learner') =>
+  `${api.defaults.baseURL}/auth/${provider}/start?role=${encodeURIComponent(role)}`
 export const updateProfileRequest = async (payload) => api.put('/profile', payload)
 export const updateSettingsRequest = async (payload) => api.put('/settings', payload)
 export const submitContactRequest = async (payload) => api.post('/contact', payload)
@@ -42,8 +34,13 @@ export const fetchAssignedAssessments = async ({ courseId, username }) =>
 export const submitAssessment = async ({ username, courseId, assessmentId, answerText, noteFileName }) =>
   api.post('/assessments/submit', { username, courseId, assessmentId, answerText, noteFileName })
 
-// Authentication: Google Login
-export const googleLogin = async ({ idToken, role }) => api.post('/auth/google', { idToken, role })
+// Authentication: Google/GitHub OAuth uses browser redirects.
+export const googleLogin = () => {
+  window.location.assign(socialLoginUrl('google'))
+}
+export const githubLogin = () => {
+  window.location.assign(socialLoginUrl('github'))
+}
 
 // Authentication: OTP Login
 export const sendOtp = async (username) => api.post('/auth/otp/send', { username })

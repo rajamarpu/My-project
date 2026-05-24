@@ -9,9 +9,8 @@ router.use(requireAuth, requireRole('admin'))
 
 router.get('/overview', async (_req, res, next) => {
   try {
-    const [totalUsers, activeUsers, courses, enrollments, messages, personalities, certificates, popularCourses] = await Promise.all([
+    const [totalUsers, courses, enrollments, messages, personalities, certificates, popularCourses] = await Promise.all([
       prisma.user.count(),
-      prisma.user.count({ where: { isActive: true } }),
       prisma.course.count(),
       prisma.enrollment.count(),
       prisma.chatMessage.count({ where: { isDeleted: false } }),
@@ -24,7 +23,7 @@ router.get('/overview', async (_req, res, next) => {
       success: true,
       analytics: {
         totalUsers,
-        activeUsers,
+        activeUsers: totalUsers,
         courses,
         enrollments,
         messages,

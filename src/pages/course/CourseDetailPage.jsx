@@ -9,6 +9,7 @@ import { useDispatch, useSelector } from 'react-redux'
 import { toggleWishlist, enrollCourse } from '../../redux/slices/authSlice.js'
 import { setSelectedPersonality } from '../../redux/slices/personalitySlice.js'
 import { motion } from 'framer-motion'
+import { enrollCourseRequest } from '../../services/api.js'
 
 export default function CourseDetailPage() {
   const { courseId } = useParams()
@@ -26,30 +27,32 @@ export default function CourseDetailPage() {
   const [activeTab, setActiveTab] = useState('overview')
   const [showPersonalitySelector, setShowPersonalitySelector] = useState(false)
   const isSaved = wishlist.includes(course.id)
+  const isLogoImage = course.image?.includes('.svg')
 
   useEffect(() => {
     if (!selectedPersonality && aiPersonalities.length > 0) {
-      const defaultPersonality = aiPersonalities.find(p => 
-        p.name === course.instructor
-      ) || aiPersonalities[0]
+      const defaultPersonality = aiPersonalities.find(p => p.name === course.instructor) || aiPersonalities[0]
       dispatch(setSelectedPersonality(defaultPersonality))
     }
   }, [selectedPersonality, dispatch, course.instructor])
 
-  const handleEnroll = () => {
+  const handleEnroll = async () => {
     if (!auth.user) {
       navigate('/login')
       return
+    }
+    try {
+      await enrollCourseRequest(course.id, {
+        personalitySlug: selectedPersonality?.slug,
+      })
+    } catch (error) {
+      console.warn('Database enrollment skipped, keeping local enrollment:', error.message)
     }
     dispatch(enrollCourse(course.id))
     navigate(`/player/${course.id}`)
   }
 
-  const availablePersonalities = useMemo(() => {
-    const matching = aiPersonalities.filter(p => p.name === course.instructor)
-    if (matching.length > 0) return matching.slice(0, 4)
-    return aiPersonalities.slice(0, 4)
-  }, [course.instructor])
+  const availablePersonalities = useMemo(() => aiPersonalities, [])
 
   return (
     <section className="space-y-10 pb-16">
@@ -83,7 +86,7 @@ export default function CourseDetailPage() {
               <img
                 src={course.image}
                 alt={course.title}
-                className="h-full w-full object-cover"
+                className={`h-full w-full ${isLogoImage ? 'object-contain p-10' : 'object-cover'}`}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
               <div className="absolute bottom-4 left-4 flex items-center gap-3">
@@ -127,7 +130,8 @@ export default function CourseDetailPage() {
             className="glass-card rounded-3xl p-6 max-w-4xl w-full max-h-[80vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-xl font-semibold text-white mb-4">Choose Your AI Instructor</h3>
+            <h3 className="text-xl font-semibold text-white mb-2">Choose Any Celebrity AI Instructor</h3>
+            <p className="mb-4 text-sm text-slate-400">All 8 teachers can teach this course. Switch anytime before learning.</p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {availablePersonalities.map((personality) => (
                 <PersonalityCard

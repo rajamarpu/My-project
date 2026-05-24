@@ -23,7 +23,7 @@ const learningPaths = ['Prompt Engineering', 'Fullstack AI Apps', 'Data Analyst 
 const faqs = [
   ['Can I switch virtual teachers mid-course?', 'Yes. The selected teacher changes the tone, pacing, voice preview, and lesson guidance without resetting progress.'],
   ['Is this ready for real backend APIs?', 'The frontend is structured around protected routes, JWT storage, Axios services, and role-based views.'],
-  ['How is this different from a generic course marketplace?', 'The core experience is the AI teacher layer: personality, voice, teaching style, mentor suggestions, and adaptive recommendations.'],
+  ['How is this different from a generic course marketplace?', 'The core experience is the Indian celebrity-inspired AI teacher layer: personality, voice style, teaching style, mentor suggestions, and adaptive recommendations.'],
 ]
 
 export default function LandingPage() {
@@ -33,8 +33,8 @@ export default function LandingPage() {
 
   return (
     <motion.section className="space-y-20 pb-20" variants={pageTransition} initial="hidden" animate="enter" exit="exit">
-      <section className="relative isolate overflow-hidden rounded-[2rem] border border-cyan-300/15 bg-slate-950 px-5 py-8 shadow-glow sm:px-8 lg:px-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(34,211,238,0.18),transparent_30%),radial-gradient(circle_at_84%_20%,rgba(217,70,239,0.16),transparent_28%),linear-gradient(135deg,rgba(15,23,42,0.98),rgba(2,6,23,0.96))]" />
+      <section className="theme-dark relative isolate overflow-hidden rounded-[2rem] border border-cyan-300/15 bg-slate-950 px-5 py-8 shadow-glow sm:px-8 lg:px-10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(14,165,233,0.22),transparent_30%),radial-gradient(circle_at_84%_20%,rgba(20,184,166,0.16),transparent_28%),linear-gradient(135deg,rgba(7,24,39,0.98),rgba(2,6,23,0.96))]" />
         {particles.map((pos, index) => (
           <motion.span
             key={index}
@@ -49,12 +49,12 @@ export default function LandingPage() {
           <div className="max-w-3xl space-y-7">
             <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-4 py-2 text-sm text-cyan-100">
               <Sparkles size={16} />
-              AI teachers with voice, tone, and adaptive lesson style
+              Indian actor and cricketer AI teachers with voice, tone, and adaptive lesson style
             </div>
             <div className="space-y-5">
               <h1 className="text-4xl font-semibold tracking-normal text-white sm:text-5xl lg:text-6xl">
-                Learn with a virtual teacher that feels built for
-                <span className="block bg-gradient-to-r from-cyan-200 via-fuchsia-200 to-amber-100 bg-clip-text text-transparent">
+                Learn with an Indian celebrity-inspired teacher built for
+                <span className="block bg-gradient-to-r from-cyan-200 via-teal-200 to-amber-100 bg-clip-text text-transparent">
                   your brain.
                 </span>
               </h1>
@@ -64,7 +64,7 @@ export default function LandingPage() {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.8 }}
               >
-                Switch between AI personalities, preview voices, and keep the same course progress while the teaching style adapts around you.
+                Switch between AI personalities inspired by Indian actors and cricketers, preview teaching tones, and keep the same course progress while the style adapts around you.
               </motion.p>
             </div>
 
@@ -92,11 +92,11 @@ export default function LandingPage() {
           </div>
 
           <div className="relative">
-            <div className="absolute -inset-5 rounded-[2rem] bg-gradient-to-r from-cyan-400/20 via-fuchsia-500/20 to-amber-300/10 blur-2xl" />
+            <div className="absolute -inset-5 rounded-[2rem] bg-gradient-to-r from-cyan-400/20 via-teal-500/20 to-amber-300/10 blur-2xl" />
             <div className="relative rounded-[2rem] border border-white/10 bg-white/[0.07] p-5 shadow-2xl backdrop-blur-xl">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.24em] text-cyan-200">Live teacher switch</p>
+                  <p className="text-sm uppercase tracking-[0.24em] text-cyan-200">Live celebrity teacher switch</p>
                   <h2 className="mt-2 text-2xl font-semibold text-white">{activeTeacher.name}</h2>
                   <p className="mt-1 text-sm text-slate-300">{activeTeacher.specialty}</p>
                 </div>
@@ -142,8 +142,8 @@ export default function LandingPage() {
       <section className="space-y-6">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
-            <p className="text-sm uppercase tracking-[0.25em] text-cyan-300">Virtual AI teachers</p>
-            <h2 className="mt-2 text-3xl font-semibold text-white">Pick the personality that matches the lesson</h2>
+            <p className="text-sm uppercase tracking-[0.25em] text-cyan-300">Indian celebrity AI teachers</p>
+            <h2 className="mt-2 text-3xl font-semibold text-white">Pick an actor or cricketer personality for the lesson</h2>
           </div>
           <Button variant="secondary" onClick={() => navigate('/personalities')}>View all</Button>
         </div>
@@ -202,7 +202,7 @@ export default function LandingPage() {
       <section className="grid gap-5 lg:grid-cols-3">
         {['The teacher switching is the first LMS feature that actually changed how I study.', 'The dashboard feels like a coaching room, not a course dump.', 'Voice previews and style previews made the learning path feel personal.'].map((quote, index) => (
           <div key={quote} className="glass-card p-6">
-            <Users className="text-fuchsia-300" />
+            <Users className="text-teal-300" />
             <p className="mt-5 text-slate-200">"{quote}"</p>
             <p className="mt-5 text-sm text-slate-400">Beta learner {index + 1}</p>
           </div>

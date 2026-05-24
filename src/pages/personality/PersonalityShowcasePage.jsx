@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { fetchPersonalities } from '../../services/api'
 import PersonalityCard from '../../components/personality/PersonalityCard.jsx'
+import { aiPersonalities } from '../../data/aiPersonalities.js'
 
-const categories = ['All', 'Bollywood', 'Hollywood', 'Sports', 'Tech']
+const categories = ['All', 'Actor', 'Cricketer']
 
 export default function PersonalityShowcasePage() {
   const [activeCategory, setActiveCategory] = useState('All')
@@ -11,20 +12,24 @@ export default function PersonalityShowcasePage() {
   const [personalities, setPersonalities] = useState([])
   const [loading, setLoading] = useState(true)
 
-  async function loadPersonalities() {
-    try {
-      setLoading(true)
-      const response = await fetchPersonalities()
-      if (response.data.success && response.data.personalities) {
-        setPersonalities(response.data.personalities)
-      }
-    } catch (error) {
-      console.error('Failed to load personalities:', error)
-      setPersonalities([])
-    } finally {
-      setLoading(false)
-    }
-  }
+   async function loadPersonalities() {
+     try {
+       setLoading(true)
+       // Temporarily disable API call to use local data
+       // const response = await fetchPersonalities()
+       // if (response.data.success && response.data.personalities) {
+       //   setPersonalities(response.data.personalities)
+       // } else {
+       //   setPersonalities(aiPersonalities)
+       // }
+       setPersonalities(aiPersonalities)
+     } catch (error) {
+       console.error('Failed to load personalities:', error)
+       setPersonalities(aiPersonalities)
+     } finally {
+       setLoading(false)
+     }
+   }
 
   useEffect(() => {
     void Promise.resolve().then(loadPersonalities)
@@ -49,10 +54,9 @@ export default function PersonalityShowcasePage() {
       className="space-y-10 pb-16"
     >
       <div className="space-y-4">
-        <h1 className="text-4xl font-bold text-white">AI Celebrity Instructors</h1>
+        <h1 className="text-4xl font-bold text-white">Indian Celebrity AI Teachers</h1>
         <p className="text-slate-300 max-w-2xl">
-           Meet your AI-powered expert instructors. Each brings unique teaching styles and personalities.
-          Switch between them anytime during your learning journey.
+          Meet AI-generated virtual teachers inspired by Indian actors and cricketers. Each brings a unique teaching style, voice tone, and personality flow that you can switch anytime during your course.
         </p>
       </div>
 

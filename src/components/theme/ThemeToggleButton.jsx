@@ -8,8 +8,9 @@ export default function ThemeToggleButton() {
     <button
       type="button"
       onClick={toggleTheme}
-      className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-black/10 bg-white text-slate-900 transition hover:bg-slate-100 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
+      className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-soft transition hover:-translate-y-0.5 hover:border-cyan-400/50"
       aria-label="Toggle theme"
+      title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
     >
       {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
     </button>

@@ -3,25 +3,20 @@ import jwt from 'jsonwebtoken'
 const secret = () => process.env.JWT_SECRET || 'dev-secret-change-me'
 
 export function normalizeRole(role) {
-  const value = String(role || 'learner').toUpperCase()
-  if (value === 'ADMIN') return 'ADMIN'
-  if (value === 'TEACHER') return 'TEACHER'
-  return 'STUDENT'
+  const value = String(role || 'learner').toLowerCase()
+  if (value === 'admin') return 'admin'
+  return 'learner'
 }
 
 export function publicUser(user) {
   if (!user) return null
-  const roleMap = {
-    STUDENT: 'learner',
-    TEACHER: 'instructor',
-    ADMIN: 'admin',
-  }
   return {
     id: user.id,
     name: user.full_name || user.name,
     fullName: user.full_name || user.name,
     email: user.email,
-    role: roleMap[user.role] || String(user.role).toLowerCase(),
+    phone: user.phone,
+    role: String(user.role || 'learner').toLowerCase(),
     avatarUrl: user.profile_image || user.avatarUrl,
     bio: user.bio,
     isActive: user.is_active ?? user.isActive,

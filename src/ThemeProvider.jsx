@@ -6,7 +6,7 @@ import ThemeContext from './themeContext.js'
 function getInitialTheme() {
   const stored = window.localStorage.getItem('uptoskills-theme')
   if (stored === 'light' || stored === 'dark') return stored
-  return window.matchMedia?.('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+  return 'dark'
 }
 
 export default function ThemeProvider({ children }) {

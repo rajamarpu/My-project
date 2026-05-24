@@ -4,12 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
-enum UserRole {
-  LEARNER
-  ADMIN
 }
 
 enum CourseLevel {
@@ -30,17 +24,16 @@ enum CertificateStatus {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  name           String
+  id             Int             @id @default(autoincrement())
+  name           String          @map("full_name")
   email          String          @unique
-  passwordHash   String
-  role           UserRole        @default(LEARNER)
-  avatarUrl      String?
+  phone          String?
+  passwordHash   String          @map("password_hash")
+  role           String          @default("learner")
+  avatarUrl      String?         @map("avatar_url")
   bio            String?
-  isActive       Boolean         @default(true)
-  lastLoginAt    DateTime?
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
   enrollments    Enrollment[]
   progress       Progress[]
   chatMessages   ChatMessage[]
@@ -65,7 +58,7 @@ model Course {
   thumbnailUrl    String?
   videoPreviewUrl String?
   isPublished     Boolean         @default(false)
-  createdById     String?
+  createdById     Int?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
   createdBy       User?           @relation("CourseCreator", fields: [createdById], references: [id], onDelete: SetNull)
@@ -122,7 +115,7 @@ model AIPersonality {
 
 model Enrollment {
   id              String         @id @default(cuid())
-  userId          String
+  userId          Int
   courseId        String
   personalityId   String?
   completionPct   Int            @default(0)
@@ -143,7 +136,7 @@ model Enrollment {
 
 model Progress {
   id              String    @id @default(cuid())
-  userId          String
+  userId          Int
   courseId        String
   lessonId        String?
   percentComplete Int       @default(0)
@@ -167,12 +160,12 @@ model ChatMessage {
   id            String        @id @default(cuid())
   roomId        String
   courseId      String?
-  senderId      String
+  senderId      Int
   parentId      String?
   body          String
   emoji         String?
   isDeleted     Boolean       @default(false)
-  moderatedById String?
+  moderatedById Int?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
   course        Course?       @relation(fields: [courseId], references: [id], onDelete: Cascade)
@@ -189,7 +182,7 @@ model ChatMessage {
 
 model Notification {
   id        String   @id @default(cuid())
-  userId    String
+  userId    Int
   title     String
   body      String
   isRead    Boolean  @default(false)
@@ -202,7 +195,7 @@ model Notification {
 
 model AnalyticsEvent {
   id            String         @id @default(cuid())
-  userId        String?
+  userId        Int?
   courseId      String?
   personalityId String?
   eventType     String
@@ -221,7 +214,7 @@ model AnalyticsEvent {
 
 model Certificate {
   id             String            @id @default(cuid())
-  userId         String
+  userId         Int
   courseId       String
   certificateNo  String            @unique
   status         CertificateStatus @default(ISSUED)

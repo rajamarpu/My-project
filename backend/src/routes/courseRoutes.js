@@ -73,12 +73,34 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res, next) => {
 
 router.post('/:id/enroll', requireAuth, requireRole('learner', 'admin'), async (req, res, next) => {
   try {
-    const enrollment = await prisma.enrollment.upsert({
-      where: { userId_courseId: { userId: req.user.id, courseId: req.params.id } },
-      update: { personalityId: req.body.personalityId || undefined },
-      create: { userId: req.user.id, courseId: req.params.id, personalityId: req.body.personalityId || null },
+    const course = await prisma.course.findFirst({
+      where: { OR: [{ id: req.params.id }, { slug: req.params.id }] },
+      select: { id: true },
     })
-    await prisma.analyticsEvent.create({ data: { userId: req.user.id, courseId: req.params.id, eventType: 'course_enrolled' } })
+    if (!course) return res.status(404).json({ success: false, message: 'Course not found.' })
+
+    let personalityId = req.body.personalityId || null
+    if (!personalityId && req.body.personalitySlug) {
+      const personality = await prisma.aIPersonality.findUnique({
+        where: { slug: req.body.personalitySlug },
+        select: { id: true },
+      })
+      personalityId = personality?.id || null
+    }
+
+    const enrollment = await prisma.enrollment.upsert({
+      where: { userId_courseId: { userId: req.user.id, courseId: course.id } },
+      update: { personalityId: personalityId || undefined },
+      create: { userId: req.user.id, courseId: course.id, personalityId },
+    })
+    await prisma.analyticsEvent.create({
+      data: {
+        userId: req.user.id,
+        courseId: course.id,
+        personalityId,
+        eventType: 'course_enrolled',
+      },
+    })
     res.status(201).json({ success: true, enrollment })
   } catch (error) {
     next(error)

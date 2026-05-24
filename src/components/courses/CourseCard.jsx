@@ -15,6 +15,7 @@ export default function CourseCard({ course, onViewDetails }) {
     aiPersonalities[0]
   const progress = course.progress ?? (active ? 42 : 0)
   const tags = course.tags || [course.category, teacher.specialty].filter(Boolean)
+  const isLogoImage = course.image?.includes('.svg')
 
   return (
     <motion.article
@@ -23,8 +24,15 @@ export default function CourseCard({ course, onViewDetails }) {
       className="group glass-card relative cursor-pointer overflow-hidden border-white/10 p-4 shadow-glow transition dark:border-white/10 light:border-black/10 sm:p-5"
     >
       <div className={cn('absolute inset-x-0 top-0 h-32 bg-gradient-to-r blur-3xl transition group-hover:opacity-90', teacher.colorTheme.bg)} />
-      <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50">
-        <img src={course.image} alt={course.title} className="h-40 w-full object-cover opacity-80 transition duration-500 group-hover:scale-105 group-hover:opacity-95" />
+      <div className="theme-dark relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50">
+        <img
+          src={course.image}
+          alt={course.title}
+          className={cn(
+            'h-40 w-full opacity-80 transition duration-500 group-hover:scale-105 group-hover:opacity-95',
+            isLogoImage ? 'bg-slate-950 object-contain p-7' : 'object-cover',
+          )}
+        />
         <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-3">
           <span className="rounded-full border border-white/15 bg-slate-950/80 px-3 py-1 text-xs font-semibold text-cyan-100 backdrop-blur">
             {course.level}

@@ -1,10 +1,12 @@
 import { motion } from 'framer-motion'
 import { Heart, Play } from 'lucide-react'
+import { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { setSelectedPersonality, toggleFavorite } from '../../redux/slices/personalitySlice'
 import { cn } from '../../utils/classNames.js'
 
 export default function PersonalityCard({ personality, onSelect, showDemo = true }) {
+  const [previewing, setPreviewing] = useState(false)
   const dispatch = useDispatch()
   const selectedPersonality = useSelector((state) => state.personality.selectedPersonality)
   const favorites = useSelector((state) => state.personality.favorites)
@@ -19,6 +21,23 @@ export default function PersonalityCard({ personality, onSelect, showDemo = true
   const handleToggleFavorite = (e) => {
     e.stopPropagation()
     dispatch(toggleFavorite(personality.id))
+  }
+
+  const handlePreview = (event) => {
+    event.stopPropagation()
+    setPreviewing(true)
+    const previewLine = `${personality.name} style preview. ${personality.personalityBio} This lesson will use ${personality.teachingStyle}.`
+
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+      const utterance = new SpeechSynthesisUtterance(previewLine)
+      utterance.rate = personality.category === 'Cricketer' ? 1.04 : 0.98
+      utterance.pitch = personality.category === 'Actor' ? 1.08 : 0.96
+      utterance.onend = () => setPreviewing(false)
+      window.speechSynthesis.speak(utterance)
+    } else {
+      window.setTimeout(() => setPreviewing(false), 2200)
+    }
   }
 
   return (
@@ -74,11 +93,13 @@ export default function PersonalityCard({ personality, onSelect, showDemo = true
 
         {showDemo && personality.demoPreview && (
           <motion.button
+            type="button"
+            onClick={handlePreview}
             whileHover={{ scale: 1.05 }}
             className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
           >
             <Play className="w-4 h-4" />
-            <span className="text-sm">Preview Style</span>
+            <span className="text-sm">{previewing ? 'Playing Preview' : 'Preview Style'}</span>
           </motion.button>
         )}
       </div>

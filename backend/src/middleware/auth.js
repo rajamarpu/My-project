@@ -15,7 +15,8 @@ export async function requireAuth(req, res, next) {
 
     const payload = verifyToken(token)
     const user = await prisma.user.findUnique({ where: { id: payload.sub } })
-    if (!user || !user.is_active) {
+    const isActive = user.is_active ?? user.isActive ?? true
+    if (!user || !isActive) {
       return res.status(401).json({ success: false, message: 'User session is no longer valid.' })
     }
 

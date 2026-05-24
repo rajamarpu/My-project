@@ -4,19 +4,18 @@ import { Provider, useSelector } from 'react-redux'
 import store from './redux/store.js'
 import ThemeProvider from './ThemeProvider.jsx'
 import MainLayout from './layouts/MainLayout.jsx'
+import AdminLayout from './layouts/AdminLayout.jsx'
 import LandingPage from './pages/landing/LandingPage.jsx'
 import AuthPage from './pages/auth/AuthPage.jsx'
+import AuthCallbackPage from './pages/auth/AuthCallbackPage.jsx'
 import ExploreCoursesPage from './pages/explore/ExploreCoursesPage.jsx'
 import CourseDetailPage from './pages/course/CourseDetailPage.jsx'
 import StudentDashboard from './pages/dashboard/StudentDashboard.jsx'
-import InstructorDashboard from './pages/dashboard/InstructorDashboard.jsx'
 import AdminDashboard from './pages/admin/AdminDashboard.jsx'
 import UserPage from './pages/user/UserPage.jsx'
 import LearningPlayerPage from './pages/player/LearningPlayerPage.jsx'
 import CommunityPage from './pages/community/CommunityPage.jsx'
 import CertificatesPage from './pages/certificates/CertificatesPage.jsx'
-import CreateCoursePage from './pages/instructor/CreateCoursePage.jsx'
-import AnalyticsPage from './pages/instructor/AnalyticsPage.jsx'
 import AdminReviewPage from './pages/admin/AdminReviewPage.jsx'
 import NotFoundPage from './pages/NotFoundPage.jsx'
 import AssessmentsPage from './pages/assessments/AssessmentsPage.jsx'
@@ -34,7 +33,6 @@ import {
   FeaturesPage,
   ForbiddenPage,
   HelpCenterPage,
-  InstructorCoursesPage,
   LearnerReportsPage,
   LearningPathPage,
   LiveSessionsPage,
@@ -45,7 +43,6 @@ import {
   SavedCoursesPage,
   ServicesPage,
   SettingsPage,
-  StudentFeedbackPage,
   SupportPage,
   TeamPage,
   AdminCreateCoursePage,
@@ -72,12 +69,39 @@ function ProtectedRoute({ allowedRoles, redirectTo = '/login' }) {
 
 function AnimatedRoutes() {
   const location = useLocation()
+  const isAdminHost = import.meta.env.MODE === 'admin'
+
+  if (isAdminHost) {
+    return (
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<Navigate to="/admin-login" replace />} />
+          <Route path="/admin-login" element={<AuthPage />} />
+          <Route element={<ProtectedRoute allowedRoles={['admin']} redirectTo="/admin-login" />}>
+            <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
+            <Route path="/admin/review" element={<AdminLayout><AdminReviewPage /></AdminLayout>} />
+            <Route path="/admin/users" element={<AdminLayout><AdminUsersPage /></AdminLayout>} />
+            <Route path="/admin/settings" element={<AdminLayout><AdminSettingsPage /></AdminLayout>} />
+            <Route path="/admin/reports" element={<AdminLayout><AdminReportsPage /></AdminLayout>} />
+            <Route path="/admin/create-course" element={<AdminLayout><AdminCreateCoursePage /></AdminLayout>} />
+            <Route path="/admin/add-learner" element={<AdminLayout><AdminAddLearnerPage /></AdminLayout>} />
+            <Route path="/admin/manage-courses" element={<AdminLayout><AdminManageCoursesPage /></AdminLayout>} />
+            <Route path="/admin/manage-learners" element={<AdminLayout><AdminManageLearnersPage /></AdminLayout>} />
+            <Route path="/admin/generate-certificate" element={<AdminLayout><AdminGenerateCertificatePage /></AdminLayout>} />
+          </Route>
+          <Route path="*" element={<Navigate to="/admin-login" replace />} />
+        </Routes>
+      </AnimatePresence>
+    )
+  }
 
   return (
     <AnimatePresence mode="wait">
       <Routes location={location} key={location.pathname}>
         <Route path="/" element={<MainLayout><LandingPage /></MainLayout>} />
         <Route path="/login" element={<AuthPage />} />
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
+        <Route path="/admin-login" element={<Navigate to="/login" replace />} />
         <Route path="/register" element={<AuthPage />} />
         <Route path="/forgot-password" element={<AuthPage />} />
         <Route path="/reset-password" element={<AuthPage />} />
@@ -106,7 +130,7 @@ function AnimatedRoutes() {
 <Route path="/certificates" element={<MainLayout><CertificatesPage /></MainLayout>} />
          <Route path="/personalities" element={<MainLayout><PersonalityShowcasePage /></MainLayout>} />
 
-         <Route element={<ProtectedRoute allowedRoles={['learner', 'instructor', 'admin']} />}>
+         <Route element={<ProtectedRoute allowedRoles={['learner', 'admin']} />}>
           <Route path="/player/:courseId" element={<MainLayout><LearningPlayerPage /></MainLayout>} />
           <Route path="/course/:courseId/assessments" element={<MainLayout><AssessmentsPage /></MainLayout>} />
         </Route>
@@ -123,26 +147,7 @@ function AnimatedRoutes() {
           <Route path="/reports" element={<MainLayout><LearnerReportsPage /></MainLayout>} />
         </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={['instructor', 'admin']} />}>
-          <Route path="/instructor" element={<MainLayout><InstructorDashboard /></MainLayout>} />
-          <Route path="/instructor/courses" element={<MainLayout><InstructorCoursesPage /></MainLayout>} />
-          <Route path="/instructor/create" element={<MainLayout><CreateCoursePage /></MainLayout>} />
-          <Route path="/instructor/analytics" element={<MainLayout><AnalyticsPage /></MainLayout>} />
-          <Route path="/instructor/feedback" element={<MainLayout><StudentFeedbackPage /></MainLayout>} />
-        </Route>
-
-        <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-           <Route path="/admin" element={<MainLayout><AdminDashboard /></MainLayout>} />
-           <Route path="/admin/review" element={<MainLayout><AdminReviewPage /></MainLayout>} />
-           <Route path="/admin/users" element={<MainLayout><AdminUsersPage /></MainLayout>} />
-           <Route path="/admin/settings" element={<MainLayout><AdminSettingsPage /></MainLayout>} />
-           <Route path="/admin/reports" element={<MainLayout><AdminReportsPage /></MainLayout>} />
-           <Route path="/admin/create-course" element={<MainLayout><AdminCreateCoursePage /></MainLayout>} />
-           <Route path="/admin/add-learner" element={<MainLayout><AdminAddLearnerPage /></MainLayout>} />
-           <Route path="/admin/manage-courses" element={<MainLayout><AdminManageCoursesPage /></MainLayout>} />
-           <Route path="/admin/manage-learners" element={<MainLayout><AdminManageLearnersPage /></MainLayout>} />
-           <Route path="/admin/generate-certificate" element={<MainLayout><AdminGenerateCertificatePage /></MainLayout>} />
-         </Route>
+        <Route path="/admin/*" element={<Navigate to="/login" replace />} />
 
         <Route path="*" element={<MainLayout><NotFoundPage /></MainLayout>} />
       </Routes>
