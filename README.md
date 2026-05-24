@@ -1,2 +1,2 @@
 # My-project
-Attendance Tracking System
+Learning Management System
