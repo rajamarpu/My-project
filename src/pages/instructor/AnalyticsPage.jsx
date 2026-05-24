@@ -1,5 +1,6 @@
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts'
 import Button from '../../components/ui/Button.jsx'
+import { useState } from 'react'
 
 const analytics = [
   { week: 'W1', revenue: 24, completion: 82 },
@@ -9,20 +10,23 @@ const analytics = [
 ]
 
 export default function AnalyticsPage() {
+  const [exported, setExported] = useState(false)
+
   return (
     <section className="pb-16">
       <div className="glass-card p-8 shadow-glow">
         <p className="text-sm uppercase tracking-[0.3em] text-violet-300">Analytics</p>
         <h1 className="mt-3 text-4xl font-semibold text-white">Course performance insights</h1>
-        <p className="mt-4 text-slate-300">Revenue, completion rates, and student engagement metrics for your celebrity lecture series.</p>
+        <p className="mt-4 text-slate-300">Revenue, completion rates, and student engagement metrics for your upskilling lecture series.</p>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
         <div className="glass-card p-8 shadow-soft">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-2xl font-semibold text-white">Revenue analytics</h2>
-            <Button variant="secondary">Export</Button>
+            <Button variant="secondary" onClick={() => setExported(true)}>Export</Button>
           </div>
+          {exported ? <p className="mt-4 text-sm text-emerald-300">Analytics export prepared for download.</p> : null}
           <div className="mt-8 h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={analytics}>

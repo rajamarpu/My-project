@@ -1,4 +1,5 @@
 import Button from '../../components/ui/Button.jsx'
+import { useState } from 'react'
 
 const certificates = [
   { title: 'Screen Presence Mastery', issuer: 'Alia Bhatt', status: 'Verified' },
@@ -6,6 +7,8 @@ const certificates = [
 ]
 
 export default function CertificatesPage() {
+  const [activeCertificate, setActiveCertificate] = useState(null)
+
   return (
     <section className="pb-16">
       <div className="glass-card p-8 shadow-glow">
@@ -14,9 +17,14 @@ export default function CertificatesPage() {
             <p className="text-sm uppercase tracking-[0.3em] text-cyan-300">Certificates</p>
             <h1 className="mt-3 text-4xl font-semibold text-white">Your premium achievements</h1>
           </div>
-          <Button variant="secondary">Verify certificate</Button>
+          <Button variant="secondary" onClick={() => setActiveCertificate('Verification portal opened')}>Verify certificate</Button>
         </div>
       </div>
+      {activeCertificate ? (
+        <div className="mt-6 rounded-3xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-200">
+          {activeCertificate}. Enter a certificate ID from the card below to confirm issuer and status.
+        </div>
+      ) : null}
 
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
         {certificates.map((item) => (
@@ -29,9 +37,9 @@ export default function CertificatesPage() {
               <span className="rounded-full bg-amber-400/15 px-3 py-1 text-sm text-amber-200">{item.status}</span>
             </div>
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
-              <Button variant="secondary">Download PDF</Button>
-              <Button>Share LinkedIn</Button>
-              <Button variant="secondary">View QR</Button>
+              <Button variant="secondary" onClick={() => setActiveCertificate(`${item.title} PDF queued`)}>Download PDF</Button>
+              <Button onClick={() => setActiveCertificate(`${item.title} share link ready`)}>Share LinkedIn</Button>
+              <Button variant="secondary" onClick={() => setActiveCertificate(`${item.title} QR verified`)}>View QR</Button>
             </div>
           </div>
         ))}

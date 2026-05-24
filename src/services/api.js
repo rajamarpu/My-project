@@ -1,103 +1,70 @@
 import axios from 'axios'
 
-const BACKEND_URL = import.meta.env.VITE_API_URL || 'http://localhost:4001/api'
-
 const api = axios.create({
-  baseURL: BACKEND_URL,
+  baseURL: '/api',
   timeout: 8000,
-  withCredentials: true,
 })
 
-// Add token to requests
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('authToken')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
+  const token = window.localStorage.getItem('lms-token')
+  if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
 
-// Handle token refresh
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config
-    if (error.response?.status === 401 && !originalRequest?._retry && localStorage.getItem('refreshToken')) {
-      originalRequest._retry = true
-      try {
-        const response = await api.post('/auth/refresh', { refreshToken: localStorage.getItem('refreshToken') })
-        localStorage.setItem('authToken', response.data.token)
-        originalRequest.headers.Authorization = `Bearer ${response.data.token}`
-        return api(originalRequest)
-      } catch {
-        localStorage.removeItem('authToken')
-        localStorage.removeItem('refreshToken')
-      }
-    }
-    if (error.response?.status === 401 && window.location.pathname !== '/login') {
-      localStorage.removeItem('authToken')
-      localStorage.removeItem('refreshToken')
-      window.location.href = '/login'
-    }
-    return Promise.reject(error)
-  },
-)
+export const fetchCourses = async () => api.get('/courses')
+export const fetchCourseById = async (id) => api.get(`/courses/${id}`)
+export const loginRequest = async (payload) => api.post('/auth/login', payload)
+export const registerRequest = async (payload) => api.post('/auth/register', payload)
+export const fetchMe = async () => api.get('/auth/me')
+export const updateProfileRequest = async (payload) => api.put('/profile', payload)
+export const updateSettingsRequest = async (payload) => api.put('/settings', payload)
+export const submitContactRequest = async (payload) => api.post('/contact', payload)
+export const fetchAdminOverview = async () => api.get('/admin/overview')
+export const createCourseRequest = async (payload) => api.post('/courses/create', payload)
+export const uploadContentRequest = async (payload) => api.post('/content/upload', payload)
+export const createTaskRequest = async (payload) => api.post('/tasks/create', payload)
+export const fetchContentLibrary = async () => api.get('/content')
 
-// AUTH APIs
-export const authAPI = {
-  register: (payload) => api.post('/auth/register', payload),
-  login: (payload) => api.post('/auth/login', payload),
-  googleLogin: (payload) => api.post('/auth/google', payload),
-  refresh: (payload) => api.post('/auth/refresh', payload),
-  logout: () => api.post('/auth/logout'),
-  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
-  verifyOTP: (payload) => api.post('/auth/verify-otp', payload),
-  resetPassword: (payload) => api.post('/auth/reset-password', payload),
-  changePassword: (payload) => api.post('/auth/change-password', payload),
-  getCurrentUser: () => api.get('/users/me'),
-}
+// Phase 2: admin approval workflow
+export const fetchPendingUsers = async (adminUsername) =>
+  api.get(`/admin/users/pending`, { params: { adminUsername } })
 
-// COURSE APIs
-export const courseAPI = {
-  getAllCourses: (params = {}) => api.get('/courses', { params }),
-  getSuggestions: (q) => api.get('/courses/search/suggest', { params: { q } }),
-  getCourseById: (id) => api.get(`/courses/${id}`),
-  createCourse: (payload) => api.post('/courses', payload),
-  updateCourse: (id, payload) => api.put(`/courses/${id}`, payload),
-  deleteCourse: (id) => api.delete(`/courses/${id}`),
-}
+export const approveUser = async (adminUsername, username) =>
+  api.post('/admin/users/approve', { adminUsername, username })
 
-// USER APIs
-export const userAPI = {
-  getProfile: () => api.get('/users/me'),
-  updateProfile: (payload) => api.put('/users/profile', payload),
-}
+// Phase 4: assessments workflow
+export const assignAssessment = async ({ instructorUsername, courseId, title, prompt }) =>
+  api.post('/assessments/assign', { instructorUsername, courseId, title, prompt })
 
-// ENROLLMENT APIs
-export const enrollmentAPI = {
-  enrollCourse: (courseId) => api.post(`/enrollments/${courseId}`),
-  getMyEnrollments: () => api.get('/enrollments/me'),
-}
+export const fetchAssignedAssessments = async ({ courseId, username }) =>
+  api.get('/assessments/assigned', { params: { courseId, username } })
 
-export const progressAPI = {
-  getCourseProgress: (courseId) => api.get(`/progress/${courseId}`),
-  saveLessonProgress: (courseId, lessonId, payload) => api.post(`/progress/${courseId}/${lessonId}`, payload),
-}
+export const submitAssessment = async ({ username, courseId, assessmentId, answerText, noteFileName }) =>
+  api.post('/assessments/submit', { username, courseId, assessmentId, answerText, noteFileName })
 
-export const dashboardAPI = {
-  getDashboard: () => api.get('/dashboard'),
-  getInstructorAnalytics: () => api.get('/instructor/analytics'),
-  getAdminSummary: () => api.get('/admin/summary'),
-}
+// Authentication: Google Login
+export const googleLogin = async ({ idToken, role }) => api.post('/auth/google', { idToken, role })
 
-export const discussionAPI = {
-  getDiscussions: () => api.get('/discussions'),
-  createDiscussion: (payload) => api.post('/discussions', payload),
-  reply: (id, payload) => api.post(`/discussions/${id}/replies`, payload),
-}
+// Authentication: OTP Login
+export const sendOtp = async (username) => api.post('/auth/otp/send', { username })
+export const verifyOtp = async ({ username, otp, role }) => api.post('/auth/otp/verify', { username, otp, role })
 
-export const certificateAPI = {
-  getCertificates: () => api.get('/certificates'),
-}
+// Authentication: Forgot Password
+export const forgotPassword = async (email) => api.post('/auth/password/forgot', { email })
+export const resetPassword = async ({ email, otp, newPassword }) => api.post('/auth/password/reset', { email, otp, newPassword })
+
+// Progress APIs
+export const fetchUserProgress = (courseId) => api.get(`/progress/${courseId}`)
+export const updateUserProgress = (data) => api.post('/progress', data)
+export const fetchUserAnalytics = () => api.get('/progress/analytics/user')
+
+// Chat APIs
+export const fetchChatMessages = (courseId) => api.get(`/chat/rooms/${courseId}`)
+export const sendMessage = (data) => api.post('/chat/message', data)
+export const fetchOnlineUsers = () => api.get('/chat/online-users')
+
+// Personality APIs
+export const fetchPersonalities = () => api.get('/personalities')
+export const fetchPersonalityBySlug = (slug) => api.get(`/personalities/slug/${slug}`)
 
 export default api

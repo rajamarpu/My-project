@@ -1,0 +1,113 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15
+    container_name: uptoskills_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: uptoskills
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: uptoskills_backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/uptoskills?schema=public
+      JWT_SECRET: uptoskills-jwt-secret-production-change-me
+      CLIENT_ORIGIN: http://localhost:5174
+      CLIENT_ORIGINS: http://localhost:5174,http://localhost:5175,http://localhost:5176
+      PORT: 5000
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend-learner:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: uptoskills_backend_learner
+    restart: always
+    ports:
+      - "5002:5002"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/uptoskills?schema=public
+      JWT_SECRET: uptoskills-jwt-secret-production-change-me
+      CLIENT_ORIGIN: http://localhost:5176
+      PORT: 5002
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: node backend/src/servers/learner.server.js
+
+  backend-admin:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: uptoskills_backend_admin
+    restart: always
+    ports:
+      - "5001:5001"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/uptoskills?schema=public
+      JWT_SECRET: uptoskills-jwt-secret-production-change-me
+      CLIENT_ORIGIN: http://localhost:5175
+      PORT: 5001
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: node backend/src/servers/admin.server.js
+
+  frontend-learner:
+    build:
+      context: ./
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_PORT: 5176
+    container_name: uptoskills_frontend_learner
+    restart: always
+    ports:
+      - "5176:5176"
+    environment:
+      VITE_PORT: 5176
+      VITE_API_URL: http://localhost:5002
+      VITE_API_ADMIN_URL: http://localhost:5001
+      VITE_BASE_API: http://localhost:5002
+    depends_on:
+      - backend-learner
+
+  frontend-admin:
+    build:
+      context: ./
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_PORT: 5175
+    container_name: uptoskills_frontend_admin
+    restart: always
+    ports:
+      - "5175:5175"
+    environment:
+      VITE_PORT: 5175
+      VITE_API_URL: http://localhost:5001
+      VITE_API_LEARNER_URL: http://localhost:5002
+      VITE_BASE_API: http://localhost:5001
+    depends_on:
+      - backend-admin
+
+volumes:
+  postgres_data:

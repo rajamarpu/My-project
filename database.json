@@ -4,8 +4,31 @@
       "username": "mylogindetails",
       "password": "mypassword",
       "role": "admin",
-      "profile": null
+      "approved": true,
+      "profile": null,
+      "email": ""
+    },
+    {
+      "username": "learner@example.com",
+      "password": "password123",
+      "role": "learner",
+      "approved": true,
+      "profile": null,
+      "email": ""
+    },
+    {
+      "username": "instructor@example.com",
+      "password": "password123",
+      "role": "instructor",
+      "approved": true,
+      "profile": null,
+      "email": ""
     }
   ],
-  "attendanceRecords": []
+  "attendanceRecords": [],
+  "courses": [],
+  "learningContent": [],
+  "tasks": [],
+  "assessments": [],
+  "assessmentSubmissions": []
 }
