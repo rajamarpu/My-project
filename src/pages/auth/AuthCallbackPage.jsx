@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useDispatch } from 'react-redux'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
-import { login } from '../../redux/slices/authSlice.js'
+import { login } from '../../store/slices/authSlice.js'
 
 function decodeUser(value) {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/')

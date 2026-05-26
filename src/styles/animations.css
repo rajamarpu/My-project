@@ -1,0 +1,26 @@
+@keyframes upto-float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes upto-border-scan {
+  0% {
+    opacity: 0.25;
+    transform: translateX(-40%);
+  }
+  50% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0.25;
+    transform: translateX(40%);
+  }
+}
+
+.animate-upto-float {
+  animation: upto-float 5s ease-in-out infinite;
+}

@@ -1,13 +1,13 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowRight, BookOpen, CheckCircle2, MessageSquareText, Play, Sparkles, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import CourseCard from '../../components/courses/CourseCard.jsx'
-import PersonalityCard from '../../components/personality/PersonalityCard.jsx'
-import { celebCourses } from '../../data/dummyData.js'
-import { aiPersonalities, courseCategories } from '../../data/aiPersonalities.js'
-import Button from '../../components/ui/Button.jsx'
-import { pageTransition } from '../../animations/variants.js'
+import CourseCard from '../../components/ui/Course/CourseCard.jsx'
+import PersonalityCard from '../../components/ui/TeacherSwitcher/PersonalityCard.jsx'
+import { fetchCourses, fetchPlatformSummary } from '../../api/api.js'
+import { aiPersonalities } from '../../constants/aiPersonalities.js'
+import Button from '../../components/common/Button/Button.jsx'
+import { pageTransition } from '../../utils/animationVariants.js'
 import { cn } from '../../utils/classNames.js'
 
 function generateParticlePositions(count) {
@@ -30,6 +30,49 @@ export default function LandingPage() {
   const navigate = useNavigate()
   const particles = useMemo(() => generateParticlePositions(26), [])
   const [activeTeacher, setActiveTeacher] = useState(aiPersonalities[0])
+  const [courses, setCourses] = useState([])
+  const [summary, setSummary] = useState({
+    totalLearners: 0,
+    totalInstructors: 0,
+    totalCourses: 0,
+    totalCategories: 0,
+  })
+
+  useEffect(() => {
+    let isMounted = true
+    async function loadLiveData() {
+      try {
+        const [summaryRes, coursesRes] = await Promise.all([
+          fetchPlatformSummary().catch(() => ({ data: {} })),
+          fetchCourses().catch(() => ({ data: { courses: [] } })),
+        ])
+        if (!isMounted) return
+        const liveSummary = summaryRes.data?.summary || summaryRes.data || {}
+        setSummary({
+          totalLearners: liveSummary.totalLearners ?? 0,
+          totalInstructors: liveSummary.totalInstructors ?? 0,
+          totalCourses: liveSummary.totalCourses ?? 0,
+          totalCategories: liveSummary.totalCategories ?? 0,
+        })
+        setCourses(coursesRes.data?.courses || coursesRes.data || [])
+      } catch (error) {
+        console.error('Failed to load landing data:', error)
+      }
+    }
+    void loadLiveData()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  const categories = useMemo(() => {
+    const counts = courses.reduce((acc, course) => {
+      const category = course.category || 'Uncategorized'
+      acc.set(category, (acc.get(category) || 0) + 1)
+      return acc
+    }, new Map())
+    return Array.from(counts, ([name, count]) => ({ id: name, name, count })).slice(0, 6)
+  }, [courses])
 
   return (
     <motion.section className="space-y-20 pb-20" variants={pageTransition} initial="hidden" animate="enter" exit="exit">
@@ -79,9 +122,9 @@ export default function LandingPage() {
 
             <div className="grid gap-3 sm:grid-cols-3">
               {[
-                ['42K+', 'active learners'],
-                ['4.9/5', 'teacher rating'],
-                ['12 min', 'average daily lesson'],
+                [summary.totalLearners, 'registered learners'],
+                [summary.totalInstructors, 'instructors'],
+                [summary.totalCourses, 'published courses'],
               ].map(([value, label]) => (
                 <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
                   <p className="text-2xl font-semibold text-white">{value}</p>
@@ -163,9 +206,15 @@ export default function LandingPage() {
           <Button variant="secondary" onClick={() => navigate('/explore')}>Explore catalog</Button>
         </div>
         <div className="grid gap-5 lg:grid-cols-3">
-          {celebCourses.slice(0, 3).map((course) => (
-            <CourseCard key={course.id} course={course} onViewDetails={() => navigate(`/course/${course.id}`)} />
-          ))}
+          {courses.length ? (
+            courses.slice(0, 3).map((course) => (
+              <CourseCard key={course.id} course={course} onViewDetails={() => navigate(`/course/${course.id}`)} />
+            ))
+          ) : (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-6 text-slate-300 lg:col-span-3">
+              Courses published by admin will appear here automatically.
+            </div>
+          )}
         </div>
       </section>
 
@@ -184,7 +233,7 @@ export default function LandingPage() {
           </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          {courseCategories.slice(0, 6).map((category) => (
+          {categories.length ? categories.map((category) => (
             <button
               key={category.id}
               type="button"
@@ -195,16 +244,24 @@ export default function LandingPage() {
               <p className="mt-4 text-lg font-semibold text-white">{category.name}</p>
               <p className="mt-1 text-sm text-slate-400">{category.count} courses</p>
             </button>
-          ))}
+          )) : (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-5 text-slate-300 sm:col-span-2">
+              {summary.totalCategories} categories are available in the database.
+            </div>
+          )}
         </div>
       </section>
 
       <section className="grid gap-5 lg:grid-cols-3">
-        {['The teacher switching is the first LMS feature that actually changed how I study.', 'The dashboard feels like a coaching room, not a course dump.', 'Voice previews and style previews made the learning path feel personal.'].map((quote, index) => (
-          <div key={quote} className="glass-card p-6">
+        {[
+          ['Learners', summary.totalLearners],
+          ['Courses', summary.totalCourses],
+          ['Categories', summary.totalCategories],
+        ].map(([label, value]) => (
+          <div key={label} className="glass-card p-6">
             <Users className="text-teal-300" />
-            <p className="mt-5 text-slate-200">"{quote}"</p>
-            <p className="mt-5 text-sm text-slate-400">Beta learner {index + 1}</p>
+            <p className="mt-5 text-3xl font-semibold text-white">{value}</p>
+            <p className="mt-2 text-sm text-slate-400">{label} from the live database</p>
           </div>
         ))}
       </section>
@@ -223,3 +280,5 @@ export default function LandingPage() {
     </motion.section>
   )
 }
+
+

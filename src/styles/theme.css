@@ -1,0 +1,39 @@
+:root {
+  --upto-bg: #f7fafc;
+  --upto-bg-deep: #083e57;
+  --upto-orange: #f97316;
+  --upto-teal: #10b9a7;
+  --upto-cyan: #16a9d8;
+  --upto-blue: #0e7cc1;
+  --upto-navy: #083e57;
+  --upto-radius-sm: 0.5rem;
+  --upto-radius-md: 0.75rem;
+  --upto-radius-lg: 1rem;
+  --upto-radius-xl: 1.25rem;
+  --upto-shadow-soft: 0 20px 70px rgba(8, 62, 87, 0.16);
+  --upto-shadow-glow: 0 20px 70px rgba(16, 185, 167, 0.2);
+  --upto-gradient-brand: linear-gradient(135deg, #f97316 0%, #16a9d8 48%, #10b9a7 100%);
+  --upto-gradient-hologram: linear-gradient(135deg, rgba(249, 115, 22, 0.14), rgba(22, 169, 216, 0.12), rgba(16, 185, 167, 0.14));
+}
+
+.upto-premium-panel {
+  border: 1px solid var(--border-color);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(241, 251, 249, 0.84)),
+    var(--upto-gradient-hologram);
+  box-shadow: var(--upto-shadow-soft);
+}
+
+.theme-dark .upto-premium-panel,
+.dark .upto-premium-panel {
+  background:
+    linear-gradient(180deg, rgba(8, 62, 87, 0.92), rgba(5, 31, 46, 0.88)),
+    var(--upto-gradient-hologram);
+}
+
+.upto-brand-text {
+  background: var(--upto-gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

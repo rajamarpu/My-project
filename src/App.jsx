@@ -1,28 +1,29 @@
 import { BrowserRouter, Routes, Route, useLocation, Navigate, Outlet } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import { Provider, useSelector } from 'react-redux'
-import store from './redux/store.js'
-import ThemeProvider from './ThemeProvider.jsx'
+import store from './store/store.js'
+import ThemeProvider from './store/ThemeProvider.jsx'
 import MainLayout from './layouts/MainLayout.jsx'
 import AdminLayout from './layouts/AdminLayout.jsx'
-import LandingPage from './pages/landing/LandingPage.jsx'
-import AuthPage from './pages/auth/AuthPage.jsx'
-import AuthCallbackPage from './pages/auth/AuthCallbackPage.jsx'
-import ExploreCoursesPage from './pages/explore/ExploreCoursesPage.jsx'
-import CourseDetailPage from './pages/course/CourseDetailPage.jsx'
-import StudentDashboard from './pages/dashboard/StudentDashboard.jsx'
-import AdminDashboard from './pages/admin/AdminDashboard.jsx'
-import UserPage from './pages/user/UserPage.jsx'
-import LearningPlayerPage from './pages/player/LearningPlayerPage.jsx'
-import CommunityPage from './pages/community/CommunityPage.jsx'
-import CertificatesPage from './pages/certificates/CertificatesPage.jsx'
-import AdminReviewPage from './pages/admin/AdminReviewPage.jsx'
-import NotFoundPage from './pages/NotFoundPage.jsx'
-import AssessmentsPage from './pages/assessments/AssessmentsPage.jsx'
+import LandingPage from './pages/Landing/LandingPage.jsx'
+import AuthPage from './pages/Auth/AuthPage.jsx'
+import AuthCallbackPage from './pages/Auth/AuthCallbackPage.jsx'
+import ExploreCoursesPage from './pages/Courses/ExploreCoursesPage.jsx'
+import CourseDetailPage from './pages/Courses/CourseDetailPage.jsx'
+import StudentDashboard from './pages/Dashboard/StudentDashboard.jsx'
+import AdminDashboard from './pages/Admin/AdminDashboard.jsx'
+import AdminDataPage from './pages/Admin/AdminDataPage.jsx'
+import AdminCourseFormPage from './pages/Admin/AdminCourseFormPage.jsx'
+import AdminCategoryFormPage from './pages/Admin/AdminCategoryFormPage.jsx'
+import UserPage from './pages/Dashboard/UserPage.jsx'
+import LearningPlayerPage from './pages/Courses/LearningPlayerPage.jsx'
+import CommunityPage from './pages/Dashboard/CommunityPage.jsx'
+import CertificatesPage from './pages/Dashboard/CertificatesPage.jsx'
+import AdminReviewPage from './pages/Admin/AdminReviewPage.jsx'
+import NotFoundPage from './pages/Landing/NotFoundPage.jsx'
+import AssessmentsPage from './pages/Courses/AssessmentsPage.jsx'
 import {
-  AdminReportsPage,
   AdminSettingsPage,
-  AdminUsersPage,
   AboutPage,
   BlogPage,
   CategoriesPage,
@@ -45,14 +46,10 @@ import {
   SettingsPage,
   SupportPage,
   TeamPage,
-  AdminCreateCoursePage,
   AdminAddLearnerPage,
-  AdminManageCoursesPage,
-  AdminManageLearnersPage,
   AdminGenerateCertificatePage,
-} from './pages/lms/LmsPages.jsx'
-import PersonalityShowcasePage from './pages/personality/PersonalityShowcasePage.jsx'
-import './index.css'
+} from './pages/Courses/LmsPages.jsx'
+import PersonalityShowcasePage from './pages/Courses/PersonalityShowcasePage.jsx'
 
 function ProtectedRoute({ allowedRoles, redirectTo = '/login' }) {
   const auth = useSelector((state) => state.auth)
@@ -80,13 +77,29 @@ function AnimatedRoutes() {
           <Route element={<ProtectedRoute allowedRoles={['admin']} redirectTo="/admin-login" />}>
             <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
             <Route path="/admin/review" element={<AdminLayout><AdminReviewPage /></AdminLayout>} />
-            <Route path="/admin/users" element={<AdminLayout><AdminUsersPage /></AdminLayout>} />
+            <Route path="/admin/users" element={<AdminLayout><AdminDataPage resource="users" /></AdminLayout>} />
+            <Route path="/admin/learners" element={<AdminLayout><AdminDataPage resource="learners" /></AdminLayout>} />
+            <Route path="/admin/instructors" element={<AdminLayout><AdminDataPage resource="instructors" /></AdminLayout>} />
+            <Route path="/admin/courses" element={<AdminLayout><AdminDataPage resource="courses" /></AdminLayout>} />
+            <Route path="/admin/categories" element={<AdminLayout><AdminDataPage resource="categories" /></AdminLayout>} />
+            <Route path="/admin/create-category" element={<AdminLayout><AdminCategoryFormPage /></AdminLayout>} />
+            <Route path="/admin/edit-category/:categoryId" element={<AdminLayout><AdminCategoryFormPage mode="edit" /></AdminLayout>} />
+            <Route path="/admin/analytics" element={<AdminLayout><AdminDataPage resource="analytics" /></AdminLayout>} />
+            <Route path="/admin/revenue" element={<AdminLayout><AdminDataPage resource="revenue" /></AdminLayout>} />
+            <Route path="/admin/certificates" element={<AdminLayout><AdminDataPage resource="certificates" /></AdminLayout>} />
+            <Route path="/admin/notifications" element={<AdminLayout><AdminDataPage resource="notifications" /></AdminLayout>} />
+            <Route path="/admin/enrollments" element={<AdminLayout><AdminDataPage resource="enrollments" /></AdminLayout>} />
+            <Route path="/admin/activity-logs" element={<AdminLayout><AdminDataPage resource="activity-logs" /></AdminLayout>} />
+            <Route path="/admin/payments" element={<AdminLayout><AdminDataPage resource="payments" /></AdminLayout>} />
+            <Route path="/admin/profile" element={<AdminLayout><UserPage /></AdminLayout>} />
             <Route path="/admin/settings" element={<AdminLayout><AdminSettingsPage /></AdminLayout>} />
-            <Route path="/admin/reports" element={<AdminLayout><AdminReportsPage /></AdminLayout>} />
-            <Route path="/admin/create-course" element={<AdminLayout><AdminCreateCoursePage /></AdminLayout>} />
+            <Route path="/admin/reports" element={<AdminLayout><AdminDataPage resource="reports" /></AdminLayout>} />
+            <Route path="/admin/create-course" element={<AdminLayout><AdminCourseFormPage /></AdminLayout>} />
+            <Route path="/admin/upload-course" element={<AdminLayout><AdminCourseFormPage /></AdminLayout>} />
+            <Route path="/admin/edit-course/:courseId" element={<AdminLayout><AdminCourseFormPage mode="edit" /></AdminLayout>} />
             <Route path="/admin/add-learner" element={<AdminLayout><AdminAddLearnerPage /></AdminLayout>} />
-            <Route path="/admin/manage-courses" element={<AdminLayout><AdminManageCoursesPage /></AdminLayout>} />
-            <Route path="/admin/manage-learners" element={<AdminLayout><AdminManageLearnersPage /></AdminLayout>} />
+            <Route path="/admin/manage-courses" element={<AdminLayout><AdminDataPage resource="courses" /></AdminLayout>} />
+            <Route path="/admin/manage-learners" element={<AdminLayout><AdminDataPage resource="learners" /></AdminLayout>} />
             <Route path="/admin/generate-certificate" element={<AdminLayout><AdminGenerateCertificatePage /></AdminLayout>} />
           </Route>
           <Route path="*" element={<Navigate to="/admin-login" replace />} />
@@ -127,7 +140,6 @@ function AnimatedRoutes() {
         <Route path="/course/:courseId" element={<MainLayout><CourseDetailPage /></MainLayout>} />
         <Route path="/community" element={<MainLayout><CommunityPage /></MainLayout>} />
         <Route path="/community/:topicId" element={<MainLayout><CommunityTopicPage /></MainLayout>} />
-<Route path="/certificates" element={<MainLayout><CertificatesPage /></MainLayout>} />
          <Route path="/personalities" element={<MainLayout><PersonalityShowcasePage /></MainLayout>} />
 
          <Route element={<ProtectedRoute allowedRoles={['learner', 'admin']} />}>
@@ -141,6 +153,7 @@ function AnimatedRoutes() {
           <Route path="/profile" element={<MainLayout><UserPage /></MainLayout>} />
           <Route path="/settings" element={<MainLayout><SettingsPage /></MainLayout>} />
           <Route path="/notifications" element={<MainLayout><NotificationsPage /></MainLayout>} />
+          <Route path="/certificates" element={<MainLayout><CertificatesPage /></MainLayout>} />
           <Route path="/learning-path" element={<MainLayout><LearningPathPage /></MainLayout>} />
           <Route path="/live-sessions" element={<MainLayout><LiveSessionsPage /></MainLayout>} />
           <Route path="/saved" element={<MainLayout><SavedCoursesPage /></MainLayout>} />

@@ -32,7 +32,7 @@ services:
       JWT_SECRET: uptoskills-jwt-secret-production-change-me
       API_BASE_URL: http://localhost:5000
       APP_BASE_URL: http://localhost:5173
-      CLIENT_ORIGINS: http://localhost:5173
+      CLIENT_ORIGINS: http://localhost:5173,http://localhost:5174
       API_PORT: 5000
     depends_on:
       postgres:

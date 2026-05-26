@@ -1,11 +1,28 @@
 import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
 
 const secret = () => process.env.JWT_SECRET || 'dev-secret-change-me'
 
 export function normalizeRole(role) {
-  const value = String(role || 'learner').toLowerCase()
-  if (value === 'admin') return 'admin'
+  const value = String(role || 'USER').trim().toUpperCase()
+  if (value === 'ADMIN') return 'ADMIN'
+  if (['INSTRUCTOR', 'TEACHER'].includes(value)) return 'INSTRUCTOR'
+  return 'USER'
+}
+
+export function roleToClient(role) {
+  const normalized = normalizeRole(role)
+  if (normalized === 'ADMIN') return 'admin'
+  if (normalized === 'INSTRUCTOR') return 'instructor'
   return 'learner'
+}
+
+export function roleToDatabase(role) {
+  const value = String(role || 'USER').trim().toUpperCase()
+  if (['ADMIN'].includes(value)) return 'ADMIN'
+  if (['INSTRUCTOR', 'TEACHER'].includes(value)) return 'INSTRUCTOR'
+  if (['LEARNER', 'STUDENT', 'USER'].includes(value)) return 'USER'
+  return normalizeRole(value)
 }
 
 export function publicUser(user) {
@@ -16,10 +33,13 @@ export function publicUser(user) {
     fullName: user.full_name || user.name,
     email: user.email,
     phone: user.phone,
-    role: String(user.role || 'learner').toLowerCase(),
+    role: roleToClient(user.role),
+    approvalStatus: String(user.approvalStatus || 'APPROVED').toUpperCase(),
     avatarUrl: user.profile_image || user.avatarUrl,
     bio: user.bio,
-    isActive: user.is_active ?? user.isActive,
+    expertise: user.expertise,
+    socialLinks: user.socialLinks,
+    isActive: user.is_active ?? user.isActive ?? true,
     createdAt: user.created_at || user.createdAt,
   }
 }
@@ -28,8 +48,9 @@ export function signToken(user) {
   return jwt.sign(
     {
       sub: user.id,
-      role: String(user.role).toLowerCase(),
+      role: roleToDatabase(user.role),
       email: user.email,
+      jti: crypto.randomUUID(),
     },
     secret(),
     { expiresIn: process.env.JWT_EXPIRES_IN || '7d' },

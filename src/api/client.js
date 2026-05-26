@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
@@ -25,7 +25,7 @@ apiClient.interceptors.response.use(
       window.localStorage.removeItem('lms-role')
     }
     if (!error.response) {
-      error.message = 'API server is not reachable at http://localhost:5000. Start PostgreSQL, then run npm.cmd run backend.'
+      error.message = 'API server is not reachable. Start PostgreSQL, then run npm.cmd run backend.'
     }
     return Promise.reject(error)
   },

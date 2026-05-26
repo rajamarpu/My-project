@@ -4,6 +4,16 @@ import { requireAuth, requireRole } from '../middleware/auth.js'
 
 const router = Router()
 
+const instructorSelect = {
+  id: true,
+  name: true,
+  email: true,
+  avatarUrl: true,
+  bio: true,
+  expertise: true,
+  socialLinks: true,
+}
+
 function slugify(value) {
   return String(value).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
@@ -12,7 +22,11 @@ router.get('/', async (_req, res, next) => {
   try {
     const courses = await prisma.course.findMany({
       where: { isPublished: true },
-      include: { lessons: { orderBy: { sortOrder: 'asc' } }, enrollments: true },
+      include: {
+        lessons: { orderBy: { sortOrder: 'asc' } },
+        enrollments: true,
+        createdBy: { select: instructorSelect },
+      },
       orderBy: { createdAt: 'desc' },
     })
     res.json({ success: true, courses })
@@ -25,7 +39,10 @@ router.get('/:id', async (req, res, next) => {
   try {
     const course = await prisma.course.findFirst({
       where: { OR: [{ id: req.params.id }, { slug: req.params.id }] },
-      include: { lessons: { orderBy: { sortOrder: 'asc' } } },
+      include: {
+        lessons: { orderBy: { sortOrder: 'asc' } },
+        createdBy: { select: instructorSelect },
+      },
     })
     if (!course) return res.status(404).json({ success: false, message: 'Course not found.' })
     res.json({ success: true, course })
@@ -63,7 +80,7 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res, next) => {
           })),
         },
       },
-      include: { lessons: true },
+      include: { lessons: true, createdBy: { select: instructorSelect } },
     })
     res.status(201).json({ success: true, course })
   } catch (error) {

@@ -23,18 +23,40 @@ enum CertificateStatus {
   REVOKED
 }
 
+enum UserRole {
+  USER
+  INSTRUCTOR
+  ADMIN
+}
+
+enum AccountStatus {
+  APPROVED
+  PENDING
+  REJECTED
+  SUSPENDED
+}
+
 model User {
   id             Int             @id @default(autoincrement())
   name           String          @map("full_name")
   email          String          @unique
   phone          String?
   passwordHash   String          @map("password_hash")
-  role           String          @default("learner")
+  role           UserRole        @default(USER)
+  approvalStatus AccountStatus   @default(APPROVED)
   avatarUrl      String?         @map("avatar_url")
   bio            String?
+  expertise      String?
+  socialLinks    Json?
+  isActive       Boolean         @default(true) @map("is_active")
   createdAt      DateTime        @default(now()) @map("created_at")
   updatedAt      DateTime        @updatedAt @map("updated_at")
   enrollments    Enrollment[]
+  selectedInstructorEnrollments Enrollment[] @relation("EnrollmentInstructor")
+  instructorSwitches            InstructorChangeHistory[] @relation("InstructorChangeLearner")
+  instructorChangesFrom         InstructorChangeHistory[] @relation("InstructorChangeFrom")
+  instructorChangesTo           InstructorChangeHistory[] @relation("InstructorChangeTo")
+  instructorChangesBy           InstructorChangeHistory[] @relation("InstructorChangeChangedBy")
   progress       Progress[]
   chatMessages   ChatMessage[]
   notifications  Notification[]
@@ -42,10 +64,27 @@ model User {
   analytics      AnalyticsEvent[]
   moderatedChats ChatMessage[]    @relation("ModeratorActions")
   coursesCreated Course[]         @relation("CourseCreator")
+  payments       Payment[]
+  sessions       Session[]
+  activityLogs   ActivityLog[]
 
   @@index([role])
   @@index([createdAt])
   @@map("users")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  courses     Course[]
+
+  @@index([isActive])
+  @@map("categories")
 }
 
 model Course {
@@ -54,13 +93,16 @@ model Course {
   slug            String          @unique
   description     String
   category        String
+  categoryId      String?
   level           CourseLevel     @default(BEGINNER)
+  priceCents      Int             @default(0)
   thumbnailUrl    String?
   videoPreviewUrl String?
   isPublished     Boolean         @default(false)
   createdById     Int?
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
+  categoryRef     Category?       @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   createdBy       User?           @relation("CourseCreator", fields: [createdById], references: [id], onDelete: SetNull)
   lessons         Lesson[]
   enrollments     Enrollment[]
@@ -68,8 +110,11 @@ model Course {
   chatMessages    ChatMessage[]
   certificates    Certificate[]
   analytics       AnalyticsEvent[]
+  payments        Payment[]
+  instructorChanges InstructorChangeHistory[]
 
   @@index([category])
+  @@index([categoryId])
   @@index([isPublished])
   @@index([createdAt])
   @@map("courses")
@@ -118,6 +163,7 @@ model Enrollment {
   userId          Int
   courseId        String
   personalityId   String?
+  currentInstructorId Int?
   completionPct   Int            @default(0)
   hoursStudied    Float          @default(0)
   quizAverage     Int            @default(0)
@@ -127,11 +173,38 @@ model Enrollment {
   user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   course          Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
   personality     AIPersonality? @relation(fields: [personalityId], references: [id], onDelete: SetNull)
+  currentInstructor User?        @relation("EnrollmentInstructor", fields: [currentInstructorId], references: [id], onDelete: SetNull)
+  instructorChanges InstructorChangeHistory[]
 
   @@unique([userId, courseId])
   @@index([courseId])
   @@index([personalityId])
+  @@index([currentInstructorId])
   @@map("enrollments")
+}
+
+model InstructorChangeHistory {
+  id                   String     @id @default(cuid())
+  enrollmentId          String
+  userId                Int
+  courseId              String
+  fromInstructorId      Int?
+  toInstructorId        Int
+  changedById           Int?
+  reason                String?
+  createdAt             DateTime   @default(now())
+  enrollment            Enrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  learner               User       @relation("InstructorChangeLearner", fields: [userId], references: [id], onDelete: Cascade)
+  course                Course     @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  fromInstructor        User?      @relation("InstructorChangeFrom", fields: [fromInstructorId], references: [id], onDelete: SetNull)
+  toInstructor          User       @relation("InstructorChangeTo", fields: [toInstructorId], references: [id], onDelete: Cascade)
+  changedBy             User?      @relation("InstructorChangeChangedBy", fields: [changedById], references: [id], onDelete: SetNull)
+
+  @@index([enrollmentId, createdAt])
+  @@index([courseId, createdAt])
+  @@index([userId, createdAt])
+  @@index([toInstructorId])
+  @@map("instructor_change_history")
 }
 
 model Progress {
@@ -191,6 +264,61 @@ model Notification {
 
   @@index([userId, isRead])
   @@map("notifications")
+}
+
+model Payment {
+  id              String    @id @default(cuid())
+  userId          Int
+  courseId        String?
+  amountCents     Int
+  currency        String    @default("INR")
+  provider        String?
+  providerRef     String?
+  status          String    @default("PENDING")
+  paidAt          DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course          Course?   @relation(fields: [courseId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([courseId])
+  @@index([status])
+  @@map("payments")
+}
+
+model Session {
+  id           String    @id @default(cuid())
+  userId       Int
+  tokenHash    String    @unique
+  ipAddress    String?
+  userAgent    String?
+  expiresAt    DateTime
+  revokedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  lastSeenAt    DateTime  @default(now())
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, expiresAt])
+  @@index([revokedAt])
+  @@map("sessions")
+}
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  userId     Int?
+  action     String
+  entityType String?
+  entityId   String?
+  ipAddress  String?
+  userAgent  String?
+  metadata   Json?
+  createdAt  DateTime @default(now())
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@map("activity_logs")
 }
 
 model AnalyticsEvent {

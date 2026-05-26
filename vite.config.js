@@ -13,20 +13,20 @@ export default defineConfig(({ mode }) => ({
     outDir: resolve(rootDir, 'dist'),
     emptyOutDir: true,
   },
-  server: {
-    host: 'localhost',
-    port: 5173,
-    strictPort: true,
-    hmr: {
+    server: {
       host: 'localhost',
-      port: 5173,
-    },
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:5000',
-        changeOrigin: true,
-        secure: false,
+      port: mode === 'admin' ? 5174 : 5173,
+      strictPort: true,
+      hmr: {
+        host: 'localhost',
+        port: mode === 'admin' ? 5174 : 5173,
+      },
+      proxy: {
+        '/api': {
+          target: 'http://localhost:5000',
+          changeOrigin: true,
+          secure: false,
+        },
       },
     },
-  },
 }))

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
-import Button from '../../components/ui/Button.jsx'
-import Modal from '../../components/ui/Modal.jsx'
+import Button from '../../components/common/Button/Button.jsx'
+import Modal from '../../components/common/Modal/Modal.jsx'
 
 const pendingCoursesSeed = [
   {
@@ -105,3 +105,4 @@ export default function AdminReviewPage() {
     </section>
   )
 }
+

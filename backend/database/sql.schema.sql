@@ -6,9 +6,9 @@ CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     full_name VARCHAR(100) NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
-    phone VARCHAR(20) NOT NULL,
+    phone VARCHAR(50) DEFAULT '',
     password_hash VARCHAR(255) NOT NULL,
-    role VARCHAR(20) NOT NULL CHECK (role IN ('learner', 'admin')),
+    role VARCHAR(20) NOT NULL DEFAULT 'learner' CHECK (role IN ('learner', 'admin')),
     avatar_url VARCHAR(500) DEFAULT '',
     headline VARCHAR(200) DEFAULT '',
     bio TEXT DEFAULT '',
@@ -116,25 +116,5 @@ CREATE TABLE IF NOT EXISTS admin_logs (
     action_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Insert default admin user (password: Admin@12345)
--- Password hash generated with bcrypt
-INSERT INTO users (full_name, email, phone, password_hash, role, headline)
-VALUES (
-    'Platform Admin',
-    'admin@example.com',
-    '9999999999',
-    '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.VTtYA/7.J6LlZy',
-    'admin',
-    'System Administrator'
-) ON CONFLICT (email) DO NOTHING;
-
--- Insert demo learner
-INSERT INTO users (full_name, email, phone, password_hash, role, headline)
-VALUES (
-    'Demo Learner',
-    'learner@example.com',
-    '1234567890',
-    '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.VTtYA/7.J6LlZy',
-    'learner',
-    'Student'
-) ON CONFLICT (email) DO NOTHING;
+-- User records are managed by Prisma seed scripts and live registration.
+-- This SQL schema intentionally does not insert sample accounts.

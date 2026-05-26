@@ -2,7 +2,7 @@ import { Router } from 'express'
 import bcrypt from 'bcryptjs'
 import crypto from 'crypto'
 import { prisma } from '../config/prisma.js'
-import { normalizeRole, publicUser, signToken } from '../utils/tokens.js'
+import { normalizeRole, publicUser, roleToDatabase, signToken } from '../utils/tokens.js'
 import { requireAuth } from '../middleware/auth.js'
 
 const router = Router()
@@ -47,15 +47,45 @@ function consumeOAuthState(state, provider) {
   return record
 }
 
-function redirectWithSession(res, user) {
+async function redirectWithSession(req, res, user) {
   const safeUser = publicUser(user)
   const token = signToken(user)
+  await createSessionRecord(req, user, token)
   const encodedUser = Buffer.from(JSON.stringify(safeUser)).toString('base64url')
   const url = new URL('/auth/callback', appBaseUrl())
   url.searchParams.set('token', token)
   url.searchParams.set('user', encodedUser)
   url.searchParams.set('role', safeUser.role)
   return res.redirect(url.toString())
+}
+
+async function createSessionRecord(req, user, token) {
+  const expiresAt = new Date()
+  expiresAt.setDate(expiresAt.getDate() + 7)
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex')
+  await prisma.session.upsert({
+    where: { tokenHash },
+    update: {
+      revokedAt: null,
+      expiresAt,
+      lastSeenAt: new Date(),
+    },
+    create: {
+      userId: user.id,
+      tokenHash,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      expiresAt,
+    },
+  })
+  await prisma.activityLog.create({
+    data: {
+      userId: user.id,
+      action: 'auth_session_created',
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+    },
+  })
 }
 
 function redirectWithOAuthError(res, error) {
@@ -90,26 +120,28 @@ async function findOrCreateSocialUser({ provider, email, name, avatarUrl, role =
   const displayName = String(name || `${provider[0].toUpperCase()}${provider.slice(1)} Learner`).trim()
   const existing = await prisma.user.findUnique({ where: { email: cleanEmail } })
 
-  if (existing) {
-    return prisma.user.update({
-      where: { id: existing.id },
-      data: {
-        name: existing.name || displayName,
-        avatarUrl: existing.avatarUrl || avatarUrl || '',
-      },
-    })
-  }
+    if (existing) {
+      return prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          name: existing.name || displayName,
+          avatarUrl: existing.avatarUrl || avatarUrl || '',
+          approvalStatus: 'APPROVED',
+        },
+      })
+    }
 
   return prisma.user.create({
-    data: {
-      name: displayName,
-      email: cleanEmail,
-      phone: '',
-      avatarUrl: avatarUrl || '',
-      passwordHash: await bcrypt.hash(`${provider}:${crypto.randomUUID()}`, 12),
-      role: normalizeRole(role),
-    },
-  })
+      data: {
+        name: displayName,
+        email: cleanEmail,
+        phone: '',
+        avatarUrl: avatarUrl || '',
+        passwordHash: await bcrypt.hash(`${provider}:${crypto.randomUUID()}`, 12),
+        role: normalizeRole(role),
+        approvalStatus: 'APPROVED',
+      },
+    })
 }
 
 async function exchangeGoogleCode(code) {
@@ -194,7 +226,7 @@ async function recordAnalytics(data) {
 
 router.post('/register', async (req, res, next) => {
   try {
-    const { name, fullName, email, phone, password, confirmPassword, role = 'learner' } = req.body
+    const { name, fullName, email, phone, password, confirmPassword, role = 'USER' } = req.body
     const cleanEmail = String(email || '').trim().toLowerCase()
     const displayName = String(name || fullName || '').trim()
 
@@ -222,13 +254,16 @@ router.post('/register', async (req, res, next) => {
         email: cleanEmail,
         phone: phone ? String(phone).trim() : null,
         passwordHash: await bcrypt.hash(password, 12),
-        role: normalizeRole(role),
+        role: roleToDatabase(role),
+        approvalStatus: 'APPROVED',
       },
     })
 
     const safeUser = publicUser(user)
+    const token = signToken(user)
+    await createSessionRecord(req, user, token)
     await recordAnalytics({ userId: user.id, eventType: 'user_registered' })
-    res.status(201).json({ success: true, token: signToken(user), user: safeUser })
+    res.status(201).json({ success: true, token, user: safeUser })
   } catch (error) {
     next(error)
   }
@@ -236,26 +271,48 @@ router.post('/register', async (req, res, next) => {
 
 router.post('/login', async (req, res, next) => {
   try {
-    const cleanEmail = String(req.body.email || req.body.username || '').trim().toLowerCase()
+    // Support more common field names from different frontend forms
+    const loginId = String(req.body.email || req.body.username || req.body.loginId || '').trim()
+    const cleanEmail = loginId.toLowerCase()
     const { password, role } = req.body
-    if (!cleanEmail || !password) {
-      return res.status(400).json({ success: false, message: 'Email and password are required.' })
+
+    if (!loginId || !password) {
+      return res.status(400).json({ success: false, message: 'Credentials and password are required.' })
+    }
+    if (!emailPattern.test(cleanEmail)) {
+      return res.status(400).json({ success: false, message: 'Enter a valid email address.' })
     }
 
-    const user = await prisma.user.findUnique({ where: { email: cleanEmail } })
-    if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+    const user = await prisma.user.findFirst({
+      where: {
+        email: cleanEmail,
+      },
+    })
+
+    // Validate existence and compare bcrypt hash
+    const isPasswordValid = user ? await bcrypt.compare(password, user.passwordHash) : false
+
+    if (!user || !isPasswordValid) {
       return res.status(401).json({ success: false, message: 'Invalid credentials.' })
     }
+
     if (user.isActive === false) {
       return res.status(403).json({ success: false, message: 'This account has been disabled.' })
     }
-    if (role && normalizeRole(role) !== user.role) {
-      return res.status(403).json({ success: false, message: `This account is registered as ${user.role.toLowerCase()}.` })
+    if (['REJECTED', 'SUSPENDED'].includes(String(user.approvalStatus || 'APPROVED').toUpperCase())) {
+      return res.status(403).json({ success: false, message: 'This account is not currently approved.' })
     }
 
+    // Strict Role Enforcement
+    if (role && roleToDatabase(role) !== user.role) {
+      return res.status(403).json({ success: false, message: `Access denied. Authorized role: ${user.role}` })
+    }
+
+    const token = signToken(user)
+    await createSessionRecord(req, user, token)
     await recordAnalytics({ userId: user.id, eventType: 'user_login' })
 
-    res.json({ success: true, token: signToken(user), user: publicUser(user) })
+    res.json({ success: true, token, user: publicUser(user) })
   } catch (error) {
     next(error)
   }
@@ -289,7 +346,7 @@ router.get('/google/callback', async (req, res) => {
       role: oauthState.role,
     })
     await recordAnalytics({ userId: user.id, eventType: 'google_login' })
-    return redirectWithSession(res, user)
+    return redirectWithSession(req, res, user)
   } catch (error) {
     return redirectWithOAuthError(res, error)
   }
@@ -321,7 +378,7 @@ router.get('/github/callback', async (req, res) => {
       role: oauthState.role,
     })
     await recordAnalytics({ userId: user.id, eventType: 'github_login' })
-    return redirectWithSession(res, user)
+    return redirectWithSession(req, res, user)
   } catch (error) {
     return redirectWithOAuthError(res, error)
   }
@@ -351,11 +408,13 @@ router.post('/otp/verify', async (req, res, next) => {
     }
     const user = await prisma.user.findUnique({ where: { email: cleanEmail } })
     if (!user) return res.status(404).json({ success: false, message: 'No account found for this email.' })
-    if (req.body.role && normalizeRole(req.body.role) !== user.role) {
+    if (req.body.role && roleToDatabase(req.body.role) !== user.role) {
       return res.status(403).json({ success: false, message: `This account is registered as ${user.role.toLowerCase()}.` })
     }
+    const token = signToken(user)
+    await createSessionRecord(req, user, token)
     await recordAnalytics({ userId: user.id, eventType: 'otp_login' })
-    res.json({ success: true, token: signToken(user), user: publicUser(user) })
+    res.json({ success: true, token, user: publicUser(user) })
   } catch (error) {
     next(error)
   }
@@ -400,6 +459,22 @@ router.post('/password/reset', async (req, res, next) => {
 
 router.get('/me', requireAuth, (req, res) => {
   res.json({ success: true, user: req.user })
+})
+
+router.post('/logout', requireAuth, async (req, res, next) => {
+  try {
+    const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+    if (token) {
+      await prisma.session.updateMany({
+        where: { tokenHash: crypto.createHash('sha256').update(token).digest('hex'), revokedAt: null },
+        data: { revokedAt: new Date() },
+      })
+    }
+    await prisma.activityLog.create({ data: { userId: req.user.id, action: 'user_logout', ipAddress: req.ip, userAgent: req.get('user-agent') } })
+    res.json({ success: true })
+  } catch (error) {
+    next(error)
+  }
 })
 
 export default router

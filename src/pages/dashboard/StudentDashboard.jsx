@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts'
-import Button from '../../components/ui/Button.jsx'
+import Button from '../../components/common/Button/Button.jsx'
 import { motion } from 'framer-motion'
-import { fadeInUp } from '../../animations/variants.js'
+import { fadeInUp } from '../../utils/animationVariants.js'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { fetchCourses, fetchUserAnalytics } from '../../services/api'
-import { celebCourses } from '../../data/dummyData.js'
+import { fetchCourses, fetchUserAnalytics } from '../../api/api'
 
 const learnerPermissions = [
   'Browse upskilling and technical courses',
@@ -15,22 +14,22 @@ const learnerPermissions = [
   'Track weekly progress and daily streaks',
 ]
 
-const fallbackAnalytics = {
-  totalCourses: 2,
-  avgProgress: 62,
-  streak: 7,
-  hoursStudied: 18,
-  completions: 1,
-  quiz: 84,
-  certificates: 1,
+const emptyAnalytics = {
+  totalCourses: 0,
+  avgProgress: 0,
+  streak: 0,
+  hoursStudied: 0,
+  completions: 0,
+  quiz: 0,
+  certificates: 0,
   weekly: [
-    { day: 'Mon', hours: 2 },
-    { day: 'Tue', hours: 3 },
-    { day: 'Wed', hours: 2.5 },
-    { day: 'Thu', hours: 4 },
-    { day: 'Fri', hours: 3.5 },
-    { day: 'Sat', hours: 5 },
-    { day: 'Sun', hours: 2 },
+    { day: 'Mon', hours: 0 },
+    { day: 'Tue', hours: 0 },
+    { day: 'Wed', hours: 0 },
+    { day: 'Thu', hours: 0 },
+    { day: 'Fri', hours: 0 },
+    { day: 'Sat', hours: 0 },
+    { day: 'Sun', hours: 0 },
   ],
   recent: [],
 }
@@ -39,22 +38,22 @@ function normalizeAnalytics(payload, courseCount) {
   const data = payload?.analytics || payload || {}
   return {
     totalCourses: data.totalCourses ?? courseCount,
-    avgProgress: data.avgProgress ?? data.completion ?? fallbackAnalytics.avgProgress,
-    streak: data.streak ?? fallbackAnalytics.streak,
-    hoursStudied: Math.round(data.hoursStudied ?? fallbackAnalytics.hoursStudied),
-    completions: data.completions ?? data.certificates ?? fallbackAnalytics.completions,
-    quiz: data.quiz ?? fallbackAnalytics.quiz,
-    certificates: data.certificates ?? fallbackAnalytics.certificates,
-    weekly: data.weekly ?? fallbackAnalytics.weekly,
-    recent: data.recent ?? fallbackAnalytics.recent,
+    avgProgress: data.avgProgress ?? data.completion ?? emptyAnalytics.avgProgress,
+    streak: data.streak ?? emptyAnalytics.streak,
+    hoursStudied: Math.round(data.hoursStudied ?? emptyAnalytics.hoursStudied),
+    completions: data.completions ?? data.certificates ?? emptyAnalytics.completions,
+    quiz: data.quiz ?? emptyAnalytics.quiz,
+    certificates: data.certificates ?? emptyAnalytics.certificates,
+    weekly: data.weekly ?? emptyAnalytics.weekly,
+    recent: data.recent ?? emptyAnalytics.recent,
   }
 }
 
 export default function StudentDashboard() {
   const navigate = useNavigate()
   const auth = useSelector((state) => state.auth)
-  const [analytics, setAnalytics] = useState(normalizeAnalytics(fallbackAnalytics, 2))
-  const [courses, setCourses] = useState(celebCourses.slice(0, 2))
+  const [analytics, setAnalytics] = useState(normalizeAnalytics(emptyAnalytics, 0))
+  const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
   const lastOnline = window.localStorage.getItem('lms-last-online') || 'Online now'
 
@@ -65,13 +64,13 @@ export default function StudentDashboard() {
         fetchUserAnalytics().catch(() => ({ data: { analytics: {} } })),
         fetchCourses().catch(() => ({ data: [] })),
       ])
-      const courseList = coursesRes.data?.courses || coursesRes.data || celebCourses
-      setCourses(courseList.length ? courseList : celebCourses.slice(0, 2))
-      setAnalytics(normalizeAnalytics(analyticsRes.data, courseList.length || 2))
+      const courseList = coursesRes.data?.courses || coursesRes.data || []
+      setCourses(courseList)
+      setAnalytics(normalizeAnalytics(analyticsRes.data, courseList.length))
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
-      setCourses(celebCourses.slice(0, 2))
-      setAnalytics(normalizeAnalytics(fallbackAnalytics, 2))
+      setCourses([])
+      setAnalytics(normalizeAnalytics(emptyAnalytics, 0))
     } finally {
       setLoading(false)
     }
@@ -185,12 +184,12 @@ export default function StudentDashboard() {
             <ResponsiveContainer width="100%" height={320}>
               <RadarChart
                 data={[
-                  { subject: 'Creativity', A: 82 },
+                  { subject: 'Creativity', A: analytics.avgProgress },
                   { subject: 'Coding', A: analytics.avgProgress },
-                  { subject: 'Projects', A: 78 },
+                  { subject: 'Projects', A: analytics.completions ? Math.min(100, analytics.completions * 20) : 0 },
                   { subject: 'Quiz', A: analytics.quiz },
                   { subject: 'Consistency', A: Math.min(100, analytics.streak * 10) },
-                  { subject: 'Practice', A: 84 },
+                  { subject: 'Practice', A: Math.min(100, analytics.hoursStudied * 5) },
                 ]}
               >
                 <PolarGrid stroke="#334155" />
@@ -226,7 +225,7 @@ export default function StudentDashboard() {
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-base font-semibold text-slate-100">{course.title}</p>
-                    <p className="mt-2 text-sm text-slate-400">{course.instructor?.full_name || course.instructor?.name || course.instructor || 'Instructor'}</p>
+                    <p className="mt-2 text-sm text-slate-400">{course.createdBy?.name || course.instructor?.full_name || course.instructor?.name || course.instructor || 'Instructor'}</p>
                   </div>
                   <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-sm text-emerald-200">
                     {analytics.avgProgress}%
@@ -235,7 +234,7 @@ export default function StudentDashboard() {
 
                 <div className="mt-6 flex items-center justify-between gap-4">
                   <div className="h-3 flex-1 overflow-hidden rounded-full bg-slate-800">
-                    <div className="h-full w-2/3 bg-gradient-to-r from-cyan-400 to-violet-500" />
+                    <div className="h-full bg-gradient-to-r from-orange-500 to-teal-500" style={{ width: `${analytics.avgProgress}%` }} />
                   </div>
                   <span className="text-sm text-slate-300">{analytics.avgProgress}% complete</span>
                 </div>
@@ -252,3 +251,6 @@ export default function StudentDashboard() {
     </section>
   )
 }
+
+
+

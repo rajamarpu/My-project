@@ -8,5 +8,6 @@ Save the celebrity photos in this folder with these exact filenames:
 - ms-dhoni.jpg
 - rohit-sharma.jpg
 - sachin-tendulkar.jpg
+- allu-arjun.jpg
 
 The app loads these files from paths like `/celebrities/virat-kohli.jpg`.

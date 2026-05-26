@@ -13,8 +13,8 @@ import personalityRoutes from './routes/personalityRoutes.js'
 import adminRoutes from './routes/adminRoutes.js'
 import chatRoutes from './routes/chatRoutes.v2.js'
 import certificateRoutes from './routes/certificateRoutes.js'
-import { verifyToken } from './utils/tokens.js'
-import { requestLogger } from './middleware/auth.js'
+import { publicUser, verifyToken } from './utils/tokens.js'
+import { requireAuth, requestLogger } from './middleware/auth.js'
 
 const app = express()
 const server = http.createServer(app)
@@ -92,6 +92,115 @@ app.get('/api/health', async (_req, res, next) => {
   try {
     await prisma.$queryRaw`SELECT 1`
     res.json({ success: true, service: 'ai-lms-api', database: 'postgresql', orm: 'prisma', realtime: 'socket.io' })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.get('/api/stats/summary', async (_req, res, next) => {
+  try {
+    const [totalUsers, totalLearners, totalInstructors, totalCourses, totalCategories, totalEnrollments] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { role: 'USER' } }),
+      prisma.user.count({ where: { role: 'INSTRUCTOR' } }),
+      prisma.course.count({ where: { isPublished: true } }),
+      prisma.category.count(),
+      prisma.enrollment.count(),
+    ])
+    res.json({
+      success: true,
+      summary: {
+        totalUsers,
+        totalLearners,
+        totalInstructors,
+        totalCourses,
+        totalCategories,
+        totalEnrollments,
+      },
+    })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.put('/api/profile', requireAuth, async (req, res, next) => {
+  try {
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        name: req.body.name || req.body.fullName || undefined,
+        phone: req.body.phone || undefined,
+        bio: req.body.bio || undefined,
+        avatarUrl: req.body.avatarUrl || undefined,
+      },
+    })
+    res.json({ success: true, user: publicUser(user) })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.put('/api/settings', requireAuth, async (req, res, next) => {
+  try {
+    await prisma.activityLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'settings_updated',
+        metadata: req.body || {},
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      },
+    })
+    res.json({ success: true, settings: req.body || {} })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/contact', async (req, res, next) => {
+  try {
+    const email = String(req.body.email || '').trim()
+    const message = String(req.body.message || '').trim()
+    if (!email || !message) return res.status(400).json({ success: false, message: 'Email and message are required.' })
+    await prisma.activityLog.create({
+      data: {
+        action: 'contact_submitted',
+        entityType: 'contact',
+        metadata: { name: req.body.name || '', email, message },
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      },
+    })
+    res.status(201).json({ success: true, message: 'Thanks. We received your message.' })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.get('/api/learner/dashboard', requireAuth, async (req, res, next) => {
+  try {
+    const [enrollments, progress, certificates, notifications] = await Promise.all([
+      prisma.enrollment.findMany({ where: { userId: req.user.id }, include: { course: true } }),
+      prisma.progress.findMany({ where: { userId: req.user.id }, orderBy: { lastAccessedAt: 'desc' }, take: 8 }),
+      prisma.certificate.findMany({ where: { userId: req.user.id }, include: { course: true } }),
+      prisma.notification.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' }, take: 10 }),
+    ])
+    res.json({ success: true, dashboard: { enrollments, progress, certificates, notifications } })
+  } catch (error) {
+    next(error)
+  }
+})
+
+app.post('/api/learner/progress', requireAuth, async (req, res, next) => {
+  try {
+    const { courseId, lessonId = null, percentComplete = 0, watchedSeconds = 0, quizScore } = req.body
+    if (!courseId) return res.status(400).json({ success: false, message: 'courseId is required.' })
+    const progress = await prisma.progress.upsert({
+      where: { userId_courseId_lessonId: { userId: req.user.id, courseId, lessonId } },
+      update: { percentComplete, watchedSeconds, quizScore, completed: percentComplete >= 100, lastAccessedAt: new Date() },
+      create: { userId: req.user.id, courseId, lessonId, percentComplete, watchedSeconds, quizScore, completed: percentComplete >= 100 },
+    })
+    res.json({ success: true, progress })
   } catch (error) {
     next(error)
   }

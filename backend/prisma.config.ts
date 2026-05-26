@@ -1,12 +1,9 @@
-import { defineConfig, env } from 'prisma/config'
-import dotenv from 'dotenv'
-
-dotenv.config({ path: new URL('./.env', import.meta.url) })
+import { defineConfig } from 'prisma/config'
+import 'dotenv/config'
 
 export default defineConfig({
-  datasources: {
-    db: {
-      url: env('DATABASE_URL')
-    }
-  }
+  schema: 'prisma/schema.prisma',
+  datasource: {
+    url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/uptoskills?schema=public',
+  },
 })

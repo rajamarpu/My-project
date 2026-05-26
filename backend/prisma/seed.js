@@ -1,7 +1,7 @@
 import bcrypt from 'bcryptjs'
+import dotenv from 'dotenv'
 import { PrismaClient } from '@prisma/client'
 import { PrismaPg } from '@prisma/adapter-pg'
-import dotenv from 'dotenv'
 
 dotenv.config({ path: new URL('../.env', import.meta.url) })
 
@@ -9,157 +9,368 @@ const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }),
 })
 
-const personalities = [
-  ['Shah Rukh Khan', 'shah-rukh-khan', 'charismatic storyteller', '/celebrities/shah-rukh-khan.jpg', 'charismatic, expressive, story-led', 'Narrative lessons with confidence-building examples', ['charismatic', 'story-led', 'motivational']],
-  ['Alia Bhatt', 'alia-bhatt', 'supportive creative coach', '/celebrities/alia-bhatt.jpg', 'warm, friendly, clear', 'Conversational teaching with simple analogies and recap moments', ['friendly', 'creative', 'clear']],
-  ['Ranveer Singh', 'ranveer-singh', 'high-energy motivator', '/celebrities/ranveer-singh.jpg', 'energetic, bold, fast-paced', 'Interactive lessons with quick wins and bold practice tasks', ['energetic', 'interactive', 'bold']],
-  ['Deepika Padukone', 'deepika-padukone', 'structured mentor', '/celebrities/deepika-padukone.jpg', 'calm, polished, focused', 'Step-by-step instruction with fundamentals and reflection checkpoints', ['calm', 'structured', 'focused']],
-  ['Virat Kohli', 'virat-kohli', 'performance coach', '/celebrities/virat-kohli.jpg', 'direct, intense, performance-focused', 'Goal-driven lessons with drills, metrics, and repetition', ['disciplined', 'intense', 'performance']],
-  ['MS Dhoni', 'ms-dhoni', 'strategic captain', '/celebrities/ms-dhoni.jpg', 'calm, tactical, concise', 'Tactical breakdowns with decisions, trade-offs, and composed problem solving', ['calm', 'tactical', 'leader']],
-  ['Rohit Sharma', 'rohit-sharma', 'execution mentor', '/celebrities/rohit-sharma.jpg', 'relaxed, practical, confident', 'Project-first lessons with reusable patterns and calm debugging', ['practical', 'smooth', 'confident']],
-  ['Sachin Tendulkar', 'sachin-tendulkar', 'fundamentals mentor', '/celebrities/sachin-tendulkar.jpg', 'patient, precise, masterclass-style', 'Fundamentals-first instruction with examples and mastery checkpoints', ['patient', 'precise', 'mastery']],
+const adminEmail = (process.env.ADMIN_EMAIL || 'admin@uptoskills.com').toLowerCase()
+const adminPassword = process.env.ADMIN_PASSWORD || 'UptoSkills@Admin2026'
+
+const instructors = [
+  {
+    name: 'Rohit Sharma',
+    email: 'rohitsharma@gmail.com',
+    avatarUrl: '/celebrities/rohit-sharma.jpg',
+    bio: 'Calm execution coach focused on practical build, deploy, and ship workflows.',
+    expertise: 'Project planning, frontend delivery, product execution',
+    socialLinks: {
+      instagram: 'https://www.instagram.com/rohitsharma45/',
+      x: 'https://x.com/ImRo45',
+      linkedin: 'https://www.linkedin.com/in/rohit-sharma/',
+    },
+  },
+  {
+    name: 'Virat Kohli',
+    email: 'viratkohli@gmail.com',
+    avatarUrl: '/celebrities/virat-kohli.jpg',
+    bio: 'Performance coach who pushes for metrics, repetition, and disciplined practice.',
+    expertise: 'Analytics, goal setting, Python, performance mindset',
+    socialLinks: {
+      instagram: 'https://www.instagram.com/virat.kohli/',
+      x: 'https://x.com/imVkohli',
+      linkedin: 'https://www.linkedin.com/in/virat-kohli/',
+    },
+  },
+  {
+    name: 'MS Dhoni',
+    email: 'msdhoni@gmail.com',
+    avatarUrl: '/celebrities/ms-dhoni.jpg',
+    bio: 'Strategic mentor with a calm approach to systems thinking and decision making.',
+    expertise: 'Architecture, microservices, operations, reliability',
+    socialLinks: {
+      instagram: 'https://www.instagram.com/msdhoni/',
+      x: 'https://x.com/msdhoni',
+      linkedin: 'https://www.linkedin.com/in/ms-dhoni/',
+    },
+  },
+  {
+    name: 'Shah Rukh Khan',
+    email: 'shahrukhkhan@gmail.com',
+    avatarUrl: '/celebrities/shah-rukh-khan.jpg',
+    bio: 'Charismatic storyteller who turns technical lessons into memorable learning journeys.',
+    expertise: 'Cloud delivery, storytelling, leadership, presentation',
+    socialLinks: {
+      instagram: 'https://www.instagram.com/iamsrk/',
+      x: 'https://x.com/iamsrk',
+      linkedin: 'https://www.linkedin.com/in/shah-rukh-khan/',
+    },
+  },
+  {
+    name: 'Allu Arjun',
+    email: 'alluarjun@gmail.com',
+    avatarUrl: '/celebrities/allu-arjun.jpg',
+    bio: 'High-energy builder for modern UI and visual product experiences.',
+    expertise: 'React, UI systems, animation, UX polish',
+    socialLinks: {
+      instagram: 'https://www.instagram.com/alluarjunonline/',
+      x: 'https://x.com/AlluArjun',
+      linkedin: 'https://www.linkedin.com/in/allu-arjun/',
+    },
+  },
+  {
+    name: 'Deepika Padukone',
+    email: 'deepikapadukone@gmail.com',
+    avatarUrl: '/celebrities/deepika-padukone.jpg',
+    bio: 'Structured mentor for clean frontend engineering and stable delivery practices.',
+    expertise: 'TypeScript, architecture, documentation, quality',
+    socialLinks: {
+      instagram: 'https://www.instagram.com/deepikapadukone/',
+      x: 'https://x.com/deepikapadukone',
+      linkedin: 'https://www.linkedin.com/in/deepika-padukone/',
+    },
+  },
+  {
+    name: 'Sachin Tendulkar',
+    email: 'sachintendulkar@gmail.com',
+    avatarUrl: '/celebrities/sachin-tendulkar.jpg',
+    bio: 'Fundamentals-first teacher with patient, precise learning pathways.',
+    expertise: 'SQL, fundamentals, debugging, mastery learning',
+    socialLinks: {
+      instagram: 'https://www.instagram.com/sachintendulkar/',
+      x: 'https://x.com/sachin_rt',
+      linkedin: 'https://www.linkedin.com/in/sachin-tendulkar/',
+    },
+  },
+  {
+    name: 'Alia Bhatt',
+    email: 'aliabhatt@gmail.com',
+    avatarUrl: '/celebrities/alia-bhatt.jpg',
+    bio: 'Supportive creative coach who makes the first steps feel approachable.',
+    expertise: 'C programming, basics, beginner-friendly explanations',
+    socialLinks: {
+      instagram: 'https://www.instagram.com/aliaabhatt/',
+      x: 'https://x.com/aliaa08',
+      linkedin: 'https://www.linkedin.com/in/alia-bhatt/',
+    },
+  },
+  {
+    name: 'Ranveer Singh',
+    email: 'ranveersingh@gmail.com',
+    avatarUrl: '/celebrities/ranveer-singh.jpg',
+    bio: 'Energetic database mentor who turns SQL practice into confident product decisions.',
+    expertise: 'PostgreSQL, SQL optimization, reporting, schema design',
+    socialLinks: {
+      instagram: 'https://www.instagram.com/ranveersingh/',
+      x: 'https://x.com/RanveerOfficial',
+      linkedin: 'https://www.linkedin.com/in/ranveer-singh/',
+    },
+  },
 ]
 
 const courses = [
   {
+    title: 'Cloud DevOps with Docker & Kubernetes',
+    slug: 'cloud-devops-docker-kubernetes',
+    category: 'Cloud Computing',
+    level: 'ADVANCED',
+    description: 'Build containers, deploy services, and ship with modern cloud operations.',
+    thumbnailUrl: '/celebrities/shah-rukh-khan.jpg',
+    createdByEmail: 'shahrukhkhan@gmail.com',
+    lessons: [
+      { title: 'Containers and Docker images', description: 'Build and ship portable services.', type: 'ARTICLE', durationMin: 18, sortOrder: 0 },
+      { title: 'Kubernetes deployments', description: 'Run services across clusters and manage rollouts.', type: 'ARTICLE', durationMin: 32, sortOrder: 1 },
+      { title: 'CI/CD release workflow', description: 'Connect source control to production delivery.', type: 'QUIZ', durationMin: 24, sortOrder: 2, quizJson: { questions: 4 } },
+    ],
+  },
+  {
     title: 'TypeScript Frontend Engineering',
     slug: 'typescript-frontend-engineering',
-    description: 'Use TypeScript to build reliable React interfaces with typed state, API contracts, reusable components, and clean project structure.',
     category: 'Web Development',
     level: 'INTERMEDIATE',
-    thumbnailUrl: 'https://commons.wikimedia.org/wiki/Special:FilePath/Typescript_logo_2020.svg',
-    lessons: ['TypeScript fundamentals', 'Typed React components', 'API contracts and state', 'Frontend architecture patterns'],
+    description: 'Design stable React interfaces with typed state and reusable component architecture.',
+    thumbnailUrl: '/celebrities/deepika-padukone.jpg',
+    createdByEmail: 'deepikapadukone@gmail.com',
+    lessons: [
+      { title: 'TypeScript essentials', description: 'Learn types, interfaces, and inference.', type: 'ARTICLE', durationMin: 20, sortOrder: 0 },
+      { title: 'Typed component design', description: 'Build predictable React props and state.', type: 'ARTICLE', durationMin: 28, sortOrder: 1 },
+      { title: 'Frontend architecture patterns', description: 'Organize scalable frontends.', type: 'QUIZ', durationMin: 30, sortOrder: 2, quizJson: { questions: 5 } },
+    ],
+  },
+  {
+    title: 'Python for Cricket Data Analytics',
+    slug: 'python-cricket-data-analytics',
+    category: 'Programming',
+    level: 'BEGINNER',
+    description: 'Use Python to explore sports datasets and build useful analytics dashboards.',
+    thumbnailUrl: '/celebrities/virat-kohli.jpg',
+    createdByEmail: 'viratkohli@gmail.com',
+    lessons: [
+      { title: 'Python basics for analytics', description: 'Variables, loops, and functions.', type: 'ARTICLE', durationMin: 22, sortOrder: 0 },
+      { title: 'Data cleaning and sorting', description: 'Shape raw data into useful datasets.', type: 'ARTICLE', durationMin: 28, sortOrder: 1 },
+      { title: 'Visualize match trends', description: 'Create simple charts from cricket stats.', type: 'QUIZ', durationMin: 26, sortOrder: 2, quizJson: { questions: 4 } },
+    ],
+  },
+  {
+    title: 'Java Microservices for Sports Platforms',
+    slug: 'java-microservices-sports-platforms',
+    category: 'Programming',
+    level: 'INTERMEDIATE',
+    description: 'Build resilient backend services for high-traffic product experiences.',
+    thumbnailUrl: '/celebrities/ms-dhoni.jpg',
+    createdByEmail: 'msdhoni@gmail.com',
+    lessons: [
+      { title: 'Service boundaries', description: 'Split a system into reliable services.', type: 'ARTICLE', durationMin: 24, sortOrder: 0 },
+      { title: 'REST APIs and contracts', description: 'Create predictable API behavior.', type: 'ARTICLE', durationMin: 30, sortOrder: 1 },
+      { title: 'Deploy and monitor', description: 'Ship, observe, and iterate safely.', type: 'QUIZ', durationMin: 34, sortOrder: 2, quizJson: { questions: 5 } },
+    ],
+  },
+  {
+    title: 'JavaScript Fullstack Apps',
+    slug: 'javascript-fullstack-apps',
+    category: 'Web Development',
+    level: 'INTERMEDIATE',
+    description: 'Create fullstack apps with modern JavaScript, APIs, and product workflows.',
+    thumbnailUrl: '/celebrities/rohit-sharma.jpg',
+    createdByEmail: 'rohitsharma@gmail.com',
+    lessons: [
+      { title: 'Modern JavaScript foundations', description: 'Syntax, modules, and async patterns.', type: 'ARTICLE', durationMin: 18, sortOrder: 0 },
+      { title: 'Fullstack app flow', description: 'Move data between frontend and backend.', type: 'ARTICLE', durationMin: 30, sortOrder: 1 },
+      { title: 'Deployment checklist', description: 'Ship apps with fewer surprises.', type: 'QUIZ', durationMin: 24, sortOrder: 2, quizJson: { questions: 4 } },
+    ],
+  },
+  {
+    title: 'React Interfaces for Fan Engagement',
+    slug: 'react-interfaces-fan-engagement',
+    category: 'Web Development',
+    level: 'BEGINNER',
+    description: 'Build responsive React dashboards, panels, and learner experiences.',
+    thumbnailUrl: '/celebrities/sachin-tendulkar.jpg',
+    createdByEmail: 'sachintendulkar@gmail.com',
+    lessons: [
+      { title: 'React components', description: 'Compose reliable interface building blocks.', type: 'ARTICLE', durationMin: 16, sortOrder: 0 },
+      { title: 'State and props', description: 'Connect UI to dynamic data.', type: 'ARTICLE', durationMin: 24, sortOrder: 1 },
+      { title: 'Performance basics', description: 'Keep the UI fast and predictable.', type: 'QUIZ', durationMin: 20, sortOrder: 2, quizJson: { questions: 4 } },
+    ],
+  },
+  {
+    title: 'React Motion and UI Polish',
+    slug: 'react-motion-ui-polish',
+    category: 'Web Development',
+    level: 'INTERMEDIATE',
+    description: 'Build polished React interfaces with motion, layout rhythm, and accessible interaction states.',
+    thumbnailUrl: '/celebrities/allu-arjun.jpg',
+    createdByEmail: 'alluarjun@gmail.com',
+    lessons: [
+      { title: 'Motion principles for interfaces', description: 'Use animation to clarify state and flow.', type: 'ARTICLE', durationMin: 18, sortOrder: 0 },
+      { title: 'Responsive UI rhythm', description: 'Tune spacing, hierarchy, and component behavior.', type: 'ARTICLE', durationMin: 26, sortOrder: 1 },
+      { title: 'Accessible interaction states', description: 'Design focus, hover, loading, and empty states.', type: 'QUIZ', durationMin: 22, sortOrder: 2, quizJson: { questions: 4 } },
+    ],
   },
   {
     title: 'C Programming Foundations',
     slug: 'c-programming-foundations',
-    description: 'Learn C syntax, memory, pointers, arrays, functions, file handling, and problem solving from first principles.',
     category: 'Programming',
     level: 'BEGINNER',
-    thumbnailUrl: 'https://commons.wikimedia.org/wiki/Special:FilePath/C_Programming_Language.svg',
-    lessons: ['C setup and syntax', 'Variables, loops, and functions', 'Pointers and memory', 'File handling project'],
-  },
-  {
-    title: 'React Frontend Development',
-    slug: 'react-frontend-development',
-    description: 'Build responsive React apps with components, props, hooks, routing, state, APIs, and reusable UI patterns.',
-    category: 'Web Development',
-    level: 'BEGINNER',
-    thumbnailUrl: 'https://commons.wikimedia.org/wiki/Special:FilePath/React-icon.svg',
-    lessons: ['React components', 'Hooks and state', 'Routing and API calls', 'Project deployment'],
-  },
-  {
-    title: 'Python Programming for Data',
-    slug: 'python-programming-for-data',
-    description: 'Master Python basics, data structures, modules, notebooks, charts, and practical data analysis workflows.',
-    category: 'Data Science',
-    level: 'BEGINNER',
-    thumbnailUrl: 'https://commons.wikimedia.org/wiki/Special:FilePath/Python-logo-notext.svg',
-    lessons: ['Python basics', 'Lists and dictionaries', 'Working with data files', 'Analytics dashboard'],
-  },
-  {
-    title: 'JavaScript Full Stack Apps',
-    slug: 'javascript-full-stack-apps',
-    description: 'Create interactive full stack apps with modern JavaScript, REST APIs, forms, authentication, and deployment.',
-    category: 'Web Development',
-    level: 'INTERMEDIATE',
-    thumbnailUrl: 'https://commons.wikimedia.org/wiki/Special:FilePath/Unofficial_JavaScript_logo_2.svg',
-    lessons: ['Modern JavaScript', 'Async APIs', 'Express endpoints', 'Full stack mini app'],
+    description: 'Learn the core building blocks of programming with a step-by-step foundation.',
+    thumbnailUrl: '/celebrities/alia-bhatt.jpg',
+    createdByEmail: 'aliabhatt@gmail.com',
+    lessons: [
+      { title: 'First C program', description: 'Write, compile, and run your first example.', type: 'ARTICLE', durationMin: 18, sortOrder: 0 },
+      { title: 'Functions and loops', description: 'Control flow and reusable logic.', type: 'ARTICLE', durationMin: 26, sortOrder: 1 },
+      { title: 'Arrays and pointers', description: 'Understand the memory model.', type: 'QUIZ', durationMin: 32, sortOrder: 2, quizJson: { questions: 5 } },
+    ],
   },
   {
     title: 'SQL and PostgreSQL Mastery',
     slug: 'sql-and-postgresql-mastery',
-    description: 'Design relational databases, write SQL queries, use joins, indexes, constraints, and PostgreSQL best practices.',
     category: 'Database',
     level: 'INTERMEDIATE',
-    thumbnailUrl: 'https://commons.wikimedia.org/wiki/Special:FilePath/Postgresql_elephant.svg',
-    lessons: ['Tables and relationships', 'Joins and aggregations', 'Indexes and constraints', 'PostgreSQL project'],
-  },
-  {
-    title: 'Node.js Backend APIs',
-    slug: 'node-js-backend-apis',
-    description: 'Build secure Express APIs with validation, JWT authentication, Prisma, PostgreSQL, and production structure.',
-    category: 'Backend',
-    level: 'ADVANCED',
-    thumbnailUrl: 'https://commons.wikimedia.org/wiki/Special:FilePath/Node.js_logo.svg',
-    lessons: ['Express routing', 'Auth and middleware', 'Prisma models', 'API deployment'],
-  },
-  {
-    title: 'Java Microservices',
-    slug: 'java-microservices',
-    description: 'Learn Java service architecture, REST APIs, layered design, testing, and deployment-ready microservice patterns.',
-    category: 'Programming',
-    level: 'INTERMEDIATE',
-    thumbnailUrl: 'https://commons.wikimedia.org/wiki/Special:FilePath/Java_programming_language_logo.svg',
-    lessons: ['Java service basics', 'REST controllers', 'Persistence layer', 'Microservice deployment'],
-  },
-  {
-    title: 'Cloud DevOps with Docker and Kubernetes',
-    slug: 'cloud-devops-docker-kubernetes',
-    description: 'Containerize apps, manage images, deploy to Kubernetes, and build practical CI/CD workflows.',
-    category: 'Cloud Computing',
-    level: 'ADVANCED',
-    thumbnailUrl: 'https://commons.wikimedia.org/wiki/Special:FilePath/Kubernetes_logo_without_workmark.svg',
-    lessons: ['Docker fundamentals', 'Images and registries', 'Kubernetes deployments', 'CI/CD pipeline'],
+    description: 'Design relational schemas, indexes, queries, and production-ready SQL workflows.',
+    thumbnailUrl: '/celebrities/ranveer-singh.jpg',
+    createdByEmail: 'ranveersingh@gmail.com',
+    lessons: [
+      { title: 'Tables and relationships', description: 'Model data correctly from day one.', type: 'ARTICLE', durationMin: 24, sortOrder: 0 },
+      { title: 'Joins and aggregations', description: 'Answer real product questions with SQL.', type: 'ARTICLE', durationMin: 30, sortOrder: 1 },
+      { title: 'Indexes and constraints', description: 'Keep data fast, safe, and consistent.', type: 'QUIZ', durationMin: 28, sortOrder: 2, quizJson: { questions: 5 } },
+    ],
   },
 ]
 
+function slugify(value) {
+  return String(value).toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+}
+
 async function main() {
-  const admin = await prisma.user.upsert({
-    where: { email: 'admin@uptoskills.local' },
-    update: {
-      name: 'UptoSkills Admin',
-      role: 'admin',
-      passwordHash: await bcrypt.hash('UptoAdmin@2026', 12),
+  const adminPasswordHash = await bcrypt.hash(adminPassword, 12)
+
+  await prisma.$transaction([
+    prisma.notification.deleteMany({}),
+    prisma.activityLog.deleteMany({}),
+    prisma.analyticsEvent.deleteMany({}),
+    prisma.session.deleteMany({}),
+    prisma.payment.deleteMany({}),
+    prisma.certificate.deleteMany({}),
+    prisma.progress.deleteMany({}),
+    prisma.enrollment.deleteMany({}),
+    prisma.chatMessage.deleteMany({}),
+    prisma.lesson.deleteMany({}),
+    prisma.course.deleteMany({}),
+    prisma.category.deleteMany({}),
+  ])
+
+  await prisma.user.deleteMany({
+    where: {
+      OR: [
+        { email: { in: ['admin@example.com', 'learner@example.com'] } },
+        { email: { startsWith: 'codex-' } },
+        { email: { endsWith: '@social.uptoskills.local' } },
+        { role: 'ADMIN', email: { not: adminEmail } },
+      ],
     },
-    create: {
-      name: 'UptoSkills Admin',
-      email: 'admin@uptoskills.local',
-      role: 'admin',
-      passwordHash: await bcrypt.hash('UptoAdmin@2026', 12),
-    },
+  })
+
+  await prisma.user.updateMany({
+    where: { role: 'USER' },
+    data: { approvalStatus: 'APPROVED', isActive: true },
   })
 
   await prisma.user.upsert({
-    where: { email: 'admin@example.com' },
+    where: { email: adminEmail },
     update: {
-      name: 'Platform Admin',
-      role: 'admin',
-      passwordHash: await bcrypt.hash('Admin@12345', 12),
+      name: 'UptoSkills Admin',
+      role: 'ADMIN',
+      approvalStatus: 'APPROVED',
+      passwordHash: adminPasswordHash,
+      isActive: true,
+      bio: 'Platform administrator for the UptoSkills LMS.',
+      expertise: 'Platform operations, reporting, user management',
+      socialLinks: {
+        linkedin: 'https://www.linkedin.com/',
+      },
     },
     create: {
-      name: 'Platform Admin',
-      email: 'admin@example.com',
-      role: 'admin',
-      passwordHash: await bcrypt.hash('Admin@12345', 12),
+      name: 'UptoSkills Admin',
+      email: adminEmail,
+      role: 'ADMIN',
+      approvalStatus: 'APPROVED',
+      passwordHash: adminPasswordHash,
+      isActive: true,
+      bio: 'Platform administrator for the UptoSkills LMS.',
+      expertise: 'Platform operations, reporting, user management',
+      socialLinks: {
+        linkedin: 'https://www.linkedin.com/',
+      },
     },
   })
 
-  await prisma.user.upsert({
-    where: { email: 'learner@example.com' },
-    update: {
-      name: 'Demo Learner',
-      role: 'learner',
-      passwordHash: await bcrypt.hash('Learner@12345', 12),
-    },
-    create: {
-      name: 'Demo Learner',
-      email: 'learner@example.com',
-      role: 'learner',
-      passwordHash: await bcrypt.hash('Learner@12345', 12),
-    },
-  })
+  for (const instructor of instructors) {
+    await prisma.user.upsert({
+      where: { email: instructor.email },
+      update: {
+        name: instructor.name,
+        role: 'INSTRUCTOR',
+        approvalStatus: 'APPROVED',
+        avatarUrl: instructor.avatarUrl,
+        bio: instructor.bio,
+        expertise: instructor.expertise,
+        socialLinks: instructor.socialLinks,
+        isActive: true,
+        passwordHash: await bcrypt.hash(`${instructor.email}:UptoSkills2026!`, 12),
+      },
+      create: {
+        name: instructor.name,
+        email: instructor.email,
+        role: 'INSTRUCTOR',
+        approvalStatus: 'APPROVED',
+        avatarUrl: instructor.avatarUrl,
+        bio: instructor.bio,
+        expertise: instructor.expertise,
+        socialLinks: instructor.socialLinks,
+        isActive: true,
+        passwordHash: await bcrypt.hash(`${instructor.email}:UptoSkills2026!`, 12),
+      },
+    })
+  }
 
-  for (const [name, slug, archetype, avatarUrl, voiceStyle, teachingStyle, traits] of personalities) {
-    await prisma.aIPersonality.upsert({
-      where: { slug },
-      update: { name, archetype, avatarUrl, voiceStyle, teachingStyle, traits, promptTemplate: `Teach ${name}'s virtual class with practical, accurate, beginner-friendly examples.`, isActive: true },
-      create: { name, slug, archetype, avatarUrl, voiceStyle, teachingStyle, traits, promptTemplate: `Teach ${name}'s virtual class with practical, accurate, beginner-friendly examples.` },
+  const instructorRecords = await prisma.user.findMany({
+    where: { role: 'INSTRUCTOR' },
+    select: { id: true, email: true },
+  })
+  const instructorMap = new Map(instructorRecords.map((item) => [item.email, item.id]))
+
+  const categories = [...new Set(courses.map((course) => course.category))]
+  for (const categoryName of categories) {
+    await prisma.category.upsert({
+      where: { slug: slugify(categoryName) },
+      update: { name: categoryName, isActive: true },
+      create: {
+        name: categoryName,
+        slug: slugify(categoryName),
+        description: `${categoryName} learning path for the UptoSkills LMS.`,
+        isActive: true,
+      },
     })
   }
 
   for (const course of courses) {
-    await prisma.course.upsert({
+    const creatorId = instructorMap.get(course.createdByEmail)
+    const createdCourse = await prisma.course.upsert({
       where: { slug: course.slug },
       update: {
         title: course.title,
@@ -167,7 +378,9 @@ async function main() {
         category: course.category,
         level: course.level,
         thumbnailUrl: course.thumbnailUrl,
+        videoPreviewUrl: course.videoPreviewUrl || null,
         isPublished: true,
+        createdById: creatorId,
       },
       create: {
         title: course.title,
@@ -176,21 +389,27 @@ async function main() {
         category: course.category,
         level: course.level,
         thumbnailUrl: course.thumbnailUrl,
+        videoPreviewUrl: course.videoPreviewUrl || null,
         isPublished: true,
-        createdById: admin.id,
-        lessons: {
-          create: course.lessons.map((title, index) => ({
-            title,
-            durationMin: 20 + index * 8,
-            sortOrder: index + 1,
-            videoUrl: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4',
-          })),
-        },
+        createdById: creatorId,
       },
     })
-  }
 
-  await prisma.analyticsEvent.create({ data: { eventType: 'seed_completed', metadata: { courses: courses.length, personalities: personalities.length } } })
+    await prisma.lesson.deleteMany({ where: { courseId: createdCourse.id } })
+    for (const lesson of course.lessons) {
+      await prisma.lesson.create({
+        data: {
+          courseId: createdCourse.id,
+          title: lesson.title,
+          description: lesson.description,
+          type: lesson.type,
+          durationMin: lesson.durationMin,
+          sortOrder: lesson.sortOrder,
+          quizJson: lesson.quizJson || null,
+        },
+      })
+    }
+  }
 }
 
 main()

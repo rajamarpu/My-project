@@ -1,7 +1,7 @@
 import { motion } from 'framer-motion'
-import Navbar from '../components/navigation/Navbar.jsx'
-import Footer from '../components/navigation/Footer.jsx'
-import { pageTransition } from '../animations/variants.js'
+import Navbar from '../components/ui/Navbar/Navbar.jsx'
+import Footer from '../components/ui/Navbar/Footer.jsx'
+import { pageTransition } from '../utils/animationVariants.js'
 
 export default function MainLayout({ children }) {
   return (
@@ -20,3 +20,4 @@ export default function MainLayout({ children }) {
     </div>
   )
 }
+

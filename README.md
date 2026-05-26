@@ -12,6 +12,7 @@ Premium AI learning platform built with React, Vite, Express, Prisma, and Postgr
 ## Local URLs
 
 - Frontend: http://localhost:5173
+- Admin frontend: http://localhost:5174
 - Backend: http://localhost:5000
 - Health check: http://localhost:5000/api/health
 
@@ -33,7 +34,7 @@ Use `backend/.env`:
 API_PORT=5000
 API_BASE_URL=http://localhost:5000
 APP_BASE_URL=http://localhost:5173
-CLIENT_ORIGINS=http://localhost:5173
+CLIENT_ORIGINS=http://localhost:5173,http://localhost:5174
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/uptoskills?schema=public"
 JWT_SECRET=replace-this-with-a-long-random-secret
 JWT_EXPIRES_IN=7d
@@ -55,6 +56,17 @@ npm.cmd run prisma:generate
 npm.cmd run prisma:migrate
 npm.cmd run prisma:seed
 ```
+
+The Prisma schema includes production LMS models for users, categories, courses, lessons, enrollments, progress, payments, certificates, notifications, sessions, activity logs, chat messages, AI personalities, and analytics events. Analytics counters start at zero and are derived from real events such as registration, login, enrollment, watch time, completion, payment, and certificate issuance.
+
+If an existing local database was created before migrations were tracked, Prisma may report drift. To preserve local data while testing schema changes, use:
+
+```bash
+cd backend
+npx prisma db push
+```
+
+To rebuild the development database from migrations, run `npx prisma migrate reset` from `backend`; this drops local data.
 
 ## Build
 

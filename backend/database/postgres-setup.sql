@@ -105,12 +105,5 @@ CREATE INDEX IF NOT EXISTS idx_lessons_course ON lessons("courseId", "sortOrder"
 CREATE INDEX IF NOT EXISTS idx_enrollments_course ON enrollments("courseId");
 CREATE INDEX IF NOT EXISTS idx_enrollments_personality ON enrollments("personalityId");
 
--- Insert default admin user
-INSERT INTO users (full_name, email, phone, password_hash, role, headline) VALUES 
-('Platform Admin', 'admin@example.com', '9999999999', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.VTtYA/7.J6LlZy', 'admin', 'System Administrator')
-ON CONFLICT DO NOTHING;
-
--- Insert demo learner
-INSERT INTO users (full_name, email, phone, password_hash, role, headline) VALUES 
-('Demo Learner', 'learner@example.com', '1234567890', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/X4.VTtYA/7.J6LlZy', 'learner', 'Student')
-ON CONFLICT DO NOTHING;
+-- User records are managed by Prisma seed scripts and live registration.
+-- This SQL setup file intentionally does not insert sample accounts.

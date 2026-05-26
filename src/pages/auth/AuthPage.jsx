@@ -1,12 +1,16 @@
 import { useMemo, useState } from 'react'
-import { Eye, EyeOff, Github, LockKeyhole, Mail, Phone, ShieldCheck, UserRound } from 'lucide-react'
+import { Eye, EyeOff, Github, LockKeyhole, Mail, Phone, Rocket, ShieldCheck, UserRound } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
-import { motion } from 'framer-motion'
-import Button from '../../components/ui/Button.jsx'
-import { login } from '../../redux/slices/authSlice.js'
-import { forgotPassword, loginRequest, registerRequest, resetPassword, sendOtp, socialLoginUrl, verifyOtp } from '../../services/api.js'
-import { fadeInUp } from '../../animations/variants.js'
+import Button from '../../components/common/Button/Button.jsx'
+import AuthShell from '../../components/ui/Auth/AuthShell.jsx'
+import AuthField from '../../components/ui/Auth/AuthField.jsx'
+import PasswordStrength from '../../components/ui/Auth/PasswordStrength.jsx'
+import SocialButton from '../../components/ui/Auth/SocialButton.jsx'
+import { login } from '../../store/slices/authSlice.js'
+import { forgotPassword, loginRequest, registerRequest, resetPassword, sendOtp, socialLoginUrl, verifyOtp } from '../../api/api.js'
+import { adminLoginHint } from '../../constants/auth.js'
+import { validationRules } from '../../constants/validation.js'
 
 const routeByRole = {
   admin: '/admin',
@@ -14,16 +18,16 @@ const routeByRole = {
 }
 
 const copyByMode = {
-  login: ['Welcome back', 'Continue learning with your selected AI teacher and saved progress.'],
-  register: ['Create your learner profile', 'Choose your first mentor personality after sign up.'],
-  forgot: ['Recover your account', 'We will send a verification code to reset your password.'],
-  reset: ['Set a new password', 'Use the OTP from your email and choose a stronger password.'],
-  otp: ['Verify with OTP', 'Use one-time verification for quick secure access.'],
+  login: ['Secure login', 'Welcome back to your AI learning skyline', 'Continue learning with saved progress, AI mentors, and personalized course paths.'],
+  register: ['Create account', 'Create your learner profile', 'Start your premium AI learning journey with guided courses and mentor-led learning.'],
+  forgot: ['Account recovery', 'Recover your account', 'We will send a secure verification code to reset your password.'],
+  reset: ['Reset password', 'Set a new password', 'Use the verification code from your email and choose a stronger password.'],
+  otp: ['OTP verification', 'Verify with OTP', 'Use one-time verification for quick and secure access.'],
 }
 
 function passwordScore(password) {
   return [
-    password.length >= 8,
+    password.length >= validationRules.passwordMinLength,
     /[A-Z]/.test(password),
     /[0-9]/.test(password),
     /[^A-Za-z0-9]/.test(password),
@@ -50,6 +54,7 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
   const [loading, setLoading] = useState(false)
+  const [attempted, setAttempted] = useState(false)
   const [toast, setToast] = useState(() => {
     const params = new URLSearchParams(location.search)
     const error = params.get('error')
@@ -66,21 +71,42 @@ export default function AuthPage() {
   })
 
   const score = passwordScore(form.password)
-  const title = isAdminPortal ? 'Admin control login' : copyByMode[mode][0]
-  const subtitle = isAdminPortal
-    ? 'Use your administrator account to manage learners, courses, AI teachers, reports, and approvals.'
-    : copyByMode[mode][1]
+  const [eyebrow, title, subtitle] = copyByMode[mode]
+
+  const errors = useMemo(() => {
+    const next = {}
+    const loginId = form.email.trim()
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginId)
+    if (!loginId) next.email = 'Email is required.'
+    else if (!isEmail) next.email = 'Enter a valid email address.'
+
+    if (isRegister) {
+      if (!form.fullName.trim()) next.fullName = 'Full name is required.'
+      if (!validationRules.phonePattern.test(form.phone.trim())) next.phone = 'Enter a valid 10 digit phone number.'
+      if (!form.confirmPassword) next.confirmPassword = 'Confirm your password.'
+      else if (form.password !== form.confirmPassword) next.confirmPassword = 'Passwords do not match.'
+    }
+
+    if (mode === 'reset' && !form.otp.trim()) next.otp = 'Verification code is required.'
+    if (mode === 'otp' && form.otp && !validationRules.otpPattern.test(form.otp.trim())) next.otp = 'Enter a valid OTP.'
+
+    if (needsPassword) {
+      if (!form.password) next.password = 'Password is required.'
+      else if (form.password.length < validationRules.passwordMinLength) next.password = `Use at least ${validationRules.passwordMinLength} characters.`
+      else if ((isRegister || mode === 'reset') && score < 2) next.password = 'Use a stronger password.'
+    }
+
+    return next
+  }, [form, isRegister, mode, needsPassword, score])
 
   const canSubmit = useMemo(() => {
     if (loading) return false
-    if (mode === 'forgot') return Boolean(form.email)
-    if (mode === 'otp') return Boolean(form.email)
-    if (mode === 'reset') return Boolean(form.email && form.otp && form.password && score >= 2)
-    if (!form.email || !form.password) return false
-    if (!isRegister) return true
-    return Boolean(form.fullName && form.phone && form.confirmPassword && score >= 2)
-  }, [form, isRegister, loading, mode, score])
+    if (mode === 'forgot') return Boolean(form.email.trim())
+    if (mode === 'otp') return Boolean(form.email.trim())
+    return Object.keys(errors).length === 0
+  }, [errors, form.email, loading, mode])
 
+  const fieldError = (key) => (attempted ? errors[key] : '')
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
 
   const authenticate = async (response, fallbackMessage) => {
@@ -93,12 +119,12 @@ export default function AuthPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault()
+    setAttempted(true)
     setToast({ type: '', message: '' })
 
-    if ((isRegister || mode === 'reset') && form.password !== form.confirmPassword && isRegister) {
-      setToast({ type: 'error', message: 'Passwords do not match.' })
-      return
-    }
+    if (Object.keys(errors).length && mode !== 'forgot' && mode !== 'otp') return
+    if (mode === 'forgot' && errors.email) return
+    if (mode === 'otp' && (errors.email || errors.otp)) return
 
     setLoading(true)
     try {
@@ -135,137 +161,102 @@ export default function AuthPage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[var(--bg-primary)] px-5 py-8 text-[var(--text-primary)] sm:px-8 lg:px-12">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(14,165,233,0.16),transparent_28%),radial-gradient(circle_at_85%_12%,rgba(20,184,166,0.12),transparent_25%)]" />
-      <motion.div
-        className="absolute left-[12%] top-[16%] h-2 w-2 rounded-full bg-cyan-200"
-        animate={{ opacity: [0.2, 1, 0.2], y: [0, -18, 0] }}
-        transition={{ repeat: Infinity, duration: 4 }}
-      />
-      <motion.div
-        className="absolute right-[18%] top-[24%] h-2 w-2 rounded-full bg-teal-200"
-        animate={{ opacity: [0.2, 1, 0.2], y: [0, 16, 0] }}
-        transition={{ repeat: Infinity, duration: 5 }}
-      />
+    <AuthShell
+      isAdminPortal={isAdminPortal}
+      eyebrow={isAdminPortal ? 'Admin portal' : eyebrow}
+      title={isAdminPortal ? 'Admin control login' : title}
+      subtitle={isAdminPortal ? 'Sign in to manage learners, courses, reports, approvals, and AI teacher operations.' : subtitle}
+    >
+      <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate>
+        {isRegister ? (
+          <AuthField icon={<UserRound size={18} />} label="Full name" error={fieldError('fullName')}>
+            <input value={form.fullName} onChange={(e) => update('fullName', e.target.value)} className="w-full bg-transparent text-white outline-none placeholder:text-slate-400" placeholder="Your full name" />
+          </AuthField>
+        ) : null}
 
-      <div className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-6xl overflow-hidden rounded-[2rem] border border-[var(--border-color)] bg-[var(--bg-elevated)] shadow-glow backdrop-blur-xl lg:grid-cols-[0.95fr_1.05fr]">
-        <aside className="theme-dark hidden border-r border-white/10 bg-slate-950 p-10 lg:flex lg:flex-col lg:justify-between">
-          <Link to="/" className="text-lg font-semibold text-cyan-100">UptoSkills</Link>
-          <div>
-            <p className="text-sm uppercase tracking-[0.28em] text-cyan-200">{isAdminPortal ? 'Admin portal' : 'Learner portal'}</p>
-            <h2 className="mt-4 text-4xl font-semibold">{isAdminPortal ? 'Data-focused control room for UptoSkills.' : 'Secure learning access for UptoSkills learners.'}</h2>
-            <p className="mt-4 leading-7 text-slate-300">
-              {isAdminPortal
-                ? 'Use the dedicated admin host to manage learners, courses, reports, and platform activity.'
-                : 'Create an account, choose any celebrity AI teacher, and continue your technical learning path.'}
-            </p>
+        <AuthField icon={<Mail size={18} />} label="Email" error={fieldError('email')}>
+          <input value={form.email} onChange={(e) => update('email', e.target.value)} type="email" className="w-full bg-transparent text-white outline-none placeholder:text-slate-400" placeholder={isAdminPortal ? adminLoginHint.email : 'you@example.com'} />
+        </AuthField>
+
+        {isRegister ? (
+          <AuthField icon={<Phone size={18} />} label="Phone number" error={fieldError('phone')}>
+            <input value={form.phone} onChange={(e) => update('phone', e.target.value)} className="w-full bg-transparent text-white outline-none placeholder:text-slate-400" placeholder="9999999999" />
+          </AuthField>
+        ) : null}
+
+        {mode === 'otp' || mode === 'reset' ? (
+          <AuthField icon={<ShieldCheck size={18} />} label="Verification code" error={fieldError('otp')}>
+            <input value={form.otp} onChange={(e) => update('otp', e.target.value)} className="w-full bg-transparent text-white tracking-[0.18em] outline-none placeholder:text-slate-400" placeholder="000000" />
+          </AuthField>
+        ) : null}
+
+        {needsPassword ? (
+          <AuthField icon={<LockKeyhole size={18} />} label={mode === 'reset' ? 'New password' : 'Password'} error={fieldError('password')}>
+            <input value={form.password} onChange={(e) => update('password', e.target.value)} type={showPassword ? 'text' : 'password'} className="w-full bg-transparent text-white outline-none placeholder:text-slate-400" placeholder="Minimum 8 characters" />
+            <button type="button" onClick={() => setShowPassword((value) => !value)} className="text-slate-300 transition hover:text-white" aria-label="Toggle password visibility">
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </AuthField>
+        ) : null}
+
+        {isRegister ? (
+          <AuthField icon={<LockKeyhole size={18} />} label="Confirm password" error={fieldError('confirmPassword')}>
+            <input value={form.confirmPassword} onChange={(e) => update('confirmPassword', e.target.value)} type={showPassword ? 'text' : 'password'} className="w-full bg-transparent text-white outline-none placeholder:text-slate-400" placeholder="Repeat password" />
+          </AuthField>
+        ) : null}
+
+        {needsPassword ? <PasswordStrength score={score} /> : null}
+
+        {mode === 'login' ? (
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-300">
+            <label className="inline-flex items-center gap-2">
+              <input checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} type="checkbox" className="h-4 w-4 rounded border-white/20 bg-white/10 accent-cyan-400" />
+              Remember me
+            </label>
+            <Link to="/forgot-password" className="font-semibold text-cyan-200 transition hover:text-white">Forgot password?</Link>
           </div>
-        </aside>
+        ) : null}
 
-        <motion.section variants={fadeInUp} initial="hidden" animate="visible" className="flex flex-col justify-center p-6 text-[var(--text-primary)] sm:p-10 lg:p-12">
-          <Link to="/" className="mb-8 text-sm font-semibold text-cyan-600 dark:text-cyan-200 lg:hidden">UptoSkills</Link>
-          <p className="text-sm uppercase tracking-[0.28em] text-cyan-600 dark:text-cyan-300">{mode === 'otp' ? 'OTP verification' : isRegister ? 'Create account' : mode === 'login' ? 'Secure login' : 'Account recovery'}</p>
-          <h1 className="mt-3 text-4xl font-semibold text-[var(--text-primary)]">{title}</h1>
-          <p className="mt-4 text-[var(--text-secondary)]">{subtitle}</p>
+        {toast.message ? (
+          <p className={`rounded-2xl px-4 py-3 text-sm font-medium ${toast.type === 'error' ? 'border border-red-400/25 bg-red-500/10 text-red-100' : 'border border-emerald-400/25 bg-emerald-500/10 text-emerald-100'}`}>
+            {toast.message}
+          </p>
+        ) : null}
 
-          <form onSubmit={handleSubmit} className="mt-8 space-y-4">
-            {isRegister ? (
-              <Field icon={<UserRound size={18} />} label="Full name">
-                <input value={form.fullName} onChange={(e) => update('fullName', e.target.value)} className="w-full bg-transparent outline-none" placeholder="Your full name" />
-              </Field>
-            ) : null}
+        <Button type="submit" disabled={!canSubmit} className="min-h-12 w-full">
+          {loading ? 'Please wait...' : buttonLabel(mode)}
+        </Button>
+      </form>
 
-            <Field icon={<Mail size={18} />} label="Email">
-              <input value={form.email} onChange={(e) => update('email', e.target.value)} type="email" className="w-full bg-transparent outline-none" placeholder="you@example.com" />
-            </Field>
+      {!isAdminPortal && (mode === 'login' || isRegister) ? (
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <SocialButton icon={<Github size={17} />} onClick={() => handleSocialLogin('github')} disabled={loading}>
+            Continue with GitHub
+          </SocialButton>
+          <SocialButton icon={<span className="font-bold">G</span>} onClick={() => handleSocialLogin('google')} disabled={loading}>
+            Continue with Google
+          </SocialButton>
+        </div>
+      ) : null}
 
-            {isRegister ? (
-              <Field icon={<Phone size={18} />} label="Phone number">
-                <input value={form.phone} onChange={(e) => update('phone', e.target.value)} className="w-full bg-transparent outline-none" placeholder="9999999999" />
-              </Field>
-            ) : null}
+      {!isAdminPortal && (mode === 'login' || isRegister) ? (
+        <div className="mt-5 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-4 text-sm text-cyan-50">
+          <p className="flex items-center gap-2 font-semibold">
+            <Rocket size={16} />
+            Switch your AI mentor anytime during learning
+          </p>
+          <p className="mt-2 leading-6 text-slate-300">
+            Start with Rohit Sharma, switch to MS Dhoni mid-lecture, and keep the lesson flowing with a new voice and personality.
+          </p>
+        </div>
+      ) : null}
 
-            {mode === 'otp' || mode === 'reset' ? (
-              <Field icon={<ShieldCheck size={18} />} label="Verification code">
-                <input value={form.otp} onChange={(e) => update('otp', e.target.value)} className="w-full bg-transparent tracking-[0.24em] outline-none" placeholder="000000" />
-              </Field>
-            ) : null}
-
-            {needsPassword ? (
-              <Field icon={<LockKeyhole size={18} />} label={mode === 'reset' ? 'New password' : 'Password'}>
-                <input value={form.password} onChange={(e) => update('password', e.target.value)} type={showPassword ? 'text' : 'password'} className="w-full bg-transparent outline-none" placeholder="Minimum 8 characters" />
-                <button type="button" onClick={() => setShowPassword((value) => !value)} aria-label="Toggle password visibility">
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </Field>
-            ) : null}
-
-            {isRegister ? (
-              <label className="block">
-                <span className="text-sm text-[var(--text-secondary)]">Confirm password</span>
-                <input value={form.confirmPassword} onChange={(e) => update('confirmPassword', e.target.value)} type={showPassword ? 'text' : 'password'} className="mt-2 w-full rounded-2xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[var(--text-primary)] outline-none" placeholder="Repeat password" />
-              </label>
-            ) : null}
-
-            {needsPassword ? (
-              <div className="rounded-2xl border border-[var(--border-color)] bg-black/[0.03] p-4 dark:bg-white/[0.04]">
-                <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-                <div className="h-full bg-gradient-to-r from-[#0ea5e9] to-[#14b8a6] transition-all" style={{ width: `${score * 25}%` }} />
-                </div>
-                <p className="mt-2 text-xs text-[var(--text-secondary)]">Password strength: {['Weak', 'Fair', 'Good', 'Strong'][Math.max(0, score - 1)] || 'Weak'}</p>
-              </div>
-            ) : null}
-
-            {mode === 'login' ? (
-              <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--text-secondary)]">
-                <label className="inline-flex items-center gap-2">
-                  <input checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} type="checkbox" className="h-4 w-4 rounded border-[var(--border-color)] bg-[var(--bg-secondary)]" />
-                  Remember me
-                </label>
-                <Link to="/forgot-password" className="text-cyan-600 dark:text-cyan-300">Forgot password?</Link>
-              </div>
-            ) : null}
-
-            {toast.message ? (
-              <p className={`rounded-2xl px-4 py-3 text-sm ${toast.type === 'error' ? 'bg-red-500/10 text-red-200' : 'bg-emerald-500/10 text-emerald-200'}`}>
-                {toast.message}
-              </p>
-            ) : null}
-
-            <Button type="submit" disabled={!canSubmit} className="w-full">{loading ? 'Please wait...' : buttonLabel(mode)}</Button>
-          </form>
-
-          {!isAdminPortal && (mode === 'login' || isRegister) ? (
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <button type="button" onClick={() => handleSocialLogin('github')} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-sm font-semibold text-[var(--text-primary)] transition hover:border-cyan-400/50 disabled:opacity-60">
-                <Github size={17} /> Continue with GitHub
-              </button>
-              <button type="button" onClick={() => handleSocialLogin('google')} disabled={loading} className="inline-flex items-center justify-center gap-2 rounded-xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-sm font-semibold text-[var(--text-primary)] transition hover:border-cyan-400/50 disabled:opacity-60">
-                G Continue with Google
-              </button>
-            </div>
-          ) : null}
-
-          <div className="mt-6 flex flex-wrap gap-4 text-sm text-[var(--text-secondary)]">
-            {mode !== 'login' ? <Link className="font-semibold text-cyan-600 dark:text-cyan-300" to="/login">Back to learner login</Link> : null}
-            {!isAdminPortal && mode === 'login' ? <Link className="font-semibold text-cyan-600 dark:text-cyan-300" to="/register">Create learner account</Link> : null}
-            {!isAdminPortal && mode === 'login' ? <Link className="font-semibold text-cyan-600 dark:text-cyan-300" to="/otp-verification">Use OTP</Link> : null}
-          </div>
-        </motion.section>
+      <div className="mt-6 flex flex-wrap gap-4 text-sm">
+        {mode !== 'login' ? <Link className="font-semibold text-cyan-200 transition hover:text-white" to="/login">Back to learner login</Link> : null}
+        {!isAdminPortal && mode === 'login' ? <Link className="font-semibold text-cyan-200 transition hover:text-white" to="/register">Create learner account</Link> : null}
+        {!isAdminPortal && mode === 'login' ? <Link className="font-semibold text-cyan-200 transition hover:text-white" to="/otp-verification">Use OTP</Link> : null}
       </div>
-    </main>
-  )
-}
-
-function Field({ label, icon, children }) {
-  return (
-    <label className="block">
-      <span className="text-sm text-[var(--text-secondary)]">{label}</span>
-      <span className="mt-2 flex items-center gap-3 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[var(--text-primary)]">
-        {icon}
-        {children}
-      </span>
-    </label>
+    </AuthShell>
   )
 }
 
