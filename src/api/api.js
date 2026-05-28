@@ -4,11 +4,15 @@ export const fetchCourses = async () => api.get('/courses')
 export const fetchCourseById = async (id) => api.get(`/courses/${id}`)
 export const fetchPlatformSummary = async () => api.get('/stats/summary')
 export const enrollCourseRequest = async (id, payload = {}) => api.post(`/courses/${id}/enroll`, payload)
+export const fetchCourseInstructors = async (id) => api.get(`/courses/${id}/instructors`)
+export const switchCourseInstructor = async (id, payload) => api.post(`/courses/${id}/instructor`, payload)
 export const loginRequest = async (payload) => api.post('/auth/login', payload)
 export const registerRequest = async (payload) => api.post('/auth/register', payload)
 export const fetchMe = async () => api.get('/auth/me')
-export const socialLoginUrl = (provider, role = 'learner') =>
-  `${api.defaults.baseURL}/auth/${provider}/start?role=${encodeURIComponent(role)}`
+export const socialLoginUrl = (provider, role = 'learner', intent = 'login') => {
+  const params = new URLSearchParams({ role, intent })
+  return `${api.defaults.baseURL}/auth/${provider}/start?${params.toString()}`
+}
 export const updateProfileRequest = async (payload) => api.put('/profile', payload)
 export const updateSettingsRequest = async (payload) => api.put('/settings', payload)
 export const submitContactRequest = async (payload) => api.post('/contact', payload)
@@ -19,6 +23,7 @@ export const fetchAdminInstructors = async () => api.get('/admin/instructors')
 export const fetchAdminCourses = async (params = {}) => api.get('/admin/courses', { params })
 export const fetchAdminCategories = async () => api.get('/admin/categories')
 export const fetchAdminEnrollments = async () => api.get('/admin/enrollments')
+export const fetchAdminInstructorChanges = async () => api.get('/admin/instructor-changes')
 export const fetchAdminCertificates = async () => api.get('/admin/certificates')
 export const fetchAdminNotifications = async () => api.get('/admin/notifications')
 export const fetchAdminActivityLogs = async () => api.get('/admin/activity-logs')

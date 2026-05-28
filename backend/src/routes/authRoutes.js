@@ -26,11 +26,12 @@ function requireEnv(name) {
   return value
 }
 
-function createOAuthState(provider, role) {
+function createOAuthState(provider, role, intent = 'login') {
   const state = crypto.randomBytes(24).toString('hex')
   oauthStateStore.set(state, {
     provider,
     role: normalizeRole(role),
+    intent: intent === 'register' ? 'register' : 'login',
     expiresAt: Date.now() + 10 * 60 * 1000,
   })
   return state
@@ -120,28 +121,30 @@ async function findOrCreateSocialUser({ provider, email, name, avatarUrl, role =
   const displayName = String(name || `${provider[0].toUpperCase()}${provider.slice(1)} Learner`).trim()
   const existing = await prisma.user.findUnique({ where: { email: cleanEmail } })
 
-    if (existing) {
-      return prisma.user.update({
-        where: { id: existing.id },
-        data: {
-          name: existing.name || displayName,
-          avatarUrl: existing.avatarUrl || avatarUrl || '',
-          approvalStatus: 'APPROVED',
-        },
-      })
-    }
-
-  return prisma.user.create({
+  if (existing) {
+    const user = await prisma.user.update({
+      where: { id: existing.id },
       data: {
-        name: displayName,
-        email: cleanEmail,
-        phone: '',
-        avatarUrl: avatarUrl || '',
-        passwordHash: await bcrypt.hash(`${provider}:${crypto.randomUUID()}`, 12),
-        role: normalizeRole(role),
+        name: existing.name || displayName,
+        avatarUrl: existing.avatarUrl || avatarUrl || '',
         approvalStatus: 'APPROVED',
       },
     })
+    return { user, created: false }
+  }
+
+  const user = await prisma.user.create({
+    data: {
+      name: displayName,
+      email: cleanEmail,
+      phone: '',
+      avatarUrl: avatarUrl || '',
+      passwordHash: await bcrypt.hash(`${provider}:${crypto.randomUUID()}`, 12),
+      role: normalizeRole(role),
+      approvalStatus: 'APPROVED',
+    },
+  })
+  return { user, created: true }
 }
 
 async function exchangeGoogleCode(code) {
@@ -320,7 +323,7 @@ router.post('/login', async (req, res, next) => {
 
 router.get('/google/start', (req, res, next) => {
   try {
-    const state = createOAuthState('google', req.query.role)
+    const state = createOAuthState('google', req.query.role, req.query.intent)
     const url = new URL('https://accounts.google.com/o/oauth2/v2/auth')
     url.searchParams.set('client_id', requireEnv('GOOGLE_CLIENT_ID'))
     url.searchParams.set('redirect_uri', googleRedirectUri())
@@ -340,12 +343,12 @@ router.get('/google/callback', async (req, res) => {
     if (!code || !state) throw new Error('Google callback is missing code or state.')
     const oauthState = consumeOAuthState(String(state), 'google')
     const profile = await exchangeGoogleCode(String(code))
-    const user = await findOrCreateSocialUser({
+    const { user, created } = await findOrCreateSocialUser({
       provider: 'google',
       ...profile,
       role: oauthState.role,
     })
-    await recordAnalytics({ userId: user.id, eventType: 'google_login' })
+    await recordAnalytics({ userId: user.id, eventType: created ? 'google_register' : 'google_login' })
     return redirectWithSession(req, res, user)
   } catch (error) {
     return redirectWithOAuthError(res, error)
@@ -354,7 +357,7 @@ router.get('/google/callback', async (req, res) => {
 
 router.get('/github/start', (req, res, next) => {
   try {
-    const state = createOAuthState('github', req.query.role)
+    const state = createOAuthState('github', req.query.role, req.query.intent)
     const url = new URL('https://github.com/login/oauth/authorize')
     url.searchParams.set('client_id', requireEnv('GITHUB_CLIENT_ID'))
     url.searchParams.set('redirect_uri', githubRedirectUri())
@@ -372,12 +375,12 @@ router.get('/github/callback', async (req, res) => {
     if (!code || !state) throw new Error('GitHub callback is missing code or state.')
     const oauthState = consumeOAuthState(String(state), 'github')
     const profile = await exchangeGithubCode(String(code))
-    const user = await findOrCreateSocialUser({
+    const { user, created } = await findOrCreateSocialUser({
       provider: 'github',
       ...profile,
       role: oauthState.role,
     })
-    await recordAnalytics({ userId: user.id, eventType: 'github_login' })
+    await recordAnalytics({ userId: user.id, eventType: created ? 'github_register' : 'github_login' })
     return redirectWithSession(req, res, user)
   } catch (error) {
     return redirectWithOAuthError(res, error)

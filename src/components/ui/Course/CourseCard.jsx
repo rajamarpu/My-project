@@ -3,6 +3,7 @@ import { Heart, Star, Clock, CheckCircle2, Layers3, Users } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import { toggleWishlist } from '../../../store/slices/authSlice.js'
 import { cn } from '../../../utils/classNames.js'
+import { resolveCourseThumbnail } from '../../../utils/courseThumbnail.js'
 
 export default function CourseCard({ course, onViewDetails }) {
   const dispatch = useDispatch()
@@ -11,8 +12,9 @@ export default function CourseCard({ course, onViewDetails }) {
   const teacher = course.createdBy || course.instructor || {}
   const progress = course.progress ?? 0
   const tags = course.tags || [course.category, teacher.expertise].filter(Boolean)
-  const image = course.thumbnailUrl || course.image || teacher.avatarUrl || '/favicon.svg'
+  const image = resolveCourseThumbnail(course)
   const isLogoImage = String(image).includes('.svg')
+  const isSubjectArtwork = String(image).startsWith('data:image/svg+xml')
   const glowClass = teacher.colorTheme?.bg || 'from-cyan-500/20 via-teal-500/20 to-amber-300/10'
 
   return (
@@ -28,7 +30,7 @@ export default function CourseCard({ course, onViewDetails }) {
           alt={course.title}
           className={cn(
             'h-40 w-full opacity-80 transition duration-500 group-hover:scale-105 group-hover:opacity-95',
-            isLogoImage ? 'bg-slate-950 object-contain p-7' : 'object-cover',
+            isSubjectArtwork ? 'object-fill' : isLogoImage ? 'bg-slate-950 object-contain p-7' : 'object-cover',
           )}
         />
         <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-3">

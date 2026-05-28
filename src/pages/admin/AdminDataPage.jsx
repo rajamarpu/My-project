@@ -11,6 +11,7 @@ import {
   fetchAdminCertificates,
   fetchAdminCourses,
   fetchAdminEnrollments,
+  fetchAdminInstructorChanges,
   fetchAdminInstructors,
   fetchAdminLearners,
   fetchAdminNotifications,
@@ -71,6 +72,14 @@ const resources = {
     rows: (data) => data.enrollments || [],
     columns: ['learner', 'course', 'currentInstructor', 'instructorChanges', 'completionPct', 'hoursStudied', 'enrolledAt'],
   },
+  'instructor-changes': {
+    eyebrow: 'Learning',
+    title: 'Instructor changes',
+    description: 'Audit history for learner instructor switches during courses.',
+    load: fetchAdminInstructorChanges,
+    rows: (data) => data.changes || [],
+    columns: ['learner', 'course', 'fromInstructor', 'toInstructor', 'changedBy', 'reason', 'createdAt'],
+  },
   certificates: {
     eyebrow: 'Credentialing',
     title: 'Certificates',
@@ -129,11 +138,16 @@ const resources = {
   },
 }
 
+const dateColumns = new Set(['createdAt', 'updatedAt', 'deletedAt', 'enrolledAt', 'issuedAt', 'expiresAt', 'completedAt'])
+
 function valueFor(row, column) {
   if (column === 'learner') return row.user?.name || row.user?.email || ''
   if (column === 'user') return row.user?.name || row.user?.email || ''
   if (column === 'course') return row.course?.title || ''
   if (column === 'currentInstructor') return row.currentInstructor?.name || ''
+  if (column === 'fromInstructor') return row.fromInstructor?.name || 'Original instructor'
+  if (column === 'toInstructor') return row.toInstructor?.name || ''
+  if (column === 'changedBy') return row.changedBy?.name || row.changedBy?.email || ''
   if (column === 'instructorChanges') return row.instructorChanges?.length ?? 0
   if (column === 'approvalStatus') return row.approvalStatus || 'APPROVED'
   if (column === 'courses') return row._count?.courses ?? 0
@@ -141,7 +155,7 @@ function valueFor(row, column) {
   if (column === 'amount') return new Intl.NumberFormat('en-IN', { style: 'currency', currency: row.currency || 'INR' }).format((row.amountCents || 0) / 100)
   const value = row[column]
   if (typeof value === 'boolean') return value ? 'Yes' : 'No'
-  if (column.toLowerCase().includes('at') && value) return new Date(value).toLocaleString()
+  if (dateColumns.has(column) && value) return new Date(value).toLocaleString()
   return value ?? ''
 }
 

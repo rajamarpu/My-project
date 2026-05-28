@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ArrowRight, BookOpen, CheckCircle2, MessageSquareText, Play, Sparkles, Users } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
+import { useSelector } from 'react-redux'
 import CourseCard from '../../components/ui/Course/CourseCard.jsx'
 import PersonalityCard from '../../components/ui/TeacherSwitcher/PersonalityCard.jsx'
 import { fetchCourses, fetchPlatformSummary } from '../../api/api.js'
@@ -26,8 +27,25 @@ const faqs = [
   ['How is this different from a generic course marketplace?', 'The core experience is the Indian celebrity-inspired AI teacher layer: personality, voice style, teaching style, mentor suggestions, and adaptive recommendations.'],
 ]
 
+function OwlMascot() {
+  return (
+    <svg viewBox="0 0 96 96" className="h-16 w-16" aria-hidden="true">
+      <path d="M22 45c0-18 11-30 26-30s26 12 26 30c0 21-11 35-26 35S22 66 22 45Z" fill="#f8fbff" stroke="#2563eb" strokeWidth="3" />
+      <path d="M18 31 48 16l30 15-30 14-30-14Z" fill="#2563eb" />
+      <path d="M70 33v13" stroke="#f97316" strokeWidth="4" strokeLinecap="round" />
+      <circle cx="38" cy="45" r="10" fill="#e0f2fe" stroke="#06b6d4" strokeWidth="3" />
+      <circle cx="58" cy="45" r="10" fill="#e0f2fe" stroke="#06b6d4" strokeWidth="3" />
+      <circle cx="38" cy="45" r="4" fill="#1f2937" />
+      <circle cx="58" cy="45" r="4" fill="#1f2937" />
+      <path d="M48 50 42 59h12l-6-9Z" fill="#f97316" />
+      <path d="M36 66c7 5 17 5 24 0" stroke="#db2777" strokeWidth="4" strokeLinecap="round" />
+    </svg>
+  )
+}
+
 export default function LandingPage() {
   const navigate = useNavigate()
+  const auth = useSelector((state) => state.auth)
   const particles = useMemo(() => generateParticlePositions(26), [])
   const [activeTeacher, setActiveTeacher] = useState(aiPersonalities[0])
   const [courses, setCourses] = useState([])
@@ -74,14 +92,23 @@ export default function LandingPage() {
     return Array.from(counts, ([name, count]) => ({ id: name, name, count })).slice(0, 6)
   }, [courses])
 
+  const startLearning = () => {
+    if (auth.user && auth.token) {
+      navigate('/dashboard')
+      return
+    }
+    navigate('/register')
+  }
+
   return (
     <motion.section className="space-y-20 pb-20" variants={pageTransition} initial="hidden" animate="enter" exit="exit">
-      <section className="theme-dark relative isolate overflow-hidden rounded-[2rem] border border-cyan-300/15 bg-slate-950 px-5 py-8 shadow-glow sm:px-8 lg:px-10">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(14,165,233,0.22),transparent_30%),radial-gradient(circle_at_84%_20%,rgba(20,184,166,0.16),transparent_28%),linear-gradient(135deg,rgba(7,24,39,0.98),rgba(2,6,23,0.96))]" />
+      <section className="relative isolate overflow-hidden rounded-[2rem] border border-[var(--border-color)] bg-white px-5 py-8 text-[var(--text-primary)] shadow-[0_28px_90px_rgba(37,99,235,0.14)] transition-colors dark:bg-[var(--bg-secondary)] sm:px-8 lg:px-10">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_15%,rgba(37,99,235,0.15),transparent_28%),radial-gradient(circle_at_82%_16%,rgba(6,182,212,0.16),transparent_30%),radial-gradient(circle_at_54%_90%,rgba(219,39,119,0.10),transparent_26%),linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,251,255,0.96))] dark:bg-[radial-gradient(circle_at_18%_15%,rgba(56,189,248,0.22),transparent_28%),radial-gradient(circle_at_82%_16%,rgba(45,212,191,0.16),transparent_30%),linear-gradient(135deg,rgba(7,29,47,0.98),rgba(8,62,87,0.94))]" />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--accent-secondary)]/50 to-transparent" />
         {particles.map((pos, index) => (
           <motion.span
             key={index}
-            className="absolute h-1 w-1 rounded-full bg-cyan-200/80"
+            className="absolute h-1 w-1 rounded-full bg-[var(--accent-secondary)]/70"
             style={{ left: pos.left, top: pos.top }}
             animate={{ opacity: [0.15, 0.9, 0.15], y: [0, -16, 0] }}
             transition={{ duration: pos.duration, repeat: Infinity, delay: pos.delay }}
@@ -90,72 +117,78 @@ export default function LandingPage() {
 
         <div className="relative grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
           <div className="max-w-3xl space-y-7">
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-4 py-2 text-sm text-cyan-100">
+            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--accent-secondary)]/35 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700 dark:bg-white/10 dark:text-cyan-100">
               <Sparkles size={16} />
-              Indian actor and cricketer AI teachers with voice, tone, and adaptive lesson style
+              XP tracks, badges, and AI teachers built for freshers
             </div>
             <div className="space-y-5">
-              <h1 className="text-4xl font-semibold tracking-normal text-white sm:text-5xl lg:text-6xl">
-                Learn with an Indian celebrity-inspired teacher built for
-                <span className="block bg-gradient-to-r from-cyan-200 via-teal-200 to-amber-100 bg-clip-text text-transparent">
-                  your brain.
+              <h1 className="text-4xl font-semibold tracking-normal text-slate-800 dark:text-white sm:text-5xl lg:text-6xl">
+                Learn faster with a
+                <span className="block text-[var(--accent-bold)] dark:text-pink-300">
+                  gamified skill campus
+                </span>
+                built for
+                <span className="bg-gradient-to-r from-blue-600 via-cyan-500 to-orange-500 bg-clip-text text-transparent">
+                  {' '}your career.
                 </span>
               </h1>
               <motion.p
-                className="max-w-2xl text-lg leading-8 text-slate-300"
+                className="max-w-2xl text-lg leading-8 text-[var(--text-secondary)] dark:text-slate-300"
                 initial={{ opacity: 0.2 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.8 }}
               >
-                Switch between AI personalities inspired by Indian actors and cricketers, preview teaching tones, and keep the same course progress while the style adapts around you.
+                Switch between AI mentor personalities, earn achievements as you progress, and follow clean course paths that make serious upskilling feel playful and approachable.
               </motion.p>
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button onClick={() => navigate('/register')} className="min-h-12">
+              <Button onClick={startLearning} className="min-h-12">
                 Start learning <ArrowRight size={16} className="ml-2" />
               </Button>
-              <Button variant="secondary" onClick={() => navigate('/personalities')} className="min-h-12">
+              <Button variant="secondary" onClick={() => navigate('/personalities')} className="min-h-12 border-cyan-400/45 text-cyan-700 dark:text-cyan-100">
                 <Play size={16} className="mr-2" /> Preview teachers
               </Button>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">
               {[
-                [summary.totalLearners, 'registered learners'],
-                [summary.totalInstructors, 'instructors'],
-                [summary.totalCourses, 'published courses'],
+                [summary.totalLearners, 'learners on leaderboard'],
+                [summary.totalInstructors, 'AI mentor styles'],
+                [summary.totalCourses, 'skill quests live'],
               ].map(([value, label]) => (
-                <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.06] p-4">
-                  <p className="text-2xl font-semibold text-white">{value}</p>
-                  <p className="mt-1 text-sm text-slate-400">{label}</p>
+                <div key={label} className="rounded-2xl border border-[var(--border-color)] bg-white/90 p-4 shadow-[0_18px_48px_rgba(37,99,235,0.10)] dark:bg-white/[0.07]">
+                  <p className="text-2xl font-semibold text-blue-600 dark:text-white">{value}</p>
+                  <p className="mt-1 text-sm text-[var(--text-muted)] dark:text-slate-300">{label}</p>
                 </div>
               ))}
             </div>
           </div>
 
           <div className="relative">
-            <div className="absolute -inset-5 rounded-[2rem] bg-gradient-to-r from-cyan-400/20 via-teal-500/20 to-amber-300/10 blur-2xl" />
-            <div className="relative rounded-[2rem] border border-white/10 bg-white/[0.07] p-5 shadow-2xl backdrop-blur-xl">
+            <div className="absolute -inset-5 rounded-[2rem] bg-gradient-to-r from-blue-500/18 via-cyan-400/18 to-pink-500/12 blur-2xl" />
+            <div className="relative rounded-[2rem] border border-[var(--border-color)] bg-white/88 p-5 shadow-2xl backdrop-blur-xl dark:bg-white/[0.08]">
               <div className="flex items-center justify-between gap-4">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.24em] text-cyan-200">Live celebrity teacher switch</p>
-                  <h2 className="mt-2 text-2xl font-semibold text-white">{activeTeacher.name}</h2>
-                  <p className="mt-1 text-sm text-slate-300">{activeTeacher.specialty}</p>
+                  <p className="text-sm uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-200">Live mentor quest</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-slate-800 dark:text-white">{activeTeacher.name}</h2>
+                  <p className="mt-1 text-sm text-[var(--text-secondary)] dark:text-slate-300">{activeTeacher.specialty}</p>
                 </div>
-                <img src={activeTeacher.avatar} alt={`${activeTeacher.name} avatar`} className="h-20 w-20 rounded-3xl border border-cyan-200/30 bg-slate-900 p-1" />
+                <div className="grid h-20 w-20 place-items-center rounded-3xl border border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-[0_16px_38px_rgba(37,99,235,0.18)] dark:border-cyan-200/30 dark:from-slate-900 dark:to-slate-800">
+                  <OwlMascot />
+                </div>
               </div>
 
-              <div className={cn('mt-6 rounded-3xl border border-white/10 bg-gradient-to-br p-5', activeTeacher.colorTheme.bg)}>
-                <div className="flex items-center gap-3 text-slate-100">
-                  <MessageSquareText className="text-cyan-200" />
+              <div className={cn('mt-6 rounded-3xl border border-cyan-200 bg-gradient-to-br p-5 shadow-soft dark:border-white/10', activeTeacher.colorTheme.bg)}>
+                <div className="flex items-center gap-3 text-slate-800 dark:text-slate-100">
+                  <MessageSquareText className="text-cyan-600 dark:text-cyan-200" />
                   <p className="text-sm leading-6">
                     "I will teach this as {activeTeacher.teachingStyle.toLowerCase()}."
                   </p>
                 </div>
-                <div className="mt-5 grid gap-3 text-sm text-slate-300 sm:grid-cols-2">
-                  <span className="rounded-2xl bg-slate-950/45 p-3">Voice: {activeTeacher.voiceStyle}</span>
-                  <span className="rounded-2xl bg-slate-950/45 p-3">Tone: {activeTeacher.teachingTone}</span>
+                <div className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
+                  <span className="rounded-2xl bg-white/75 p-3 text-slate-700 dark:bg-slate-950/75 dark:text-slate-200">XP: +250 lesson streak</span>
+                  <span className="rounded-2xl bg-white/75 p-3 text-slate-700 dark:bg-slate-950/75 dark:text-slate-200">Badge: Mentor mode</span>
                 </div>
               </div>
 
@@ -168,12 +201,12 @@ export default function LandingPage() {
                     className={cn(
                       'rounded-2xl border p-3 text-left transition',
                       activeTeacher.id === teacher.id
-                        ? 'border-cyan-200 bg-cyan-300/15 text-white'
-                        : 'border-white/10 bg-white/[0.04] text-slate-300 hover:border-cyan-300/40',
+                        ? 'border-cyan-400 bg-cyan-50 text-slate-900 shadow-soft dark:bg-cyan-300/15 dark:text-white'
+                        : 'border-[var(--border-color)] bg-white/70 text-slate-700 hover:border-cyan-400/60 dark:bg-white/[0.06] dark:text-slate-300',
                     )}
                   >
                     <span className="block text-sm font-semibold">{teacher.name}</span>
-                    <span className="mt-1 block text-xs text-slate-400">{teacher.category}</span>
+                    <span className="mt-1 block text-xs text-[var(--text-muted)] dark:text-slate-400">{teacher.category}</span>
                   </button>
                 ))}
               </div>

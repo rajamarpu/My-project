@@ -1,7 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Eye, EyeOff, Github, LockKeyhole, Mail, Phone, Rocket, ShieldCheck, UserRound } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { useDispatch } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import Button from '../../components/common/Button/Button.jsx'
 import AuthShell from '../../components/ui/Auth/AuthShell.jsx'
 import AuthField from '../../components/ui/Auth/AuthField.jsx'
@@ -18,8 +18,8 @@ const routeByRole = {
 }
 
 const copyByMode = {
-  login: ['Secure login', 'Welcome back to your AI learning skyline', 'Continue learning with saved progress, AI mentors, and personalized course paths.'],
-  register: ['Create account', 'Create your learner profile', 'Start your premium AI learning journey with guided courses and mentor-led learning.'],
+  login: ['Secure login', 'Welcome back to your UptoSkills campus', 'Continue earning XP, finishing quests, and learning with adaptive AI mentors.'],
+  register: ['Create account', 'Create your learner profile', 'Start your gamified AI learning journey with guided courses, badges, and mentor-led practice.'],
   forgot: ['Account recovery', 'Recover your account', 'We will send a secure verification code to reset your password.'],
   reset: ['Reset password', 'Set a new password', 'Use the verification code from your email and choose a stronger password.'],
   otp: ['OTP verification', 'Verify with OTP', 'Use one-time verification for quick and secure access.'],
@@ -46,6 +46,7 @@ export default function AuthPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const dispatch = useDispatch()
+  const auth = useSelector((state) => state.auth)
   const mode = modeFromPath(location.pathname)
   const isAdminPortal = location.pathname.includes('admin-login')
   const isRegister = mode === 'register'
@@ -72,6 +73,12 @@ export default function AuthPage() {
 
   const score = passwordScore(form.password)
   const [eyebrow, title, subtitle] = copyByMode[mode]
+  const socialAction = isRegister ? 'Register' : 'Login'
+
+  useEffect(() => {
+    if (!auth.user || !auth.token) return
+    navigate(routeByRole[auth.role] || '/dashboard', { replace: true })
+  }, [auth.role, auth.token, auth.user, navigate])
 
   const errors = useMemo(() => {
     const next = {}
@@ -157,7 +164,7 @@ export default function AuthPage() {
   const handleSocialLogin = (provider) => {
     setToast({ type: '', message: '' })
     setLoading(true)
-    window.location.assign(socialLoginUrl(provider, 'learner'))
+    window.location.assign(socialLoginUrl(provider, 'learner', isRegister ? 'register' : 'login'))
   }
 
   return (
@@ -170,30 +177,30 @@ export default function AuthPage() {
       <form onSubmit={handleSubmit} className="mt-8 space-y-4" noValidate>
         {isRegister ? (
           <AuthField icon={<UserRound size={18} />} label="Full name" error={fieldError('fullName')}>
-            <input value={form.fullName} onChange={(e) => update('fullName', e.target.value)} className="w-full bg-transparent text-white outline-none placeholder:text-slate-400" placeholder="Your full name" />
+            <input value={form.fullName} onChange={(e) => update('fullName', e.target.value)} className="w-full bg-transparent text-slate-800 outline-none placeholder:text-slate-400 dark:text-white" placeholder="Your full name" />
           </AuthField>
         ) : null}
 
         <AuthField icon={<Mail size={18} />} label="Email" error={fieldError('email')}>
-          <input value={form.email} onChange={(e) => update('email', e.target.value)} type="email" className="w-full bg-transparent text-white outline-none placeholder:text-slate-400" placeholder={isAdminPortal ? adminLoginHint.email : 'you@example.com'} />
+          <input value={form.email} onChange={(e) => update('email', e.target.value)} type="email" className="w-full bg-transparent text-slate-800 outline-none placeholder:text-slate-400 dark:text-white" placeholder={isAdminPortal ? adminLoginHint.email : 'you@example.com'} />
         </AuthField>
 
         {isRegister ? (
           <AuthField icon={<Phone size={18} />} label="Phone number" error={fieldError('phone')}>
-            <input value={form.phone} onChange={(e) => update('phone', e.target.value)} className="w-full bg-transparent text-white outline-none placeholder:text-slate-400" placeholder="9999999999" />
+            <input value={form.phone} onChange={(e) => update('phone', e.target.value)} className="w-full bg-transparent text-slate-800 outline-none placeholder:text-slate-400 dark:text-white" placeholder="9999999999" />
           </AuthField>
         ) : null}
 
         {mode === 'otp' || mode === 'reset' ? (
           <AuthField icon={<ShieldCheck size={18} />} label="Verification code" error={fieldError('otp')}>
-            <input value={form.otp} onChange={(e) => update('otp', e.target.value)} className="w-full bg-transparent text-white tracking-[0.18em] outline-none placeholder:text-slate-400" placeholder="000000" />
+            <input value={form.otp} onChange={(e) => update('otp', e.target.value)} className="w-full bg-transparent text-slate-800 tracking-[0.18em] outline-none placeholder:text-slate-400 dark:text-white" placeholder="000000" />
           </AuthField>
         ) : null}
 
         {needsPassword ? (
           <AuthField icon={<LockKeyhole size={18} />} label={mode === 'reset' ? 'New password' : 'Password'} error={fieldError('password')}>
-            <input value={form.password} onChange={(e) => update('password', e.target.value)} type={showPassword ? 'text' : 'password'} className="w-full bg-transparent text-white outline-none placeholder:text-slate-400" placeholder="Minimum 8 characters" />
-            <button type="button" onClick={() => setShowPassword((value) => !value)} className="text-slate-300 transition hover:text-white" aria-label="Toggle password visibility">
+            <input value={form.password} onChange={(e) => update('password', e.target.value)} type={showPassword ? 'text' : 'password'} className="w-full bg-transparent text-slate-800 outline-none placeholder:text-slate-400 dark:text-white" placeholder="Minimum 8 characters" />
+            <button type="button" onClick={() => setShowPassword((value) => !value)} className="text-slate-500 transition hover:text-slate-800 dark:text-slate-300 dark:hover:text-white" aria-label="Toggle password visibility">
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </AuthField>
@@ -201,24 +208,24 @@ export default function AuthPage() {
 
         {isRegister ? (
           <AuthField icon={<LockKeyhole size={18} />} label="Confirm password" error={fieldError('confirmPassword')}>
-            <input value={form.confirmPassword} onChange={(e) => update('confirmPassword', e.target.value)} type={showPassword ? 'text' : 'password'} className="w-full bg-transparent text-white outline-none placeholder:text-slate-400" placeholder="Repeat password" />
+            <input value={form.confirmPassword} onChange={(e) => update('confirmPassword', e.target.value)} type={showPassword ? 'text' : 'password'} className="w-full bg-transparent text-slate-800 outline-none placeholder:text-slate-400 dark:text-white" placeholder="Repeat password" />
           </AuthField>
         ) : null}
 
         {needsPassword ? <PasswordStrength score={score} /> : null}
 
         {mode === 'login' ? (
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-300">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--text-secondary)] dark:text-slate-300">
             <label className="inline-flex items-center gap-2">
               <input checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} type="checkbox" className="h-4 w-4 rounded border-white/20 bg-white/10 accent-cyan-400" />
               Remember me
             </label>
-            <Link to="/forgot-password" className="font-semibold text-cyan-200 transition hover:text-white">Forgot password?</Link>
+            <Link to="/forgot-password" className="font-semibold text-cyan-700 transition hover:text-blue-700 dark:text-cyan-200 dark:hover:text-white">Forgot password?</Link>
           </div>
         ) : null}
 
         {toast.message ? (
-          <p className={`rounded-2xl px-4 py-3 text-sm font-medium ${toast.type === 'error' ? 'border border-red-400/25 bg-red-500/10 text-red-100' : 'border border-emerald-400/25 bg-emerald-500/10 text-emerald-100'}`}>
+          <p className={`rounded-2xl px-4 py-3 text-sm font-medium ${toast.type === 'error' ? 'border border-red-400/25 bg-red-500/10 text-red-700 dark:text-red-100' : 'border border-emerald-400/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-100'}`}>
             {toast.message}
           </p>
         ) : null}
@@ -229,32 +236,39 @@ export default function AuthPage() {
       </form>
 
       {!isAdminPortal && (mode === 'login' || isRegister) ? (
-        <div className="mt-5 grid gap-3 sm:grid-cols-2">
-          <SocialButton icon={<Github size={17} />} onClick={() => handleSocialLogin('github')} disabled={loading}>
-            Continue with GitHub
-          </SocialButton>
-          <SocialButton icon={<span className="font-bold">G</span>} onClick={() => handleSocialLogin('google')} disabled={loading}>
-            Continue with Google
-          </SocialButton>
+        <div className="mt-5">
+          <div className="mb-4 flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--text-muted)] dark:text-slate-400">
+            <span className="h-px flex-1 bg-[var(--border-color)]" />
+            <span>or {isRegister ? 'register' : 'login'} with</span>
+            <span className="h-px flex-1 bg-[var(--border-color)]" />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <SocialButton icon={<span className="text-base font-black text-blue-600">G</span>} onClick={() => handleSocialLogin('google')} disabled={loading} aria-label={`${socialAction} with Google`}>
+              {socialAction} with Google
+            </SocialButton>
+            <SocialButton icon={<Github size={17} />} onClick={() => handleSocialLogin('github')} disabled={loading} aria-label={`${socialAction} with GitHub`}>
+              {socialAction} with GitHub
+            </SocialButton>
+          </div>
         </div>
       ) : null}
 
       {!isAdminPortal && (mode === 'login' || isRegister) ? (
-        <div className="mt-5 rounded-2xl border border-cyan-300/20 bg-cyan-300/10 p-4 text-sm text-cyan-50">
+        <div className="mt-5 rounded-2xl border border-cyan-300/30 bg-cyan-50 p-4 text-sm text-cyan-800 dark:bg-cyan-300/10 dark:text-cyan-50">
           <p className="flex items-center gap-2 font-semibold">
             <Rocket size={16} />
             Switch your AI mentor anytime during learning
           </p>
-          <p className="mt-2 leading-6 text-slate-300">
-            Start with Rohit Sharma, switch to MS Dhoni mid-lecture, and keep the lesson flowing with a new voice and personality.
+          <p className="mt-2 leading-6 text-[var(--text-secondary)] dark:text-slate-300">
+            Keep the same progress while mentor style, XP goals, and practice prompts adapt around your course.
           </p>
         </div>
       ) : null}
 
       <div className="mt-6 flex flex-wrap gap-4 text-sm">
-        {mode !== 'login' ? <Link className="font-semibold text-cyan-200 transition hover:text-white" to="/login">Back to learner login</Link> : null}
-        {!isAdminPortal && mode === 'login' ? <Link className="font-semibold text-cyan-200 transition hover:text-white" to="/register">Create learner account</Link> : null}
-        {!isAdminPortal && mode === 'login' ? <Link className="font-semibold text-cyan-200 transition hover:text-white" to="/otp-verification">Use OTP</Link> : null}
+        {mode !== 'login' ? <Link className="font-semibold text-cyan-700 transition hover:text-blue-700 dark:text-cyan-200 dark:hover:text-white" to="/login">Back to learner login</Link> : null}
+        {!isAdminPortal && mode === 'login' ? <Link className="font-semibold text-cyan-700 transition hover:text-blue-700 dark:text-cyan-200 dark:hover:text-white" to="/register">Create learner account</Link> : null}
+        {!isAdminPortal && mode === 'login' ? <Link className="font-semibold text-cyan-700 transition hover:text-blue-700 dark:text-cyan-200 dark:hover:text-white" to="/otp-verification">Use OTP</Link> : null}
       </div>
     </AuthShell>
   )

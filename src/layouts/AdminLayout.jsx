@@ -4,6 +4,7 @@ import { Activity, Award, BarChart3, Bell, BookOpenCheck, CreditCard, FolderTree
 import { logout } from '../store/slices/authSlice.js'
 import { cn } from '../utils/classNames.js'
 import Logo from '../components/ui/Navbar/Logo.jsx'
+import ThemeToggleButton from '../components/ui/Navbar/ThemeToggleButton.jsx'
 
 const adminNav = [
   { label: 'Dashboard', href: '/admin', icon: BarChart3 },
@@ -18,6 +19,7 @@ const adminNav = [
   { label: 'Reports', href: '/admin/reports', icon: BarChart3 },
   { label: 'Notifications', href: '/admin/notifications', icon: Bell },
   { label: 'Enrollments', href: '/admin/enrollments', icon: Activity },
+  { label: 'Instructor Changes', href: '/admin/instructor-changes', icon: Activity },
   { label: 'Activity Logs', href: '/admin/activity-logs', icon: Activity },
   { label: 'Payments', href: '/admin/payments', icon: CreditCard },
   { label: 'Upload Course', href: '/admin/upload-course', icon: Upload },
@@ -33,7 +35,10 @@ export default function AdminLayout({ children }) {
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
       <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
         <aside className="border-r border-[var(--border-color)] bg-[var(--bg-elevated)] p-5">
-          <Logo to="/admin" admin />
+          <div className="flex items-center justify-between gap-3">
+            <Logo to="/admin" admin />
+            <ThemeToggleButton />
+          </div>
 
           <nav className="mt-8 max-h-[calc(100vh-190px)] space-y-1 overflow-y-auto pr-1">
             {adminNav.map((item) => (
@@ -61,7 +66,7 @@ export default function AdminLayout({ children }) {
               dispatch(logout())
               navigate('/admin-login')
             }}
-            className="mt-5 flex w-full items-center gap-3 rounded-lg border border-red-300/20 px-4 py-3 text-sm font-medium text-red-200 transition hover:bg-red-500/10"
+            className="mt-5 flex w-full items-center gap-3 rounded-lg border border-red-500/20 px-4 py-3 text-sm font-medium text-red-600 transition hover:bg-red-500/10 dark:text-red-200"
           >
             <LogOut size={18} />
             Logout

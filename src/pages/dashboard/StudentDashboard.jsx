@@ -83,9 +83,9 @@ export default function StudentDashboard() {
   return (
     <section className="space-y-10 pb-16">
       <div className="glass-card p-8 shadow-glow">
-        <p className="text-sm uppercase tracking-[0.3em] text-cyan-300">Learner dashboard</p>
-        <h1 className="mt-3 text-4xl font-semibold text-slate-100">Welcome back, {auth.user?.name || auth.user?.fullName || 'learner'}.</h1>
-        <p className="mt-4 text-slate-300">
+        <p className="theme-eyebrow text-sm uppercase tracking-[0.3em]">Learner dashboard</p>
+        <h1 className="mt-3 text-4xl font-semibold text-[var(--text-primary)]">Welcome back, {auth.user?.name || auth.user?.fullName || 'learner'}.</h1>
+        <p className="mt-4 text-[var(--text-secondary)]">
            Continue your upskilling journey, unlock achievements, and track daily goals with an AI-powered roadmap.
         </p>
       </div>
@@ -93,24 +93,24 @@ export default function StudentDashboard() {
       <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
         <div className="glass-card p-8">
           <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="rounded-3xl bg-slate-900/80 p-5 text-slate-100 shadow-soft">
-              <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Enrolled</p>
+            <div className="theme-subcard rounded-3xl p-5 shadow-soft">
+              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Enrolled</p>
               <p className="mt-3 text-3xl font-semibold">{analytics.totalCourses}</p>
             </div>
-            <div className="rounded-3xl bg-slate-900/80 p-5 text-slate-100 shadow-soft">
-              <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Avg Progress</p>
+            <div className="theme-subcard rounded-3xl p-5 shadow-soft">
+              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Avg Progress</p>
               <p className="mt-3 text-3xl font-semibold">{analytics.avgProgress}%</p>
             </div>
-            <div className="rounded-3xl bg-slate-900/80 p-5 text-slate-100 shadow-soft">
-              <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Learning Streak</p>
+            <div className="theme-subcard rounded-3xl p-5 shadow-soft">
+              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Learning Streak</p>
               <p className="mt-3 text-3xl font-semibold">{analytics.streak} days</p>
             </div>
-            <div className="rounded-3xl bg-slate-900/80 p-5 text-slate-100 shadow-soft">
-              <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Last Online</p>
+            <div className="theme-subcard rounded-3xl p-5 shadow-soft">
+              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Last Online</p>
               <p className="mt-3 text-lg font-semibold">{lastOnline}</p>
             </div>
-            <div className="rounded-3xl bg-slate-900/80 p-5 text-slate-100 shadow-soft sm:col-span-2 xl:col-span-4">
-              <p className="text-sm uppercase tracking-[0.2em] text-slate-400">Hours Studied</p>
+            <div className="theme-subcard rounded-3xl p-5 shadow-soft sm:col-span-2 xl:col-span-4">
+              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Hours Studied</p>
               <p className="mt-3 text-3xl font-semibold">{analytics.hoursStudied}</p>
             </div>
           </div>
@@ -119,18 +119,18 @@ export default function StudentDashboard() {
         <motion.div variants={fadeInUp} initial="hidden" animate="visible" className="glass-card p-8">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm uppercase tracking-[0.24em] text-cyan-300">Learner permissions</p>
-              <h2 className="mt-3 text-2xl font-semibold text-slate-100">What you can do</h2>
+              <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Learner permissions</p>
+              <h2 className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">What you can do</h2>
             </div>
             <Button variant="secondary" onClick={() => navigate('/user')}>
               View profile
             </Button>
           </div>
-          <div className="mt-8 grid gap-3 text-slate-300">
+          <div className="mt-8 grid gap-3 text-[var(--text-secondary)]">
             {learnerPermissions.map((permission) => (
               <div
                 key={permission}
-                className="rounded-3xl bg-slate-900/80 p-4 text-sm border border-white/5"
+                className="theme-subcard rounded-3xl p-4 text-sm"
               >
                 {permission}
               </div>
@@ -143,8 +143,8 @@ export default function StudentDashboard() {
         <div className="glass-card p-8">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm uppercase tracking-[0.24em] text-cyan-300">Learning progress</p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-100">Time spent this week</h2>
+              <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Learning progress</p>
+              <h2 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">Time spent this week</h2>
             </div>
             <Button variant="secondary" onClick={() => navigate('/reports')}>View report</Button>
           </div>
@@ -154,14 +154,16 @@ export default function StudentDashboard() {
                 data={analytics.weekly}
                 margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
               >
-                <XAxis dataKey="day" axisLine={false} tickLine={false} stroke="#94a3b8" />
-                <YAxis axisLine={false} tickLine={false} stroke="#94a3b8" />
+                <XAxis dataKey="day" axisLine={false} tickLine={false} stroke="var(--text-muted)" />
+                <YAxis axisLine={false} tickLine={false} stroke="var(--text-muted)" />
                 <Tooltip
                   contentStyle={{
-                    background: 'rgba(15,23,42,0.95)',
-                    border: 'none',
-                    color: '#f8fafc',
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-color)',
+                    color: 'var(--text-primary)',
                   }}
+                  labelStyle={{ color: 'var(--text-primary)' }}
+                  itemStyle={{ color: 'var(--text-primary)' }}
                 />
                 <Line
                   type="monotone"
@@ -176,8 +178,8 @@ export default function StudentDashboard() {
         </div>
 
         <div className="glass-card p-8">
-          <h2 className="text-2xl font-semibold text-slate-100">Skill growth</h2>
-          <p className="mt-3 text-slate-400">
+          <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Skill growth</h2>
+          <p className="mt-3 text-[var(--text-muted)]">
             Radar view of your current competency across premium learning pillars.
           </p>
           <div className="mt-8 flex justify-center">
@@ -192,8 +194,8 @@ export default function StudentDashboard() {
                   { subject: 'Practice', A: Math.min(100, analytics.hoursStudied * 5) },
                 ]}
               >
-                <PolarGrid stroke="#334155" />
-                <PolarAngleAxis dataKey="subject" stroke="#cbd5e1" />
+                <PolarGrid stroke="var(--border-color)" />
+                <PolarAngleAxis dataKey="subject" stroke="var(--text-secondary)" />
                 <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} />
                 <Radar name="You" dataKey="A" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.4} />
               </RadarChart>
@@ -205,38 +207,38 @@ export default function StudentDashboard() {
       <div className="glass-card p-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.24em] text-cyan-300">Continue learning</p>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-100">Your active courses</h2>
+            <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Continue learning</p>
+            <h2 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">Your active courses</h2>
           </div>
           <Button variant="secondary" onClick={() => navigate('/explore')}>Explore New Courses</Button>
         </div>
 
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
           {loading ? (
-            <div className="col-span-2 text-center text-slate-400 py-8">Loading courses...</div>
+            <div className="col-span-2 py-8 text-center text-[var(--text-muted)]">Loading courses...</div>
           ) : courses.length === 0 ? (
-            <div className="col-span-2 text-center text-slate-400 py-8">No courses enrolled. Explore to add some!</div>
+            <div className="col-span-2 py-8 text-center text-[var(--text-muted)]">No courses enrolled. Explore to add some!</div>
           ) : (
             courses.slice(0, 2).map((course) => (
               <div
                 key={course.id}
-                className="rounded-3xl border border-white/10 bg-slate-950/80 p-6 shadow-soft"
+                className="theme-subcard rounded-3xl p-6 shadow-soft"
               >
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <p className="text-base font-semibold text-slate-100">{course.title}</p>
-                    <p className="mt-2 text-sm text-slate-400">{course.createdBy?.name || course.instructor?.full_name || course.instructor?.name || course.instructor || 'Instructor'}</p>
+                    <p className="text-base font-semibold text-[var(--text-primary)]">{course.title}</p>
+                    <p className="mt-2 text-sm text-[var(--text-muted)]">{course.createdBy?.name || course.instructor?.full_name || course.instructor?.name || course.instructor || 'Instructor'}</p>
                   </div>
-                  <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-sm text-emerald-200">
+                  <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-sm text-emerald-700 dark:text-emerald-200">
                     {analytics.avgProgress}%
                   </span>
                 </div>
 
                 <div className="mt-6 flex items-center justify-between gap-4">
-                  <div className="h-3 flex-1 overflow-hidden rounded-full bg-slate-800">
+                  <div className="h-3 flex-1 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
                     <div className="h-full bg-gradient-to-r from-orange-500 to-teal-500" style={{ width: `${analytics.avgProgress}%` }} />
                   </div>
-                  <span className="text-sm text-slate-300">{analytics.avgProgress}% complete</span>
+                  <span className="text-sm text-[var(--text-secondary)]">{analytics.avgProgress}% complete</span>
                 </div>
 
                 <div className="mt-6 flex flex-wrap gap-3">

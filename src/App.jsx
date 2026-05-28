@@ -89,6 +89,7 @@ function AnimatedRoutes() {
             <Route path="/admin/certificates" element={<AdminLayout><AdminDataPage resource="certificates" /></AdminLayout>} />
             <Route path="/admin/notifications" element={<AdminLayout><AdminDataPage resource="notifications" /></AdminLayout>} />
             <Route path="/admin/enrollments" element={<AdminLayout><AdminDataPage resource="enrollments" /></AdminLayout>} />
+            <Route path="/admin/instructor-changes" element={<AdminLayout><AdminDataPage resource="instructor-changes" /></AdminLayout>} />
             <Route path="/admin/activity-logs" element={<AdminLayout><AdminDataPage resource="activity-logs" /></AdminLayout>} />
             <Route path="/admin/payments" element={<AdminLayout><AdminDataPage resource="payments" /></AdminLayout>} />
             <Route path="/admin/profile" element={<AdminLayout><UserPage /></AdminLayout>} />

@@ -85,12 +85,12 @@ export default function AdminDashboard() {
 
   return (
     <section className="space-y-8 pb-16">
-      <div className="rounded-lg border border-white/10 bg-slate-950/80 p-6 shadow-soft">
+      <div className="theme-card rounded-lg p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.24em] text-cyan-300">Admin dashboard</p>
-            <h1 className="mt-3 text-3xl font-semibold text-white">Live PostgreSQL platform metrics</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+            <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Admin dashboard</p>
+            <h1 className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">Live PostgreSQL platform metrics</h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">
               Every count below is fetched from Express APIs backed by Prisma and PostgreSQL. Empty tables show zero.
             </p>
           </div>
@@ -98,7 +98,7 @@ export default function AdminDashboard() {
             {loading ? 'Refreshing...' : 'Refresh'}
           </Button>
         </div>
-        {error ? <p className="mt-4 rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</p> : null}
+        {error ? <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-100">{error}</p> : null}
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5">
@@ -107,34 +107,34 @@ export default function AdminDashboard() {
             type="button"
             key={label}
             onClick={() => navigate(href)}
-            className="rounded-lg border border-white/10 bg-slate-950/70 p-5 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/40 hover:bg-slate-900"
+            className="theme-card theme-subcard-hover rounded-lg p-5 text-left hover:-translate-y-0.5"
           >
             <div className="flex items-center justify-between gap-3">
-              <p className="text-xs uppercase tracking-[0.18em] text-slate-400">{label}</p>
-              <span className="grid h-10 w-10 place-items-center rounded-lg bg-cyan-300/10 text-cyan-100">
+              <p className="text-xs uppercase tracking-[0.18em] text-[var(--text-muted)]">{label}</p>
+              <span className="theme-icon-badge grid h-10 w-10 place-items-center rounded-lg">
                 <Icon size={18} />
               </span>
             </div>
-            <p className="mt-4 text-2xl font-semibold text-white">{loading ? '...' : value}</p>
+            <p className="mt-4 text-2xl font-semibold text-[var(--text-primary)]">{loading ? '...' : value}</p>
           </button>
         ))}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
-        <div className="rounded-lg border border-white/10 bg-slate-950/70 p-6">
+        <div className="theme-card rounded-lg p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm uppercase tracking-[0.24em] text-cyan-300">30 day activity</p>
-              <h2 className="mt-2 text-xl font-semibold text-white">Registrations and enrollments</h2>
+              <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">30 day activity</p>
+              <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Registrations and enrollments</h2>
             </div>
             <Button variant="secondary" onClick={() => navigate('/admin/analytics')}>Analytics</Button>
           </div>
           <div className="mt-6 h-72">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={metrics.growth}>
-                <XAxis dataKey="date" stroke="#94a3b8" tick={{ fontSize: 11 }} />
-                <YAxis stroke="#94a3b8" allowDecimals={false} />
-                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', color: '#f8fafc' }} />
+                <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
+                <YAxis stroke="var(--text-muted)" allowDecimals={false} />
+                <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }} labelStyle={{ color: 'var(--text-primary)' }} itemStyle={{ color: 'var(--text-primary)' }} />
                 <Line type="monotone" dataKey="registrations" stroke="#22d3ee" strokeWidth={3} dot={false} />
                 <Line type="monotone" dataKey="enrollments" stroke="#f59e0b" strokeWidth={3} dot={false} />
               </LineChart>
@@ -142,8 +142,8 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        <div className="rounded-lg border border-white/10 bg-slate-950/70 p-6">
-          <p className="text-sm uppercase tracking-[0.24em] text-cyan-300">Quick actions</p>
+        <div className="theme-card rounded-lg p-6">
+          <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Quick actions</p>
           <div className="mt-5 grid gap-3">
             <Button onClick={() => navigate('/admin/upload-course')}>Upload Course</Button>
             <Button variant="secondary" onClick={() => navigate('/admin/add-learner')}>Add Learner</Button>
@@ -154,33 +154,33 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
-        <div className="rounded-lg border border-white/10 bg-slate-950/70 p-6">
-          <p className="text-sm uppercase tracking-[0.24em] text-cyan-300">Course demand</p>
-          <h2 className="mt-2 text-xl font-semibold text-white">Top courses by real enrollments</h2>
+        <div className="theme-card rounded-lg p-6">
+          <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Course demand</p>
+          <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Top courses by real enrollments</h2>
           <div className="mt-6 h-64">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={metrics.popularCourses}>
                 <XAxis dataKey="title" hide />
-                <YAxis stroke="#94a3b8" allowDecimals={false} />
-                <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid rgba(255,255,255,0.12)', color: '#f8fafc' }} />
+                <YAxis stroke="var(--text-muted)" allowDecimals={false} />
+                <Tooltip contentStyle={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }} labelStyle={{ color: 'var(--text-primary)' }} itemStyle={{ color: 'var(--text-primary)' }} />
                 <Bar dataKey="_count.enrollments" fill="#22d3ee" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="rounded-lg border border-white/10 bg-slate-950/70 p-6">
-          <p className="text-sm uppercase tracking-[0.24em] text-cyan-300">Recent users</p>
+        <div className="theme-card rounded-lg p-6">
+          <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Recent users</p>
           <div className="mt-5 grid gap-3">
             {metrics.recentUsers.length ? metrics.recentUsers.map((user) => (
-              <button key={user.id} type="button" onClick={() => navigate('/admin/users')} className="flex items-center justify-between gap-4 rounded-lg border border-white/10 bg-slate-900/70 p-4 text-left">
+              <button key={user.id} type="button" onClick={() => navigate('/admin/users')} className="theme-subcard theme-subcard-hover flex items-center justify-between gap-4 rounded-lg p-4 text-left">
                 <span>
-                  <span className="block font-semibold text-white">{user.name || user.fullName || user.email}</span>
-                  <span className="mt-1 block text-sm text-slate-400">{user.email}</span>
+                  <span className="block font-semibold text-[var(--text-primary)]">{user.name || user.fullName || user.email}</span>
+                  <span className="mt-1 block text-sm text-[var(--text-muted)]">{user.email}</span>
                 </span>
-                <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-cyan-200">{user.role}</span>
+                <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700 dark:text-cyan-200">{user.role}</span>
               </button>
-            )) : <p className="rounded-lg border border-white/10 bg-slate-900/70 p-4 text-sm text-slate-400">No users found.</p>}
+            )) : <p className="theme-subcard rounded-lg p-4 text-sm text-[var(--text-muted)]">No users found.</p>}
           </div>
         </div>
       </div>

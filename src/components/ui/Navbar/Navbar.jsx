@@ -32,7 +32,7 @@ export default function Navbar() {
     : '/login'
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--border-color)] bg-[var(--bg-elevated)] text-[var(--text-primary)] backdrop-blur-xl transition-colors duration-300">
+    <header className="sticky top-0 z-50 border-b border-[var(--border-color)] bg-white/90 text-[var(--text-primary)] shadow-[0_10px_35px_rgba(37,99,235,0.08)] backdrop-blur-xl transition-colors duration-300 dark:bg-[var(--bg-elevated)]">
       <div>
         <div className="border-b border-[var(--border-color)]">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
@@ -47,7 +47,7 @@ export default function Navbar() {
                     cn(
                       'text-sm font-medium transition-colors',
                       isActive
-                        ? 'text-cyan-500'
+                        ? 'text-blue-600 dark:text-cyan-300'
                         : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
                     )
                   }
@@ -126,7 +126,7 @@ export default function Navbar() {
                     setDrawerOpen(false)
                     navigate(dashboardPath)
                   }}
-                  className="w-full rounded-2xl bg-gradient-to-r from-orange-500 to-teal-500 px-5 py-3 text-sm font-semibold text-slate-950"
+                  className="w-full rounded-2xl bg-gradient-to-r from-blue-600 via-cyan-500 to-orange-500 px-5 py-3 text-sm font-semibold text-white"
                 >
                   {auth.user ? 'Dashboard' : 'Login'}
                 </button>

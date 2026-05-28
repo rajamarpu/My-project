@@ -4,17 +4,22 @@ import { useSelector } from 'react-redux'
 import { motion } from 'framer-motion'
 import { fadeInUp } from '../../utils/animationVariants.js'
 import Button from '../../components/common/Button/Button.jsx'
-import { fetchCourseById, fetchUserProgress, updateUserProgress } from '../../api/api.js'
+import { fetchCourseById, fetchCourseInstructors, fetchUserProgress, switchCourseInstructor, updateUserProgress } from '../../api/api.js'
 
 export default function LearningPlayerPage() {
   const { courseId } = useParams()
   const auth = useSelector((state) => state.auth)
   const [course, setCourse] = useState(null)
   const [enrollment, setEnrollment] = useState(null)
+  const [instructors, setInstructors] = useState([])
   const [lessonProgress, setLessonProgress] = useState([])
   const [activeLessonIndex, setActiveLessonIndex] = useState(0)
+  const [selectedInstructorId, setSelectedInstructorId] = useState('')
+  const [switchingInstructor, setSwitchingInstructor] = useState(false)
+  const [switchPanelOpen, setSwitchPanelOpen] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
 
   useEffect(() => {
     async function loadCourse() {
@@ -30,10 +35,14 @@ export default function LearningPlayerPage() {
         setCourse(loadedCourse)
         setEnrollment(loadedEnrollment)
         setLessonProgress(progressRes.data.progress || [])
+        setSelectedInstructorId(String(loadedEnrollment?.currentInstructorId || loadedCourse.createdById || loadedCourse.createdBy?.id || ''))
+        const instructorsRes = await fetchCourseInstructors(loadedCourse.id).catch(() => ({ data: { instructors: [] } }))
+        setInstructors(instructorsRes.data.instructors || [])
       } catch (err) {
         setError(err?.response?.data?.message || err.message || 'Failed to load lesson player.')
         setCourse(null)
         setEnrollment(null)
+        setInstructors([])
         setLessonProgress([])
       } finally {
         setLoading(false)
@@ -48,6 +57,21 @@ export default function LearningPlayerPage() {
   const completedCount = lessons.filter((lesson) => lessonProgress.some((item) => item.lessonId === lesson.id && item.completed)).length
   const progressPct = lessons.length ? Math.round((completedCount / lessons.length) * 100) : 0
   const activeInstructor = enrollment?.currentInstructor || course?.createdBy || null
+  const selectedInstructor = instructors.find((item) => String(item.id) === String(selectedInstructorId))
+  const switchHistory = enrollment?.instructorChanges || []
+  const selectedIsCurrent = selectedInstructor && activeInstructor?.id === selectedInstructor.id
+
+  const toggleInstructorPanel = async () => {
+    const nextOpen = !switchPanelOpen
+    setSwitchPanelOpen(nextOpen)
+    if (!nextOpen || !course || instructors.length) return
+    try {
+      const instructorsRes = await fetchCourseInstructors(course.id)
+      setInstructors(instructorsRes.data.instructors || [])
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Could not load instructors.')
+    }
+  }
 
   const markComplete = async () => {
     if (!course || !activeLesson) return
@@ -68,6 +92,33 @@ export default function LearningPlayerPage() {
     }
   }
 
+  const changeInstructor = async () => {
+    if (!course || !selectedInstructorId) return
+    const nextInstructor = instructors.find((item) => String(item.id) === String(selectedInstructorId))
+    if (!nextInstructor) return
+    if (activeInstructor?.id === nextInstructor.id) {
+      setNotice(`${nextInstructor.name} is already your active instructor for this course.`)
+      return
+    }
+    const confirmed = window.confirm(`Switch this course instructor to ${nextInstructor.name}? Your completed lessons, quizzes, certificates, and progress will stay unchanged.`)
+    if (!confirmed) return
+
+    try {
+      setSwitchingInstructor(true)
+      setError('')
+      setNotice('')
+      const response = await switchCourseInstructor(course.id, { instructorId: nextInstructor.id })
+      setEnrollment(response.data.enrollment ? { ...response.data.enrollment, instructorChanges: response.data.history || [] } : null)
+      setSelectedInstructorId(String(nextInstructor.id))
+      setNotice(`Instructor changed to ${nextInstructor.name}. Continue from the same lesson whenever you are ready.`)
+      setSwitchPanelOpen(false)
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Could not change instructor.')
+    } finally {
+      setSwitchingInstructor(false)
+    }
+  }
+
   if (loading) {
     return <div className="glass-card p-8 text-[var(--text-secondary)]">Loading player...</div>
   }
@@ -78,7 +129,7 @@ export default function LearningPlayerPage() {
 
   return (
     <motion.section className="space-y-10 pb-16" variants={fadeInUp} initial="hidden" animate="visible">
-      <div className="glass-card p-6 shadow-glow lg:p-8">
+      <div className="glass-card p-6 shadow-glow lg:p-8 light:bg-white/90">
         <div className="grid gap-8 lg:grid-cols-[1.5fr_0.9fr] lg:items-start">
           <div className="space-y-5">
             <div className="flex items-start justify-between gap-4">
@@ -127,6 +178,82 @@ export default function LearningPlayerPage() {
                   <p className="truncate text-sm text-slate-600 dark:text-slate-400">{activeInstructor?.expertise || course.category}</p>
                 </div>
               </div>
+              <Button variant="secondary" className="mt-4 w-full" onClick={toggleInstructorPanel}>
+                {switchPanelOpen ? 'Close Instructor List' : 'Change Instructor'}
+              </Button>
+              {notice ? <p className="mt-3 rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-200">{notice}</p> : null}
+              {switchPanelOpen ? (
+                <div className="mt-4 overflow-hidden rounded-lg border border-[var(--border-color)] bg-white/90 shadow-soft dark:bg-slate-950/75">
+                  <div className="border-b border-[var(--border-color)] p-4">
+                    <p className="text-sm font-semibold text-slate-950 dark:text-slate-100">
+                      Choose any celebrity instructor
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">
+                      Your completed lessons, quiz work, certificates, and course progress will stay unchanged.
+                    </p>
+                  </div>
+
+                  {instructors.length ? (
+                    <div className="max-h-[24rem] space-y-3 overflow-y-auto p-3 pr-2">
+                      {instructors.map((instructor) => {
+                        const active = String(instructor.id) === String(selectedInstructorId)
+                        const current = activeInstructor?.id === instructor.id
+                        return (
+                          <button
+                            key={instructor.id}
+                            type="button"
+                            onClick={() => setSelectedInstructorId(String(instructor.id))}
+                            className={[
+                              'flex w-full gap-3 rounded-lg border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-cyan-400/50',
+                              active
+                                ? 'border-cyan-500 bg-cyan-500/10 shadow-soft'
+                                : 'border-[var(--border-color)] bg-white/80 hover:border-cyan-500/50 hover:bg-cyan-500/5 dark:bg-slate-900/75',
+                            ].join(' ')}
+                          >
+                            <img
+                              src={instructor.avatarUrl || '/favicon.svg'}
+                              alt={instructor.name}
+                              className="h-16 w-16 shrink-0 rounded-lg border border-[var(--border-color)] object-cover"
+                            />
+                            <span className="min-w-0 flex-1">
+                              <span className="flex flex-wrap items-center gap-2">
+                                <span className="font-semibold text-slate-950 dark:text-slate-100">{instructor.name}</span>
+                                {current ? <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[0.68rem] font-semibold text-emerald-700 dark:text-emerald-200">Current</span> : null}
+                                {active && !current ? <span className="rounded-full bg-cyan-500/10 px-2 py-1 text-[0.68rem] font-semibold text-cyan-700 dark:text-cyan-200">Selected</span> : null}
+                              </span>
+                              <span className="mt-1 block text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-cyan-700 dark:text-cyan-300">
+                                {instructor.matchReason || instructor.expertise || course.category}
+                              </span>
+                              <span className="mt-2 line-clamp-2 block text-sm leading-5 text-slate-600 dark:text-slate-400">
+                                {instructor.bio || 'Available to guide your upcoming lessons and instructor interactions.'}
+                              </span>
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className="p-4 text-sm text-slate-600 dark:text-slate-400">
+                      No celebrity instructors are available right now.
+                    </div>
+                  )}
+
+                  <div className="border-t border-[var(--border-color)] bg-white/95 p-3 dark:bg-slate-950/95">
+                    {selectedInstructor ? (
+                      <div className="mb-3 flex items-center gap-3 rounded-lg bg-black/[0.03] p-3 dark:bg-white/5">
+                        <img src={selectedInstructor.avatarUrl || '/favicon.svg'} alt={selectedInstructor.name} className="h-10 w-10 rounded-lg object-cover" />
+                        <div className="min-w-0">
+                          <p className="truncate text-xs uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Selected instructor</p>
+                          <p className="truncate text-sm font-semibold text-slate-950 dark:text-slate-100">{selectedInstructor.name}</p>
+                        </div>
+                      </div>
+                    ) : null}
+                    <Button onClick={changeInstructor} disabled={switchingInstructor || !selectedInstructorId || selectedIsCurrent} className="w-full">
+                      {switchingInstructor ? 'Switching...' : selectedIsCurrent ? 'Already Active' : `Confirm Change${selectedInstructor ? ` to ${selectedInstructor.name}` : ''}`}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
             </div>
 
             <p className="text-sm uppercase tracking-[0.3em] text-cyan-700 dark:text-cyan-300">Lesson playlist</p>
@@ -159,6 +286,19 @@ export default function LearningPlayerPage() {
                 {completedCount === lessons.length && lessons.length ? 'All lessons completed.' : 'Complete lessons to unlock the next module.'}
               </p>
             </div>
+
+            {switchHistory.length ? (
+              <div className="rounded-lg border border-[var(--border-color)] bg-black/[0.03] p-5 dark:bg-white/5">
+                <p className="text-sm uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Instructor history</p>
+                <div className="mt-3 space-y-2">
+                  {switchHistory.slice(0, 3).map((item) => (
+                    <p key={item.id} className="text-sm text-slate-600 dark:text-slate-300">
+                      {item.fromInstructor?.name || 'Original instructor'} to {item.toInstructor?.name || 'Instructor'} on {new Date(item.createdAt).toLocaleDateString()}
+                    </p>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
           </aside>
         </div>

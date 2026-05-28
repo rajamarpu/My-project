@@ -3,6 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import Button from '../../components/common/Button/Button.jsx'
 import { createCourseRequest, fetchAdminCourses, updateAdminCourse } from '../../api/api.js'
 
+const MAX_THUMBNAIL_SIZE = 2 * 1024 * 1024
+
 const initialForm = {
   title: '',
   description: '',
@@ -51,6 +53,29 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
 
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
 
+  function chooseThumbnail(event) {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setError('Please choose an image file for the course thumbnail.')
+      event.target.value = ''
+      return
+    }
+    if (file.size > MAX_THUMBNAIL_SIZE) {
+      setError('Thumbnail image must be smaller than 2 MB.')
+      event.target.value = ''
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      update('thumbnailUrl', String(reader.result || ''))
+      setError('')
+    }
+    reader.onerror = () => setError('Could not read the selected thumbnail image.')
+    reader.readAsDataURL(file)
+  }
+
   async function submit(event) {
     event.preventDefault()
     setError('')
@@ -95,12 +120,32 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
               </select>
             </label>
             <Field label="Price in paise" type="number" value={form.priceCents} onChange={(value) => update('priceCents', value)} />
-            <Field label="Thumbnail URL" value={form.thumbnailUrl} onChange={(value) => update('thumbnailUrl', value)} />
+            <label className="grid gap-2 text-sm text-slate-300">
+              Thumbnail image
+              <input
+                type="file"
+                accept="image/*"
+                onChange={chooseThumbnail}
+                className="rounded-lg border border-white/10 bg-slate-900 px-4 py-3 text-white file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-400 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-950 file:transition hover:file:bg-cyan-300 light:border-black/10 light:bg-white light:text-slate-900"
+              />
+              <span className="text-xs text-slate-400 light:text-slate-500">Choose a 1200 x 360 course thumbnail from your computer. Maximum file size: 2 MB.</span>
+            </label>
             <Field label="Preview video URL" value={form.videoPreviewUrl} onChange={(value) => update('videoPreviewUrl', value)} />
+            {form.thumbnailUrl ? (
+              <div className="lg:col-span-2">
+                <p className="mb-2 text-sm text-slate-300 light:text-slate-700">Thumbnail preview</p>
+                <img src={form.thumbnailUrl} alt="Course thumbnail preview" className="h-48 w-full rounded-lg border border-white/10 object-cover light:border-black/10" />
+              </div>
+            ) : null}
             <label className="grid gap-2 text-sm text-slate-300 lg:col-span-2">
               Description
               <textarea value={form.description} onChange={(event) => update('description', event.target.value)} rows={5} className="rounded-lg border border-white/10 bg-slate-900 px-4 py-3 text-white outline-none" />
             </label>
+            {mode === 'create' ? (
+              <div className="rounded-lg border border-cyan-300/20 bg-cyan-400/10 p-4 text-sm text-cyan-100 light:text-cyan-800">
+                A celebrity instructor will be assigned automatically at random when this course is saved.
+              </div>
+            ) : null}
             <label className="flex items-center gap-3 text-sm text-slate-300">
               <input type="checkbox" checked={form.isPublished} onChange={(event) => update('isPublished', event.target.checked)} className="h-4 w-4 accent-cyan-400" />
               Published
