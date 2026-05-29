@@ -9,6 +9,78 @@ router.use(requireAuth, requireRole('admin'))
 
 const userSelect = { id: true, name: true, email: true, phone: true, role: true, approvalStatus: true, avatarUrl: true, bio: true, expertise: true, socialLinks: true, isActive: true, createdAt: true }
 
+function dateKey(value) {
+  return value.toISOString().slice(0, 10)
+}
+
+function pct(part, total) {
+  return total ? Math.round((part / total) * 100) : 0
+}
+
+function slugify(value) {
+  return String(value || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+}
+
+async function findCategoryForCourse(category) {
+  const cleanCategory = String(category || '').trim()
+  if (!cleanCategory) return null
+  const cleanSlug = slugify(cleanCategory)
+  return prisma.category.findFirst({
+    where: {
+      OR: [
+        { id: cleanCategory },
+        { name: { equals: cleanCategory, mode: 'insensitive' } },
+        { slug: { equals: cleanSlug, mode: 'insensitive' } },
+      ],
+    },
+  })
+}
+
+async function updateUserModeration(req, { approvalStatus, isActive, action }) {
+  const userId = Number(req.params.id)
+  if (!Number.isInteger(userId)) {
+    const error = new Error('A valid user id is required.')
+    error.statusCode = 400
+    throw error
+  }
+  if (Number(req.user.id) === userId && isActive === false) {
+    const error = new Error('You cannot suspend or reject your own admin account.')
+    error.statusCode = 400
+    throw error
+  }
+
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data: { approvalStatus, isActive },
+  })
+
+  if (isActive === false) {
+    await prisma.session.updateMany({
+      where: { userId, revokedAt: null },
+      data: { revokedAt: new Date() },
+    })
+  }
+
+  await prisma.activityLog.create({
+    data: {
+      userId: req.user.id,
+      action,
+      entityType: 'user',
+      entityId: String(userId),
+      metadata: {
+        targetUserId: userId,
+        targetEmail: user.email,
+        approvalStatus,
+        isActive,
+      },
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+    },
+  })
+
+  return publicUser(user)
+}
+
 router.get('/overview', async (_req, res, next) => {
   try {
     const thirtyDaysAgo = new Date()
@@ -32,10 +104,19 @@ router.get('/overview', async (_req, res, next) => {
       totalNotifications,
       totalPayments,
       revenue,
+      paidPayments,
+      pendingPayments,
+      totalProgress,
+      activeProgress,
+      totalHoursStudied,
+      totalWatchSeconds,
       popularCourses,
+      categoryDemand,
       recentUsers,
       recentActivity,
-      recentEvents,
+      recentEnrollments,
+      recentCompletions,
+      recentPayments,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { role: 'USER' } }),
@@ -57,27 +138,59 @@ router.get('/overview', async (_req, res, next) => {
       prisma.notification.count(),
       prisma.payment.count(),
       prisma.payment.aggregate({ where: { status: 'PAID' }, _sum: { amountCents: true } }),
-      prisma.course.findMany({ include: { _count: { select: { enrollments: true } } }, orderBy: { enrollments: { _count: 'desc' } }, take: 5 }),
+      prisma.payment.count({ where: { status: 'PAID' } }),
+      prisma.payment.count({ where: { status: 'PENDING' } }),
+      prisma.progress.count(),
+      prisma.progress.count({ where: { lastAccessedAt: { gte: thirtyDaysAgo } } }),
+      prisma.enrollment.aggregate({ _sum: { hoursStudied: true } }),
+      prisma.progress.aggregate({ _sum: { watchedSeconds: true } }),
+      prisma.course.findMany({
+        include: { _count: { select: { enrollments: true, lessons: true, certificates: true } } },
+        orderBy: [{ enrollments: { _count: 'desc' } }, { createdAt: 'desc' }],
+        take: 5,
+      }),
+      prisma.course.groupBy({
+        by: ['category'],
+        _count: { id: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 8,
+      }),
       prisma.user.findMany({ orderBy: { createdAt: 'desc' }, take: 6, select: userSelect }),
       prisma.activityLog.findMany({ orderBy: { createdAt: 'desc' }, take: 8, include: { user: { select: userSelect } } }),
-      prisma.analyticsEvent.findMany({ where: { createdAt: { gte: thirtyDaysAgo } }, orderBy: { createdAt: 'asc' } }),
+      prisma.enrollment.findMany({ where: { enrolledAt: { gte: thirtyDaysAgo } }, select: { enrolledAt: true } }),
+      prisma.enrollment.findMany({ where: { completedAt: { gte: thirtyDaysAgo } }, select: { completedAt: true } }),
+      prisma.payment.findMany({ where: { status: 'PAID', createdAt: { gte: thirtyDaysAgo } }, select: { createdAt: true, amountCents: true } }),
     ])
 
     const daily = Array.from({ length: 30 }, (_, index) => {
       const date = new Date(thirtyDaysAgo)
       date.setDate(thirtyDaysAgo.getDate() + index)
-      const key = date.toISOString().slice(0, 10)
-      return { date: key, registrations: 0, enrollments: 0, completions: 0, watchTime: 0 }
+      const key = dateKey(date)
+      return { date: key, registrations: 0, enrollments: 0, completions: 0, revenueCents: 0 }
     })
     const dailyByDate = new Map(daily.map((item) => [item.date, item]))
-    recentEvents.forEach((event) => {
-      const bucket = dailyByDate.get(event.createdAt.toISOString().slice(0, 10))
-      if (!bucket) return
-      if (event.eventType === 'user_registered') bucket.registrations += 1
-      if (event.eventType === 'course_enrolled') bucket.enrollments += 1
-      if (event.eventType === 'course_completed') bucket.completions += 1
-      if (event.eventType === 'watch_time') bucket.watchTime += Number(event.value || 0)
+    recentUsers.forEach((user) => {
+      const bucket = dailyByDate.get(dateKey(user.createdAt))
+      if (bucket) bucket.registrations += 1
     })
+    recentEnrollments.forEach((enrollment) => {
+      const bucket = dailyByDate.get(dateKey(enrollment.enrolledAt))
+      if (bucket) bucket.enrollments += 1
+    })
+    recentCompletions.forEach((enrollment) => {
+      if (!enrollment.completedAt) return
+      const bucket = dailyByDate.get(dateKey(enrollment.completedAt))
+      if (bucket) bucket.completions += 1
+    })
+    recentPayments.forEach((payment) => {
+      const bucket = dailyByDate.get(dateKey(payment.createdAt))
+      if (bucket) bucket.revenueCents += payment.amountCents || 0
+    })
+
+    const completionRate = pct(completedCourses, totalEnrollments)
+    const publishRate = pct(publishedCourses, totalCourses)
+    const paidPaymentRate = pct(paidPayments, totalPayments)
+    const averageProgressPct = totalEnrollments ? Math.round((completedCourses / totalEnrollments) * 100) : 0
 
     res.json({
       success: true,
@@ -97,8 +210,26 @@ router.get('/overview', async (_req, res, next) => {
         totalCertificates,
         totalNotifications,
         totalPayments,
+        paidPayments,
+        pendingPayments,
         revenueCents: revenue._sum.amountCents || 0,
-        popularCourses,
+        totalHoursStudied: Number(totalHoursStudied._sum.hoursStudied || 0),
+        totalWatchHours: Math.round(Number(totalWatchSeconds._sum.watchedSeconds || 0) / 3600),
+        totalProgress,
+        activeProgress,
+        completionRate,
+        publishRate,
+        paidPaymentRate,
+        averageProgressPct,
+        popularCourses: popularCourses.map((course) => ({
+          id: course.id,
+          title: course.title,
+          category: course.category,
+          enrollments: course._count.enrollments,
+          lessons: course._count.lessons,
+          certificates: course._count.certificates,
+        })),
+        categoryDemand: categoryDemand.map((item) => ({ category: item.category || 'Uncategorized', courses: item._count.id })),
         recentUsers: recentUsers.map(publicUser),
         recentActivity,
         growth: daily,
@@ -152,12 +283,15 @@ router.get('/courses', async (req, res, next) => {
 
 router.patch('/courses/:id', async (req, res, next) => {
   try {
+    const category = req.body.category
+    const categoryRecord = category !== undefined ? await findCategoryForCourse(category) : null
     const course = await prisma.course.update({
       where: { id: req.params.id },
       data: {
         title: req.body.title,
         description: req.body.description,
-        category: req.body.category,
+        category,
+        categoryId: category !== undefined ? categoryRecord?.id || null : undefined,
         level: req.body.level,
         priceCents: typeof req.body.priceCents === 'number' ? req.body.priceCents : undefined,
         isPublished: typeof req.body.isPublished === 'boolean' ? req.body.isPublished : undefined,
@@ -183,8 +317,25 @@ router.delete('/courses/:id', async (req, res, next) => {
 
 router.get('/categories', async (_req, res, next) => {
   try {
-    const categories = await prisma.category.findMany({ include: { _count: { select: { courses: true } } }, orderBy: { name: 'asc' } })
-    res.json({ success: true, categories })
+    const [categories, coursesByCategory] = await Promise.all([
+      prisma.category.findMany({ include: { _count: { select: { courses: true } } }, orderBy: { name: 'asc' } }),
+      prisma.course.groupBy({ by: ['category'], _count: { id: true } }),
+    ])
+    const courseCountByCategory = new Map(
+      coursesByCategory.map((item) => [slugify(item.category), item._count.id]),
+    )
+    const enrichedCategories = categories.map((category) => {
+      const relationCount = category._count?.courses || 0
+      const textCount = courseCountByCategory.get(slugify(category.name)) || courseCountByCategory.get(category.slug) || 0
+      return {
+        ...category,
+        _count: {
+          ...category._count,
+          courses: Math.max(relationCount, textCount),
+        },
+      }
+    })
+    res.json({ success: true, categories: enrichedCategories })
   } catch (error) {
     next(error)
   }
@@ -332,11 +483,12 @@ router.patch('/users/:id', async (req, res, next) => {
 
 router.post('/users/:id/approve', async (req, res, next) => {
   try {
-    const user = await prisma.user.update({
-      where: { id: Number(req.params.id) },
-      data: { approvalStatus: 'APPROVED', isActive: true },
+    const user = await updateUserModeration(req, {
+      approvalStatus: 'APPROVED',
+      isActive: true,
+      action: 'user_approved',
     })
-    res.json({ success: true, user: publicUser(user) })
+    res.json({ success: true, user })
   } catch (error) {
     next(error)
   }
@@ -344,11 +496,12 @@ router.post('/users/:id/approve', async (req, res, next) => {
 
 router.post('/users/:id/reject', async (req, res, next) => {
   try {
-    const user = await prisma.user.update({
-      where: { id: Number(req.params.id) },
-      data: { approvalStatus: 'REJECTED', isActive: false },
+    const user = await updateUserModeration(req, {
+      approvalStatus: 'REJECTED',
+      isActive: false,
+      action: 'user_rejected',
     })
-    res.json({ success: true, user: publicUser(user) })
+    res.json({ success: true, user })
   } catch (error) {
     next(error)
   }
@@ -356,11 +509,12 @@ router.post('/users/:id/reject', async (req, res, next) => {
 
 router.post('/users/:id/suspend', async (req, res, next) => {
   try {
-    const user = await prisma.user.update({
-      where: { id: Number(req.params.id) },
-      data: { approvalStatus: 'SUSPENDED', isActive: false },
+    const user = await updateUserModeration(req, {
+      approvalStatus: 'SUSPENDED',
+      isActive: false,
+      action: 'user_suspended',
     })
-    res.json({ success: true, user: publicUser(user) })
+    res.json({ success: true, user })
   } catch (error) {
     next(error)
   }

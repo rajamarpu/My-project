@@ -5,7 +5,7 @@ import { toggleWishlist } from '../../../store/slices/authSlice.js'
 import { cn } from '../../../utils/classNames.js'
 import { resolveCourseThumbnail } from '../../../utils/courseThumbnail.js'
 
-export default function CourseCard({ course, onViewDetails }) {
+export default function CourseCard({ course, onViewDetails, onEnrollToggle, enrollmentBusy = false }) {
   const dispatch = useDispatch()
   const wishlist = useSelector((state) => state.auth.wishlist)
   const active = wishlist.includes(course.id)
@@ -16,6 +16,8 @@ export default function CourseCard({ course, onViewDetails }) {
   const isLogoImage = String(image).includes('.svg')
   const isSubjectArtwork = String(image).startsWith('data:image/svg+xml')
   const glowClass = teacher.colorTheme?.bg || 'from-cyan-500/20 via-teal-500/20 to-amber-300/10'
+  const enrollmentCount = course.enrollmentCount ?? course._count?.enrollments ?? course.enrollments?.length ?? 0
+  const isEnrolled = Boolean(course.isEnrolled)
 
   return (
     <motion.article
@@ -61,7 +63,7 @@ export default function CourseCard({ course, onViewDetails }) {
           <Clock size={16} className="text-cyan-300 dark:text-cyan-300 light:text-cyan-700" /> {course.duration || `${course.lessons?.length || 0} lessons`}
         </span>
         <span className="inline-flex items-center gap-2 text-sm text-green-300 dark:text-green-300 light:text-green-700">
-          <Users size={16} className="text-green-300 dark:text-green-300 light:text-green-700" /> {course._count?.enrollments ?? course.enrollments?.length ?? 0} learners
+          <Users size={16} className="text-green-300 dark:text-green-300 light:text-green-700" /> {enrollmentCount} learners
         </span>
         <span className="inline-flex items-center gap-2 text-sm text-teal-300 dark:text-teal-300 light:text-teal-700">
           <Layers3 size={16} /> {course._count?.lessons ?? course.lessons?.length ?? 0} lessons
@@ -104,6 +106,24 @@ export default function CourseCard({ course, onViewDetails }) {
         >
           View Details
         </button>
+        {onEnrollToggle ? (
+          <button
+            type="button"
+            disabled={enrollmentBusy}
+            onClick={(event) => {
+              event.stopPropagation()
+              onEnrollToggle(course)
+            }}
+            className={cn(
+              'btn-secondary min-w-[130px] disabled:cursor-not-allowed disabled:opacity-60',
+              isEnrolled
+                ? 'border-red-400/40 text-red-700 hover:bg-red-500/10 dark:text-red-100'
+                : 'border-emerald-400/40 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-100',
+            )}
+          >
+            {enrollmentBusy ? 'Updating...' : isEnrolled ? 'Unenroll' : 'Enroll'}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={(event) => {

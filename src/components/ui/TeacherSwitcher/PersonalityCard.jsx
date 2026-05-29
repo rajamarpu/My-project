@@ -53,9 +53,9 @@ export default function PersonalityCard({ personality, onSelect, showPreview = t
       
       <button
         onClick={handleToggleFavorite}
-        className="absolute top-4 right-4 z-10 rounded-full p-2 bg-white/10 hover:bg-white/20 transition-colors"
+        className="absolute right-4 top-4 z-10 rounded-full bg-[var(--bg-subtle)] p-2 text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-card-hover)]"
       >
-        <Heart className={cn('w-5 h-5', isFavorite ? 'fill-orange-500 text-orange-500' : 'text-white')} />
+        <Heart className={cn('h-5 w-5', isFavorite ? 'fill-orange-500 text-orange-500' : 'text-[var(--text-primary)]')} />
       </button>
 
       <div className="relative flex flex-col items-center text-center space-y-4">
@@ -72,8 +72,8 @@ export default function PersonalityCard({ personality, onSelect, showPreview = t
         </div>
 
         <div>
-          <h3 className="text-xl font-semibold text-white">{personality.name}</h3>
-          <p className="text-sm text-slate-400">{personality.category}</p>
+          <h3 className="text-xl font-semibold text-[var(--text-primary)]">{personality.name}</h3>
+          <p className="text-sm text-[var(--text-muted)]">{personality.category}</p>
         </div>
 
         <div className="flex flex-wrap gap-2 justify-center">
@@ -96,7 +96,7 @@ export default function PersonalityCard({ personality, onSelect, showPreview = t
             type="button"
             onClick={handlePreview}
             whileHover={{ scale: 1.05 }}
-            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 transition-colors"
+            className="flex items-center gap-2 rounded-full bg-[var(--bg-subtle)] px-4 py-2 text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-card-hover)]"
           >
             <Play className="w-4 h-4" />
             <span className="text-sm">{previewing ? 'Playing Preview' : 'Preview Style'}</span>

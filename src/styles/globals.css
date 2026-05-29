@@ -1,4 +1,5 @@
 @import './theme.css';
+@import './adminTokens.css';
 @import './animations.css';
 
 @tailwind base;
@@ -435,6 +436,75 @@ button:disabled {
 
 .dark .btn-secondary {
   color: #f8fafc;
+}
+
+.light .light\:text-slate-900,
+.light .light\:text-slate-800 {
+  color: #0f172a !important;
+}
+
+.light .light\:text-slate-700,
+.light .light\:text-slate-600,
+.light .light\:text-slate-500 {
+  color: #475569 !important;
+}
+
+.light .light\:text-cyan-800,
+.light .light\:text-cyan-700 {
+  color: #0e7490 !important;
+}
+
+.light .light\:text-teal-700 {
+  color: #0f766e !important;
+}
+
+.light .light\:text-emerald-700,
+.light .light\:text-green-700 {
+  color: #047857 !important;
+}
+
+.light .light\:bg-white {
+  background-color: #ffffff !important;
+}
+
+.light .light\:bg-white\/90 {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.light .light\:bg-black\/5 {
+  background-color: rgba(15, 23, 42, 0.05) !important;
+}
+
+.light .light\:hover\:bg-black\/10:hover {
+  background-color: rgba(15, 23, 42, 0.1) !important;
+}
+
+.light .light\:border-black\/10 {
+  border-color: rgba(15, 23, 42, 0.1) !important;
+}
+
+.theme-card :where(input, textarea, select),
+.theme-surface :where(input, textarea, select),
+.glass-card :where(input, textarea, select) {
+  border-color: var(--border-color);
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.theme-card :where(label),
+.theme-surface :where(label),
+.glass-card :where(label) {
+  color: var(--text-secondary);
+}
+
+.theme-card :where(table),
+.theme-surface :where(table) {
+  color: var(--text-primary);
+}
+
+.theme-card :where(th),
+.theme-surface :where(th) {
+  color: var(--text-muted);
 }
 
 @media (max-width: 768px) {

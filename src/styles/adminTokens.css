@@ -1,0 +1,115 @@
+:root,
+.light {
+  --admin-space-1: 0.25rem;
+  --admin-space-2: 0.5rem;
+  --admin-space-3: 0.75rem;
+  --admin-space-4: 1rem;
+  --admin-space-5: 1.25rem;
+  --admin-space-6: 1.5rem;
+  --admin-space-8: 2rem;
+  --admin-radius: 0.75rem;
+  --admin-radius-lg: 1rem;
+  --admin-font-xs: 0.75rem;
+  --admin-font-sm: 0.875rem;
+  --admin-font-base: 1rem;
+  --admin-font-lg: 1.125rem;
+  --admin-font-xl: 1.25rem;
+  --admin-font-2xl: 1.5rem;
+  --admin-font-3xl: 1.875rem;
+  --admin-shadow-card: 0 18px 50px rgba(14, 124, 193, 0.12);
+  --admin-shadow-hover: 0 24px 64px rgba(8, 62, 87, 0.18);
+  --admin-focus: 0 0 0 3px rgba(22, 169, 216, 0.22);
+  --admin-success: #059669;
+  --admin-warning: #d97706;
+  --admin-danger: #dc2626;
+  --admin-info: #0e7490;
+  --admin-card-gradient: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(240, 249, 255, 0.88));
+}
+
+.dark {
+  --admin-shadow-card: 0 20px 70px rgba(2, 18, 29, 0.42);
+  --admin-shadow-hover: 0 26px 76px rgba(1, 14, 24, 0.54);
+  --admin-focus: 0 0 0 3px rgba(56, 189, 248, 0.28);
+  --admin-success: #34d399;
+  --admin-warning: #fbbf24;
+  --admin-danger: #f87171;
+  --admin-info: #67e8f9;
+  --admin-card-gradient: linear-gradient(180deg, rgba(8, 62, 87, 0.9), rgba(5, 31, 46, 0.78));
+}
+
+.admin-shell {
+  background:
+    linear-gradient(135deg, rgba(249, 115, 22, 0.08), transparent 28rem),
+    linear-gradient(225deg, rgba(16, 185, 167, 0.11), transparent 26rem),
+    var(--bg-primary);
+}
+
+.admin-panel {
+  border: 1px solid var(--border-color);
+  border-radius: var(--admin-radius);
+  background: var(--admin-card-gradient);
+  box-shadow: var(--admin-shadow-card);
+  color: var(--text-primary);
+}
+
+.admin-panel-hover {
+  transition: border-color 180ms ease, box-shadow 180ms ease, transform 180ms ease, background-color 180ms ease;
+}
+
+.admin-panel-hover:hover {
+  border-color: color-mix(in srgb, var(--accent-secondary) 52%, transparent);
+  box-shadow: var(--admin-shadow-hover);
+  transform: translateY(-2px);
+}
+
+.admin-input {
+  width: 100%;
+  border-radius: var(--admin-radius);
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  outline: none;
+  padding: 0.875rem 1rem;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background-color 160ms ease;
+}
+
+.admin-input:focus {
+  border-color: color-mix(in srgb, var(--accent-secondary) 70%, transparent);
+  box-shadow: var(--admin-focus);
+}
+
+.admin-label {
+  display: grid;
+  gap: var(--admin-space-2);
+  color: var(--text-secondary);
+  font-size: var(--admin-font-sm);
+}
+
+.admin-table-card {
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  border-radius: var(--admin-radius);
+  background: var(--bg-card);
+  box-shadow: var(--admin-shadow-card);
+}
+
+.admin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--accent-secondary) 55%, transparent) transparent;
+}
+
+.admin-scrollbar::-webkit-scrollbar {
+  height: 0.5rem;
+  width: 0.5rem;
+}
+
+.admin-scrollbar::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent-secondary) 55%, transparent);
+}
+
+@media (max-width: 768px) {
+  .admin-panel {
+    border-radius: 0.75rem;
+  }
+}

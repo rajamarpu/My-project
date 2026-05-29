@@ -1,6 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
-import { Activity, Award, BarChart3, Bell, BookOpenCheck, CreditCard, FolderTree, GraduationCap, LogOut, Settings, Upload, UserCircle, Users } from 'lucide-react'
+import { Activity, Award, BarChart3, Bell, BookOpenCheck, CreditCard, FolderTree, GraduationCap, LogOut, Menu, Settings, Upload, UserCircle, Users, X } from 'lucide-react'
+import { useState } from 'react'
 import { logout } from '../store/slices/authSlice.js'
 import { cn } from '../utils/classNames.js'
 import Logo from '../components/ui/Navbar/Logo.jsx'
@@ -16,6 +17,7 @@ const adminNav = [
   { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { label: 'Revenue', href: '/admin/revenue', icon: CreditCard },
   { label: 'Certificates', href: '/admin/certificates', icon: Award },
+  { label: 'Generate Certificate', href: '/admin/generate-certificate', icon: Award },
   { label: 'Reports', href: '/admin/reports', icon: BarChart3 },
   { label: 'Notifications', href: '/admin/notifications', icon: Bell },
   { label: 'Enrollments', href: '/admin/enrollments', icon: Activity },
@@ -30,21 +32,45 @@ const adminNav = [
 export default function AdminLayout({ children }) {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const [navOpen, setNavOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]">
+    <div className="admin-shell min-h-screen text-[var(--text-primary)]">
       <div className="grid min-h-screen lg:grid-cols-[280px_1fr]">
-        <aside className="border-r border-[var(--border-color)] bg-[var(--bg-elevated)] p-5">
+        <div className="sticky top-0 z-30 border-b border-[var(--border-color)] bg-[var(--bg-elevated)]/95 p-4 backdrop-blur lg:hidden">
           <div className="flex items-center justify-between gap-3">
             <Logo to="/admin" admin />
-            <ThemeToggleButton />
+            <div className="flex items-center gap-2">
+              <ThemeToggleButton />
+              <button
+                type="button"
+                onClick={() => setNavOpen((current) => !current)}
+                className="grid h-10 w-10 place-items-center rounded-lg border border-[var(--border-color)] text-[var(--text-primary)]"
+                aria-label={navOpen ? 'Close admin menu' : 'Open admin menu'}
+              >
+                {navOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <aside className={`${navOpen ? 'block' : 'hidden'} fixed inset-x-4 top-20 z-40 max-h-[calc(100vh-6rem)] overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-5 shadow-soft lg:sticky lg:top-0 lg:block lg:h-screen lg:rounded-none lg:border-x-0 lg:border-y-0 lg:border-r lg:shadow-none`}>
+          <div className="flex items-center justify-between gap-3">
+            <Logo to="/admin" admin />
+            <div className="hidden lg:block">
+              <ThemeToggleButton />
+            </div>
           </div>
 
-          <nav className="mt-8 max-h-[calc(100vh-190px)] space-y-1 overflow-y-auto pr-1">
+          <nav className="admin-scrollbar mt-8 max-h-[calc(100vh-190px)] space-y-1 overflow-y-auto pr-1">
             {adminNav.map((item) => (
               <NavLink
                 key={item.href}
                 to={item.href}
+                onClick={(event) => {
+                  event.currentTarget.blur()
+                  setNavOpen(false)
+                }}
                 className={({ isActive }) =>
                   cn(
                     'flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition',
@@ -73,7 +99,7 @@ export default function AdminLayout({ children }) {
           </button>
         </aside>
 
-        <main className="min-w-0 bg-[var(--bg-primary)] px-5 py-6 lg:px-8">
+        <main className="min-w-0 px-4 py-5 sm:px-5 sm:py-6 lg:px-8">
           {children}
         </main>
       </div>

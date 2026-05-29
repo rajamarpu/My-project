@@ -10,7 +10,7 @@ export default function Modal({ open, onOpenChange, title, children }) {
           <div className="mb-5 flex items-center justify-between gap-3">
             <h3 className="text-xl font-semibold text-[var(--text-primary)]">{title}</h3>
             <Dialog.Close asChild>
-              <button className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border-color)] bg-black/5 text-[var(--text-primary)] transition hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10">
+              <button type="button" className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border-color)] bg-black/5 text-[var(--text-primary)] transition hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10">
                 <X size={18} />
               </button>
             </Dialog.Close>

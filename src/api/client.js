@@ -11,7 +11,7 @@ const apiClient = axios.create({
 })
 
 apiClient.interceptors.request.use((config) => {
-  const token = window.localStorage.getItem('lms-token')
+  const token = window.localStorage.getItem('lms-token') || window.sessionStorage.getItem('lms-token')
   if (token) config.headers.Authorization = `Bearer ${token}`
   return config
 })
@@ -23,6 +23,9 @@ apiClient.interceptors.response.use(
       window.localStorage.removeItem('lms-token')
       window.localStorage.removeItem('lms-user')
       window.localStorage.removeItem('lms-role')
+      window.sessionStorage.removeItem('lms-token')
+      window.sessionStorage.removeItem('lms-user')
+      window.sessionStorage.removeItem('lms-role')
     }
     if (!error.response) {
       error.message = 'API server is not reachable. Start PostgreSQL, then run npm.cmd run backend.'

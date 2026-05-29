@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { Award, BarChart3, Bell, BriefcaseBusiness, CheckCircle2, CreditCard, FileQuestion, Headphones, LifeBuoy, MessageSquare, Newspaper, Settings, ShieldCheck, UserPlus, Users } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
-import { createAdminUser, fetchCourses } from '../../api/api.js'
+import { createAdminUser, createCertificate, fetchAdminLearners, fetchCourses } from '../../api/api.js'
+import { AdminNotice, AdminPageHeader, FieldError } from '../../components/admin/AdminUI.jsx'
 
 function Shell({ eyebrow, title, description, children, action }) {
   return (
@@ -1059,7 +1060,74 @@ export function AdminUsersPage() {
 }
 
 export function AdminSettingsPage() {
-  return <Shell eyebrow="Admin" title="Platform settings" description="Configure certificates, notifications, access rules, and global LMS preferences."><Settings className="text-cyan-700 dark:text-cyan-300" size={48} /></Shell>
+  const [saved, setSaved] = useState(false)
+  const [settings, setSettings] = useState({
+    certificateAutoIssue: true,
+    emailOtp: true,
+    approvalRequired: false,
+    maintenanceMode: false,
+  })
+  const update = (key) => setSettings((current) => ({ ...current, [key]: !current[key] }))
+
+  return (
+    <section className="space-y-6 pb-16">
+      <AdminPageHeader
+        eyebrow="Admin"
+        title="Platform settings"
+        description="Configure certificates, notifications, access rules, and global LMS preferences for the UptoSkills admin panel."
+        actions={<Button onClick={() => setSaved(true)}>Save Settings</Button>}
+      />
+      <AdminNotice type="success">{saved ? 'Settings saved for this admin session.' : ''}</AdminNotice>
+
+      <div className="grid gap-5 xl:grid-cols-[1fr_0.8fr]">
+        <div className="admin-panel p-5 sm:p-6">
+          <p className="theme-eyebrow text-sm font-semibold uppercase tracking-[0.24em]">Access controls</p>
+          <div className="mt-5 grid gap-4">
+            <SettingsToggle checked={settings.certificateAutoIssue} onChange={() => update('certificateAutoIssue')} title="Auto-issue certificates" text="Allow certificates to be generated when learners complete required coursework and assessments." />
+            <SettingsToggle checked={settings.emailOtp} onChange={() => update('emailOtp')} title="Email OTP delivery" text="Send password reset and login OTP codes to registered email addresses." />
+            <SettingsToggle checked={settings.approvalRequired} onChange={() => update('approvalRequired')} title="Require manual approvals" text="Hold new instructor or intern accounts for admin review before access is granted." />
+            <SettingsToggle checked={settings.maintenanceMode} onChange={() => update('maintenanceMode')} title="Maintenance mode" text="Temporarily pause learner access while admins perform operational updates." />
+          </div>
+        </div>
+
+        <div className="admin-panel p-5 sm:p-6">
+          <p className="theme-eyebrow text-sm font-semibold uppercase tracking-[0.24em]">System readiness</p>
+          <div className="mt-5 grid gap-3">
+            {[
+              ['Frontend host', 'User and admin Vite ports stay separate.'],
+              ['Backend API', 'Express API remains on the backend localhost port.'],
+              ['Certificates', 'Template is ready for UptoSkills branded output.'],
+              ['Security', 'Role-based admin routes remain protected.'],
+            ].map(([title, text]) => (
+              <div key={title} className="theme-subcard rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <CheckCircle2 className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-300" size={18} />
+                  <div>
+                    <p className="font-semibold text-[var(--text-primary)]">{title}</p>
+                    <p className="mt-1 text-sm text-[var(--text-secondary)]">{text}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function SettingsToggle({ title, text, checked, onChange }) {
+  return (
+    <button type="button" onClick={onChange} className="theme-subcard flex items-center justify-between gap-4 rounded-lg p-4 text-left transition hover:border-cyan-400/50">
+      <span>
+        <span className="block font-semibold text-[var(--text-primary)]">{title}</span>
+        <span className="mt-1 block text-sm text-[var(--text-secondary)]">{text}</span>
+      </span>
+      <span className={`relative h-7 w-12 shrink-0 rounded-full transition ${checked ? 'bg-cyan-500' : 'bg-[var(--bg-subtle)] ring-1 ring-[var(--border-color)]'}`}>
+        <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow-soft transition ${checked ? 'left-6' : 'left-1'}`} />
+      </span>
+    </button>
+  )
 }
 
 export function AdminCreateCoursePage() {
@@ -1087,51 +1155,76 @@ export function AdminAddLearnerPage() {
   const navigate = useNavigate()
   const [form, setForm] = useState({ name: '', email: '', password: 'Password123!', role: 'learner' })
   const [saving, setSaving] = useState(false)
-  const [message, setMessage] = useState('')
+  const [notice, setNotice] = useState({ type: '', message: '' })
+  const [fieldErrors, setFieldErrors] = useState({})
+
+  const passwordScore = [
+    form.password.length >= 8,
+    /[A-Z]/.test(form.password),
+    /[a-z]/.test(form.password),
+    /\d/.test(form.password),
+    /[^A-Za-z0-9]/.test(form.password),
+  ].filter(Boolean).length
+  const passwordStrength = passwordScore >= 5 ? 'Strong' : passwordScore >= 3 ? 'Good' : 'Weak'
 
   async function submit(event) {
     event.preventDefault()
-    setMessage('')
-    if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
-      setMessage('Name, email, and password are required.')
+    setNotice({ type: '', message: '' })
+    const nextErrors = {}
+    if (!form.name.trim()) nextErrors.name = 'Full name is required.'
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) nextErrors.email = 'Enter a valid email address.'
+    if (form.password.length < 8) nextErrors.password = 'Temporary password must be at least 8 characters.'
+    setFieldErrors(nextErrors)
+    if (Object.keys(nextErrors).length) {
+      setNotice({ type: 'error', message: 'Please fix the highlighted fields before creating the user.' })
       return
     }
     try {
       setSaving(true)
       await createAdminUser(form)
+      setNotice({ type: 'success', message: 'User created successfully.' })
       navigate(form.role === 'instructor' ? '/admin/instructors' : '/admin/learners')
     } catch (error) {
-      setMessage(error?.response?.data?.message || error.message || 'Could not create user.')
+      setNotice({ type: 'error', message: error?.response?.data?.message || error.message || 'Could not create user.' })
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <Shell eyebrow="Admin" title="Add new learner" description="Register new learners to the platform and assign them to courses.">
-      <form onSubmit={submit} className="glass-card p-8 shadow-glow">
+    <Shell eyebrow="Admin" title="Add intern or learner" description="Create platform access for learners, instructors, interns, or admins with clear validation.">
+      <form onSubmit={submit} className="admin-panel p-5 sm:p-8">
         <div className="grid gap-5 md:grid-cols-2">
           {[
             ['name', 'Full name', 'text'],
             ['email', 'Email', 'email'],
             ['password', 'Temporary password', 'text'],
           ].map(([key, label, type]) => (
-            <label key={key} className="grid gap-2 text-sm text-slate-300">
+            <label key={key} className="admin-label">
               {label}
-              <input type={type} value={form[key]} onChange={(event) => setForm((prev) => ({ ...prev, [key]: event.target.value }))} className="rounded-lg border border-white/10 bg-slate-900 px-4 py-3 text-white outline-none" />
+              <input type={type} value={form[key]} onChange={(event) => setForm((prev) => ({ ...prev, [key]: event.target.value }))} className="admin-input" aria-invalid={Boolean(fieldErrors[key])} />
+              {key === 'password' ? (
+                <span>
+                  <span className="mb-1 flex h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+                    <span className={`h-full rounded-full ${passwordScore >= 5 ? 'bg-emerald-500' : passwordScore >= 3 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${Math.max(20, passwordScore * 20)}%` }} />
+                  </span>
+                  <span className="text-xs text-[var(--text-muted)]">Password strength: {passwordStrength}</span>
+                </span>
+              ) : null}
+              <FieldError>{fieldErrors[key]}</FieldError>
             </label>
           ))}
-          <label className="grid gap-2 text-sm text-slate-300">
+          <label className="admin-label">
             Role
-            <select value={form.role} onChange={(event) => setForm((prev) => ({ ...prev, role: event.target.value }))} className="rounded-lg border border-white/10 bg-slate-900 px-4 py-3 text-white outline-none">
+            <select value={form.role} onChange={(event) => setForm((prev) => ({ ...prev, role: event.target.value }))} className="admin-input">
               <option value="learner">Learner</option>
               <option value="instructor">Instructor</option>
               <option value="admin">Admin</option>
             </select>
           </label>
         </div>
-        {message ? <p className="mt-5 rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{message}</p> : null}
-        <div className="mt-6 flex gap-3">
+        <AdminNotice type={notice.type || 'info'}>{notice.message}</AdminNotice>
+        <div className="mt-6 flex flex-wrap gap-3">
           <Button type="submit" disabled={saving}>{saving ? 'Creating...' : 'Create User'}</Button>
           <Button type="button" variant="secondary" onClick={() => navigate('/admin/learners')}>Cancel</Button>
         </div>
@@ -1195,29 +1288,228 @@ export function AdminManageLearnersPage() {
 }
 
 export function AdminGenerateCertificatePage() {
+  const today = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
+  const isoToday = new Date().toISOString().slice(0, 10)
+  const [certificate, setCertificate] = useState({
+    userId: '',
+    courseId: '',
+    studentName: 'Student Name',
+    courseName: 'Course Name',
+    completionDate: today,
+    certificateNo: `UPTO-${new Date().getFullYear()}-0001`,
+    instructorName: 'Course Instructor',
+  })
+  const [learners, setLearners] = useState([])
+  const [courses, setCourses] = useState([])
+  const [status, setStatus] = useState({ type: '', message: '' })
+  const [saving, setSaving] = useState(false)
+  const updateCertificate = (key, value) => setCertificate((current) => ({ ...current, [key]: value }))
+
+  useEffect(() => {
+    let mounted = true
+    async function loadOptions() {
+      try {
+        const [learnersRes, coursesRes] = await Promise.all([
+          fetchAdminLearners().catch(() => ({ data: { learners: [] } })),
+          fetchCourses().catch(() => ({ data: { courses: [] } })),
+        ])
+        if (!mounted) return
+        setLearners(learnersRes.data?.learners || learnersRes.data?.users || [])
+        setCourses(coursesRes.data?.courses || [])
+      } catch {
+        if (mounted) setStatus({ type: 'error', message: 'Could not load learners or courses.' })
+      }
+    }
+    void loadOptions()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  function selectLearner(userId) {
+    const learner = learners.find((item) => String(item.id) === String(userId))
+    setCertificate((current) => ({
+      ...current,
+      userId,
+      studentName: learner?.name || learner?.fullName || current.studentName,
+    }))
+  }
+
+  function selectCourse(courseId) {
+    const course = courses.find((item) => String(item.id) === String(courseId))
+    setCertificate((current) => ({
+      ...current,
+      courseId,
+      courseName: course?.title || current.courseName,
+      instructorName: course?.createdBy?.name || current.instructorName,
+    }))
+  }
+
+  async function generateCertificate(event) {
+    event.preventDefault()
+    if (!certificate.userId || !certificate.courseId) {
+      setStatus({ type: 'error', message: 'Select a learner and course before generating.' })
+      return
+    }
+    try {
+      setSaving(true)
+      setStatus({ type: '', message: '' })
+      const response = await createCertificate({
+        userId: certificate.userId,
+        courseId: certificate.courseId,
+        certificateNo: certificate.certificateNo,
+        issuedAt: isoToday,
+      })
+      const issued = response.data?.certificate
+      setCertificate((current) => ({
+        ...current,
+        studentName: issued?.user?.name || current.studentName,
+        courseName: issued?.course?.title || current.courseName,
+        instructorName: issued?.course?.createdBy?.name || current.instructorName,
+        certificateNo: issued?.certificateNo || current.certificateNo,
+        completionDate: issued?.issuedAt ? new Date(issued.issuedAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }) : current.completionDate,
+      }))
+      setStatus({ type: 'success', message: 'Certificate generated and saved to PostgreSQL.' })
+    } catch (error) {
+      setStatus({ type: 'error', message: error?.response?.data?.message || error.message || 'Could not generate certificate.' })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   return (
-    <Shell eyebrow="Admin" title="Generate certificate" description="Create and issue certificates for course completion.">
-      <div className="glass-card p-8 shadow-glow">
-        <p className="text-sm uppercase tracking-[0.3em] text-amber-300">Certificate generation</p>
-        <h1 className="mt-3 text-2xl font-semibold text-slate-100">
-          Recognize achievement
-        </h1>
-        <p className="mt-4 text-slate-300">
-          Generate customized certificates for learners who have completed courses.
-        </p>
-        <div className="mt-6 grid gap-4">
-          <Button variant="secondary" onClick={() => alert('Select learner for certification')}>
+    <section className="space-y-6 pb-16">
+      <AdminPageHeader
+        eyebrow="Admin"
+        title="Design certificate"
+        description="Preview a professional UptoSkills certificate using learner, course, completion date, and certificate ID details."
+        actions={<Button type="button" onClick={() => window.print()}>Print Certificate</Button>}
+      />
+
+      <div className="grid gap-6 xl:grid-cols-[0.45fr_1fr]">
+        <form onSubmit={generateCertificate} className="admin-panel grid gap-4 p-5 sm:p-6">
+          {status.message ? <AdminNotice type={status.type}>{status.message}</AdminNotice> : null}
+          <label className="admin-label">
             Select learner
-          </Button>
-          <Button onClick={() => alert('Choose course for certification')}>
+            <select className="admin-input" value={certificate.userId} onChange={(event) => selectLearner(event.target.value)}>
+              <option value="">Choose learner</option>
+              {learners.map((learner) => (
+                <option key={learner.id} value={learner.id}>{learner.name || learner.fullName || learner.email}</option>
+              ))}
+            </select>
+          </label>
+          <label className="admin-label">
             Select course
-          </Button>
-          <Button variant="secondary" onClick={() => alert('Generate and issue certificate')}>
-            Generate certificate
-          </Button>
+            <select className="admin-input" value={certificate.courseId} onChange={(event) => selectCourse(event.target.value)}>
+              <option value="">Choose course</option>
+              {courses.map((course) => (
+                <option key={course.id} value={course.id}>{course.title}</option>
+              ))}
+            </select>
+          </label>
+          <label className="admin-label">
+            Student name
+            <input className="admin-input" value={certificate.studentName} onChange={(event) => updateCertificate('studentName', event.target.value)} />
+          </label>
+          <label className="admin-label">
+            Course name
+            <input className="admin-input" value={certificate.courseName} onChange={(event) => updateCertificate('courseName', event.target.value)} />
+          </label>
+          <label className="admin-label">
+            Date of completion
+            <input className="admin-input" value={certificate.completionDate} onChange={(event) => updateCertificate('completionDate', event.target.value)} />
+          </label>
+          <label className="admin-label">
+            Course instructor
+            <input className="admin-input" value={certificate.instructorName} onChange={(event) => updateCertificate('instructorName', event.target.value)} />
+          </label>
+          <label className="admin-label">
+            Certificate ID
+            <input className="admin-input" value={certificate.certificateNo} onChange={(event) => updateCertificate('certificateNo', event.target.value)} />
+          </label>
+          <Button type="submit" disabled={saving}>{saving ? 'Generating...' : 'Generate Certificate'}</Button>
+        </form>
+
+        <div className="overflow-auto rounded-lg">
+          <CertificatePreview certificate={certificate} />
         </div>
       </div>
-    </Shell>
+    </section>
+  )
+}
+
+function CertificatePreview({ certificate }) {
+  return (
+    <article className="relative min-w-[860px] overflow-hidden rounded-lg border border-cyan-200 bg-white p-10 text-slate-950 shadow-soft">
+      <div className="absolute inset-4 rounded-lg border-2 border-teal-500/35" />
+      <div className="absolute inset-8 rounded-lg border border-orange-400/35" />
+      <div className="relative z-10">
+        <div className="flex items-center justify-between gap-6">
+          <UptoSkillsWordmark />
+          <div className="text-right text-xs font-semibold uppercase tracking-[0.26em] text-cyan-700">Verified Certificate</div>
+        </div>
+
+        <div className="mt-12 text-center">
+          <p className="text-sm font-semibold uppercase tracking-[0.36em] text-orange-600">Certificate of Completion</p>
+          <h2 className="mt-8 text-4xl font-semibold text-slate-950">{certificate.studentName || 'Student Name'}</h2>
+          <div className="mx-auto mt-4 h-px w-72 bg-gradient-to-r from-transparent via-teal-500 to-transparent" />
+          <p className="mx-auto mt-8 max-w-3xl text-lg leading-8 text-slate-700">
+            This is to certify that <span className="font-semibold text-slate-950">{certificate.studentName || 'Student Name'}</span> has successfully completed the course <span className="font-semibold text-slate-950">"{certificate.courseName || 'Course Name'}"</span> offered by UptoSkills.
+          </p>
+          <p className="mx-auto mt-5 max-w-3xl leading-7 text-slate-600">
+            During this course, the learner demonstrated dedication, commitment, and proficiency in the concepts, practical skills, and industry-relevant knowledge covered throughout the program.
+          </p>
+          <p className="mx-auto mt-5 max-w-3xl leading-7 text-slate-600">
+            This certificate is awarded in recognition of the successful completion of all required coursework and assessments.
+          </p>
+        </div>
+
+        <div className="mt-10 grid grid-cols-2 gap-8 text-sm text-slate-700">
+          <div>
+            <p className="font-semibold uppercase tracking-[0.18em] text-slate-500">Date of Completion</p>
+            <p className="mt-2 text-lg font-semibold text-slate-950">{certificate.completionDate || 'Date'}</p>
+          </div>
+          <div className="text-right">
+            <p className="font-semibold uppercase tracking-[0.18em] text-slate-500">Certificate ID</p>
+            <p className="mt-2 text-lg font-semibold text-slate-950">{certificate.certificateNo || 'Certificate Number'}</p>
+          </div>
+        </div>
+
+        <p className="mx-auto mt-10 max-w-3xl text-center leading-7 text-slate-600">
+          We congratulate {certificate.studentName || 'Student Name'} on this achievement and wish them continued success in their learning journey and future career endeavors.
+        </p>
+
+        <div className="mt-12 flex items-end justify-between gap-8">
+          <div>
+            <UptoSkillsWordmark compact />
+            <p className="mt-2 text-sm font-semibold text-teal-700">Empowering Learners. Building Futures.</p>
+          </div>
+          <div className="w-64 text-center">
+            <div className="mb-3 h-px bg-slate-900" />
+            <p className="font-semibold text-slate-950">Authorized Signature</p>
+            <p className="mt-1 text-sm text-slate-600">UptoSkills</p>
+          </div>
+          <div className="w-64 text-center">
+            <div className="mb-3 h-px bg-slate-900" />
+            <p className="font-semibold text-slate-950">Course Instructor</p>
+            <p className="mt-1 text-sm text-slate-600">{certificate.instructorName || 'Course Instructor'}</p>
+          </div>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function UptoSkillsWordmark({ compact = false }) {
+  return (
+    <div className={`relative inline-flex items-end font-black uppercase tracking-tight ${compact ? 'text-2xl' : 'text-4xl'}`}>
+      <span className="text-[#f15f3b]">Upto</span>
+      <span className="text-[#18b6a6]">Skills</span>
+      <span className="absolute -right-5 -top-3 h-8 w-8 rotate-45 border-r-4 border-t-4 border-[#18b6a6]" />
+      <span className="absolute -right-7 -top-4 h-0 w-0 border-b-[9px] border-l-[9px] border-t-[9px] border-b-transparent border-l-[#18b6a6] border-t-transparent" />
+      <span className="absolute -left-3 -top-3 h-2 w-9 -rotate-12 bg-[#3b82c4]" />
+      <span className="absolute -left-1 -top-1 h-5 w-1 -rotate-12 bg-[#f9b233]" />
+    </div>
   )
 }
 

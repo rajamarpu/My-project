@@ -7,7 +7,7 @@ import AuthShell from '../../components/ui/Auth/AuthShell.jsx'
 import AuthField from '../../components/ui/Auth/AuthField.jsx'
 import PasswordStrength from '../../components/ui/Auth/PasswordStrength.jsx'
 import SocialButton from '../../components/ui/Auth/SocialButton.jsx'
-import { login } from '../../store/slices/authSlice.js'
+import { login, logout } from '../../store/slices/authSlice.js'
 import { forgotPassword, loginRequest, registerRequest, resetPassword, sendOtp, socialLoginUrl, verifyOtp } from '../../api/api.js'
 import { adminLoginHint } from '../../constants/auth.js'
 import { validationRules } from '../../constants/validation.js'
@@ -53,7 +53,7 @@ export default function AuthPage() {
   const needsPassword = ['login', 'register', 'reset'].includes(mode)
 
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(true)
+  const [rememberMe, setRememberMe] = useState(!isAdminPortal)
   const [loading, setLoading] = useState(false)
   const [attempted, setAttempted] = useState(false)
   const [toast, setToast] = useState(() => {
@@ -76,9 +76,15 @@ export default function AuthPage() {
   const socialAction = isRegister ? 'Register' : 'Login'
 
   useEffect(() => {
+    if (isAdminPortal) return
     if (!auth.user || !auth.token) return
     navigate(routeByRole[auth.role] || '/dashboard', { replace: true })
-  }, [auth.role, auth.token, auth.user, navigate])
+  }, [auth.role, auth.token, auth.user, isAdminPortal, navigate])
+
+  useEffect(() => {
+    if (!isAdminPortal) return
+    dispatch(logout())
+  }, [dispatch, isAdminPortal])
 
   const errors = useMemo(() => {
     const next = {}

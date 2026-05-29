@@ -1,8 +1,11 @@
 import { BrowserRouter, Routes, Route, useLocation, Navigate, Outlet } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
-import { Provider, useSelector } from 'react-redux'
+import { useEffect, useState } from 'react'
+import { Provider, useDispatch, useSelector } from 'react-redux'
 import store from './store/store.js'
 import ThemeProvider from './store/ThemeProvider.jsx'
+import { fetchMe } from './api/api.js'
+import { login, logout } from './store/slices/authSlice.js'
 import MainLayout from './layouts/MainLayout.jsx'
 import AdminLayout from './layouts/AdminLayout.jsx'
 import LandingPage from './pages/Landing/LandingPage.jsx'
@@ -53,6 +56,42 @@ import PersonalityShowcasePage from './pages/Courses/PersonalityShowcasePage.jsx
 
 function ProtectedRoute({ allowedRoles, redirectTo = '/login' }) {
   const auth = useSelector((state) => state.auth)
+  const dispatch = useDispatch()
+  const [status, setStatus] = useState(auth.token ? 'checking' : 'guest')
+  const rolesKey = allowedRoles?.join('|') || ''
+
+  useEffect(() => {
+    let active = true
+    async function verifySession() {
+      if (!auth.token) {
+        setStatus('guest')
+        return
+      }
+
+      try {
+        setStatus('checking')
+        const response = await fetchMe()
+        const user = response.data?.user
+        const role = user?.role
+        const allowed = rolesKey ? rolesKey.split('|') : null
+        if (!user || (allowed && !allowed.includes(role))) {
+          dispatch(logout())
+          if (active) setStatus('guest')
+          return
+        }
+        dispatch(login({ user, role, token: auth.token, rememberMe: role !== 'admin' }))
+        if (active) setStatus('verified')
+      } catch {
+        dispatch(logout())
+        if (active) setStatus('guest')
+      }
+    }
+    void verifySession()
+    return () => {
+      active = false
+    }
+  }, [rolesKey, auth.token, dispatch])
+
   if (!auth.user || !auth.token) {
     return <Navigate to={redirectTo} replace />
   }
@@ -61,12 +100,28 @@ function ProtectedRoute({ allowedRoles, redirectTo = '/login' }) {
     return <Navigate to={redirectTo} replace />
   }
 
+  if (status !== 'verified') {
+    return (
+      <div className="grid min-h-screen place-items-center bg-[var(--bg-primary)] px-6 text-center text-[var(--text-primary)]">
+        <div className="theme-card rounded-lg p-6">
+          <div className="skeleton mx-auto h-10 w-10 rounded-full" />
+          <p className="mt-4 font-semibold">Verifying secure session...</p>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">Admin pages open only after a valid admin login.</p>
+        </div>
+      </div>
+    )
+  }
+
   return <Outlet />
 }
 
 function AnimatedRoutes() {
   const location = useLocation()
   const isAdminHost = import.meta.env.MODE === 'admin'
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+  }, [location.pathname])
 
   if (isAdminHost) {
     return (

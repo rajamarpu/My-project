@@ -5,7 +5,8 @@ import { motion } from 'framer-motion'
 import { fadeInUp } from '../../utils/animationVariants.js'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { fetchCourses, fetchUserAnalytics } from '../../api/api'
+import { Award, BookOpenCheck, Clock3, Compass, Flame, GraduationCap, LineChart as LineChartIcon, PlayCircle, ShieldCheck, Sparkles } from 'lucide-react'
+import { fetchLearnerDashboard, fetchUserAnalytics } from '../../api/api'
 
 const learnerPermissions = [
   'Browse upskilling and technical courses',
@@ -55,16 +56,22 @@ export default function StudentDashboard() {
   const [analytics, setAnalytics] = useState(normalizeAnalytics(emptyAnalytics, 0))
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
-  const lastOnline = window.localStorage.getItem('lms-last-online') || 'Online now'
 
   async function loadDashboardData() {
     try {
       setLoading(true)
       const [analyticsRes, coursesRes] = await Promise.all([
         fetchUserAnalytics().catch(() => ({ data: { analytics: {} } })),
-        fetchCourses().catch(() => ({ data: [] })),
+        fetchLearnerDashboard().catch(() => ({ data: { dashboard: { enrollments: [] } } })),
       ])
-      const courseList = coursesRes.data?.courses || coursesRes.data || []
+      const enrollments = coursesRes.data?.dashboard?.enrollments || []
+      const courseList = enrollments.map((enrollment) => ({
+        ...enrollment.course,
+        enrollmentId: enrollment.id,
+        enrollment,
+        isEnrolled: true,
+        progress: enrollment.completionPct || 0,
+      })).filter((course) => course?.id)
       setCourses(courseList)
       setAnalytics(normalizeAnalytics(analyticsRes.data, courseList.length))
     } catch (error) {
@@ -81,70 +88,72 @@ export default function StudentDashboard() {
   }, [])
 
   return (
-    <section className="space-y-10 pb-16">
-      <div className="glass-card p-8 shadow-glow">
-        <p className="theme-eyebrow text-sm uppercase tracking-[0.3em]">Learner dashboard</p>
-        <h1 className="mt-3 text-4xl font-semibold text-[var(--text-primary)]">Welcome back, {auth.user?.name || auth.user?.fullName || 'learner'}.</h1>
-        <p className="mt-4 text-[var(--text-secondary)]">
-           Continue your upskilling journey, unlock achievements, and track daily goals with an AI-powered roadmap.
-        </p>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[1.3fr_0.7fr]">
-        <div className="glass-card p-8">
-          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="theme-subcard rounded-3xl p-5 shadow-soft">
-              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Enrolled</p>
-              <p className="mt-3 text-3xl font-semibold">{analytics.totalCourses}</p>
-            </div>
-            <div className="theme-subcard rounded-3xl p-5 shadow-soft">
-              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Avg Progress</p>
-              <p className="mt-3 text-3xl font-semibold">{analytics.avgProgress}%</p>
-            </div>
-            <div className="theme-subcard rounded-3xl p-5 shadow-soft">
-              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Learning Streak</p>
-              <p className="mt-3 text-3xl font-semibold">{analytics.streak} days</p>
-            </div>
-            <div className="theme-subcard rounded-3xl p-5 shadow-soft">
-              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Last Online</p>
-              <p className="mt-3 text-lg font-semibold">{lastOnline}</p>
-            </div>
-            <div className="theme-subcard rounded-3xl p-5 shadow-soft sm:col-span-2 xl:col-span-4">
-              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Hours Studied</p>
-              <p className="mt-3 text-3xl font-semibold">{analytics.hoursStudied}</p>
-            </div>
+    <section className="space-y-8 pb-16">
+      <div className="upto-premium-panel overflow-hidden rounded-xl p-5 sm:p-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="theme-eyebrow text-xs font-semibold uppercase tracking-[0.3em] sm:text-sm">Learner dashboard</p>
+            <h1 className="mt-3 text-3xl font-semibold text-[var(--text-primary)] sm:text-4xl">Welcome back, {auth.user?.name || auth.user?.fullName || 'learner'}.</h1>
+            <p className="mt-4 max-w-3xl text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
+              Continue your upskilling journey, unlock achievements, and track daily goals with an AI-powered roadmap.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={() => navigate('/explore')}>Explore Courses</Button>
+            <Button variant="secondary" onClick={() => navigate('/certificates')}>Certificates</Button>
           </div>
         </div>
+      </div>
 
-        <motion.div variants={fadeInUp} initial="hidden" animate="visible" className="glass-card p-8">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <LearnerMetric icon={BookOpenCheck} label="Enrolled" value={analytics.totalCourses} detail="active learning paths" loading={loading} />
+        <LearnerMetric icon={LineChartIcon} label="Avg Progress" value={`${analytics.avgProgress}%`} detail="across tracked courses" loading={loading} />
+        <LearnerMetric icon={Flame} label="Streak" value={`${analytics.streak} days`} detail="learning consistency" loading={loading} />
+        <LearnerMetric icon={Clock3} label="Hours" value={analytics.hoursStudied} detail="studied so far" loading={loading} />
+        <LearnerMetric icon={Award} label="Certificates" value={analytics.certificates} detail="earned credentials" loading={loading} />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <motion.div variants={fadeInUp} initial="hidden" animate="visible" className="glass-card p-5 shadow-soft sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Learner permissions</p>
-              <h2 className="mt-3 text-2xl font-semibold text-[var(--text-primary)]">What you can do</h2>
+              <h2 className="mt-3 text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">What you can do</h2>
             </div>
             <Button variant="secondary" onClick={() => navigate('/user')}>
               View profile
             </Button>
           </div>
-          <div className="mt-8 grid gap-3 text-[var(--text-secondary)]">
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
             {learnerPermissions.map((permission) => (
               <div
                 key={permission}
-                className="theme-subcard rounded-3xl p-4 text-sm"
+                className="theme-subcard flex items-start gap-3 rounded-lg p-4 text-sm text-[var(--text-secondary)]"
               >
-                {permission}
+                <ShieldCheck className="mt-0.5 shrink-0 text-cyan-600 dark:text-cyan-300" size={17} />
+                <span>{permission}</span>
               </div>
             ))}
           </div>
         </motion.div>
+
+        <div className="glass-card p-5 shadow-soft sm:p-6">
+          <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Quick actions</p>
+          <h2 className="mt-3 text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">Next best steps</h2>
+          <div className="mt-6 grid gap-3">
+            <LearnerAction icon={Compass} title="Find a course" text="Browse current catalog and pick your next skill." onClick={() => navigate('/explore')} />
+            <LearnerAction icon={PlayCircle} title="Resume learning" text="Open your most recent course player." onClick={() => courses[0] ? navigate(`/player/${courses[0].id}`) : navigate('/explore')} />
+            <LearnerAction icon={Sparkles} title="Join community" text="Ask questions and learn with peers." onClick={() => navigate('/community')} />
+          </div>
+        </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="glass-card p-8">
+        <div className="glass-card p-5 sm:p-6">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Learning progress</p>
-              <h2 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">Time spent this week</h2>
+              <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">Time spent this week</h2>
             </div>
             <Button variant="secondary" onClick={() => navigate('/reports')}>View report</Button>
           </div>
@@ -177,8 +186,8 @@ export default function StudentDashboard() {
           </div>
         </div>
 
-        <div className="glass-card p-8">
-          <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Skill growth</h2>
+        <div className="glass-card p-5 sm:p-6">
+          <h2 className="text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">Skill growth</h2>
           <p className="mt-3 text-[var(--text-muted)]">
             Radar view of your current competency across premium learning pillars.
           </p>
@@ -204,25 +213,30 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      <div className="glass-card p-8">
+      <div className="glass-card p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Continue learning</p>
-            <h2 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">Your active courses</h2>
+            <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">Your active courses</h2>
           </div>
           <Button variant="secondary" onClick={() => navigate('/explore')}>Explore New Courses</Button>
         </div>
 
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
           {loading ? (
-            <div className="col-span-2 py-8 text-center text-[var(--text-muted)]">Loading courses...</div>
+            <div className="col-span-2 rounded-lg border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] py-10 text-center text-[var(--text-muted)]">Loading courses...</div>
           ) : courses.length === 0 ? (
-            <div className="col-span-2 py-8 text-center text-[var(--text-muted)]">No courses enrolled. Explore to add some!</div>
+            <div className="col-span-2 rounded-lg border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] p-8 text-center">
+              <GraduationCap className="mx-auto text-[var(--text-muted)]" size={32} />
+              <p className="mt-3 font-semibold text-[var(--text-primary)]">No active courses yet</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">Explore courses to begin your learning path.</p>
+              <Button className="mt-5" onClick={() => navigate('/explore')}>Explore Courses</Button>
+            </div>
           ) : (
             courses.slice(0, 2).map((course) => (
               <div
                 key={course.id}
-                className="theme-subcard rounded-3xl p-6 shadow-soft"
+                className="theme-subcard theme-subcard-hover rounded-lg p-5 shadow-soft"
               >
                 <div className="flex items-center justify-between gap-4">
                   <div>
@@ -251,6 +265,35 @@ export default function StudentDashboard() {
         </div>
       </div>
     </section>
+  )
+}
+
+function LearnerMetric({ icon: Icon, label, value, detail, loading }) {
+  return (
+    <div className="theme-card theme-subcard-hover rounded-lg p-5">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">{label}</p>
+        <span className="theme-icon-badge grid h-10 w-10 place-items-center rounded-lg">
+          <Icon size={18} />
+        </span>
+      </div>
+      <p className="mt-4 text-2xl font-semibold text-[var(--text-primary)]">{loading ? <span className="skeleton inline-block h-8 w-16" /> : value}</p>
+      <p className="mt-1 text-sm text-[var(--text-muted)]">{detail}</p>
+    </div>
+  )
+}
+
+function LearnerAction({ icon: Icon, title, text, onClick }) {
+  return (
+    <button type="button" onClick={onClick} className="theme-subcard theme-subcard-hover flex items-center gap-3 rounded-lg p-4 text-left">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-cyan-400/15 text-cyan-700 dark:text-cyan-200">
+        <Icon size={18} />
+      </span>
+      <span>
+        <span className="block font-semibold text-[var(--text-primary)]">{title}</span>
+        <span className="mt-0.5 block text-sm text-[var(--text-muted)]">{text}</span>
+      </span>
+    </button>
   )
 }
 

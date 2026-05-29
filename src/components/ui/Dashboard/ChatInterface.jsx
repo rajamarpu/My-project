@@ -50,10 +50,10 @@ export default function ChatInterface({ courseId, roomId }) {
                 className="w-8 h-8 rounded-full"
               />
               <div>
-                <p className="text-sm font-semibold text-slate-200">
+                <p className="text-sm font-semibold text-[var(--text-primary)]">
                   {msg.sender?.full_name || 'Anonymous'}
                 </p>
-                <p className="text-sm text-slate-400">{msg.message}</p>
+                <p className="text-sm text-[var(--text-secondary)]">{msg.message}</p>
               </div>
             </motion.div>
           ))}
@@ -63,30 +63,30 @@ export default function ChatInterface({ courseId, roomId }) {
 
       {isTyping && (
         <div className="px-4 pb-2">
-          <p className="text-xs text-slate-500">Someone is typing...</p>
+          <p className="text-xs text-[var(--text-muted)]">Someone is typing...</p>
         </div>
       )}
 
-      <form onSubmit={handleSendMessage} className="p-4 border-t border-white/10">
+      <form onSubmit={handleSendMessage} className="border-t border-[var(--border-color)] p-4">
         <div className="flex gap-2">
           <textarea
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a message..."
-            className="flex-1 resize-none rounded-lg bg-slate-800/50 p-3 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+            className="flex-1 resize-none rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] p-3 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
             rows={1}
           />
           <button
             type="submit"
             disabled={!message.trim() || !isConnected}
-            className="rounded-lg bg-gradient-to-r from-orange-500 to-teal-500 px-4 py-2 text-sm font-semibold text-slate-900 disabled:opacity-50"
+            className="rounded-lg bg-gradient-to-r from-orange-500 to-teal-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
           >
             Send
           </button>
         </div>
         {!isConnected && (
-          <p className="mt-2 text-xs text-red-400">Connecting...</p>
+          <p className="mt-2 text-xs text-red-600 dark:text-red-300">Connecting...</p>
         )}
       </form>
     </div>

@@ -41,7 +41,7 @@ export default function PersonalityShowcasePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <div className="text-slate-300">Loading personalities...</div>
+        <div className="text-[var(--text-secondary)]">Loading personalities...</div>
       </div>
     )
   }
@@ -53,8 +53,8 @@ export default function PersonalityShowcasePage() {
       className="space-y-10 pb-16"
     >
       <div className="space-y-4">
-        <h1 className="text-4xl font-bold text-white">Indian Celebrity AI Teachers</h1>
-        <p className="text-slate-300 max-w-2xl">
+        <h1 className="text-4xl font-bold text-[var(--text-primary)]">Indian Celebrity AI Teachers</h1>
+        <p className="max-w-2xl text-[var(--text-secondary)]">
           Meet AI-generated virtual teachers inspired by Indian actors and cricketers. Each brings a unique teaching style, voice tone, and personality flow that you can switch anytime during your course.
         </p>
       </div>
@@ -67,7 +67,7 @@ export default function PersonalityShowcasePage() {
             className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
               activeCategory === category
                 ? 'bg-cyan-500 text-slate-950'
-                : 'bg-white/5 text-slate-300 hover:bg-white/10'
+                : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)]'
             }`}
           >
             {category}
@@ -104,9 +104,9 @@ export default function PersonalityShowcasePage() {
               className="w-24 h-24 rounded-full object-cover"
             />
             <div>
-              <h3 className="text-2xl font-semibold text-white">{selectedPersonality.name}</h3>
+              <h3 className="text-2xl font-semibold text-[var(--text-primary)]">{selectedPersonality.name}</h3>
               <p className="text-cyan-300">{selectedPersonality.category}</p>
-              <p className="mt-3 text-slate-300">{selectedPersonality.bio || selectedPersonality.personalityBio}</p>
+              <p className="mt-3 text-[var(--text-secondary)]">{selectedPersonality.bio || selectedPersonality.personalityBio}</p>
               <div className="mt-4 flex flex-wrap gap-2">
                 {selectedPersonality.traits?.map((trait) => (
                   <span

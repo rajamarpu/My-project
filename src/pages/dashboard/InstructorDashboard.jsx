@@ -52,11 +52,11 @@ export default function InstructorDashboard() {
   return (
     <section className="space-y-10 pb-16">
       <div className="glass-card p-8 shadow-glow">
-        <p className="text-sm uppercase tracking-[0.3em] text-teal-300">Instructor</p>
-        <h1 className="mt-3 text-4xl font-semibold text-slate-100">
+        <p className="theme-eyebrow text-sm uppercase tracking-[0.3em]">Instructor</p>
+        <h1 className="mt-3 text-4xl font-semibold text-[var(--text-primary)]">
           Your creator console
         </h1>
-         <p className="mt-4 text-slate-300">
+         <p className="mt-4 text-[var(--text-secondary)]">
            Manage upskilling-focused lessons, review engagement analytics, and publish high-production courses.
          </p>
 
@@ -64,9 +64,9 @@ export default function InstructorDashboard() {
           {metrics.map((metric) => (
             <div
               key={metric.name}
-              className="rounded-3xl bg-slate-900/80 p-6 text-slate-100 shadow-soft"
+              className="theme-subcard rounded-3xl p-6 shadow-soft"
             >
-              <p className="text-sm uppercase tracking-[0.2em] text-slate-400">
+              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">
                 {metric.name}
               </p>
               <p className="mt-4 text-3xl font-semibold">{metric.value}</p>
@@ -79,29 +79,29 @@ export default function InstructorDashboard() {
         <div className="glass-card p-8 shadow-glow">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <p className="text-sm uppercase tracking-[0.24em] text-teal-300">
+              <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">
                 Instructor permissions
               </p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-100">
+              <h2 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">
                 Your allowed actions
               </h2>
             </div>
             <Button variant="secondary" onClick={() => navigate('/instructor/courses')}>Manage courses</Button>
           </div>
 
-          <div className="mt-8 grid gap-3 text-slate-300">
+          <div className="mt-8 grid gap-3 text-[var(--text-secondary)]">
             {instructorPermissions.map((item) => (
               <div
                 key={item}
-                className="rounded-3xl bg-slate-900/80 p-4 text-sm border border-white/5"
+                className="theme-subcard rounded-3xl p-4 text-sm"
               >
                 {item}
               </div>
             ))}
           </div>
 
-          <div className="mt-8 rounded-3xl bg-slate-900/80 p-5 text-slate-300">
-            <p className="text-sm uppercase tracking-[0.22em] text-slate-400">
+          <div className="theme-subcard mt-8 rounded-3xl p-5 text-[var(--text-secondary)]">
+            <p className="text-sm uppercase tracking-[0.22em] text-[var(--text-muted)]">
               Admin-only features
             </p>
             <ul className="mt-4 list-disc space-y-2 pl-5 text-sm">
@@ -113,11 +113,11 @@ export default function InstructorDashboard() {
         </div>
 
         <div className="glass-card p-8 shadow-soft">
-          <p className="text-sm uppercase tracking-[0.3em] text-teal-300">Build</p>
-          <h2 className="mt-2 text-2xl font-semibold text-slate-100">
+          <p className="theme-eyebrow text-sm uppercase tracking-[0.3em]">Build</p>
+          <h2 className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">
             Create your next upskilling course
           </h2>
-          <p className="mt-4 text-slate-400">
+          <p className="mt-4 text-[var(--text-secondary)]">
             Publish with AI-guided curricula, course thumbnails, and lesson ordering tools.
           </p>
 

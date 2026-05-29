@@ -34,13 +34,13 @@ export default function TeacherSwitcher({ courseTeacherId = 'rohit' }) {
 
   return (
     <div className="relative">
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.06] p-4">
+      <div className="theme-subcard flex flex-wrap items-center justify-between gap-4 rounded-2xl p-4">
         <div className="flex min-w-0 items-center gap-3">
           <img src={activeTeacher.avatar} alt={activeTeacher.name} className="h-14 w-14 rounded-xl object-cover ring-2 ring-cyan-300/40" />
           <div className="min-w-0">
-            <p className="text-xs uppercase tracking-[0.22em] text-cyan-200">Active AI teacher</p>
-            <h3 className="truncate text-lg font-semibold text-white">{activeTeacher.name}</h3>
-            <p className="truncate text-sm text-slate-300">{activeTeacher.voiceStyle}</p>
+            <p className="theme-eyebrow text-xs uppercase tracking-[0.22em]">Active AI teacher</p>
+            <h3 className="truncate text-lg font-semibold text-[var(--text-primary)]">{activeTeacher.name}</h3>
+            <p className="truncate text-sm text-[var(--text-secondary)]">{activeTeacher.voiceStyle}</p>
           </div>
         </div>
         <Button type="button" onClick={() => setOpen(true)} className="shrink-0">

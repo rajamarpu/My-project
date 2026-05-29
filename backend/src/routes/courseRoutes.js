@@ -1,6 +1,8 @@
+import crypto from 'crypto'
 import { Router } from 'express'
 import { prisma } from '../config/prisma.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
+import { verifyToken } from '../utils/tokens.js'
 
 const router = Router()
 
@@ -27,18 +29,67 @@ async function pickRandomInstructorId() {
   return instructors[Math.floor(Math.random() * instructors.length)].id
 }
 
-router.get('/', async (_req, res, next) => {
+async function findCategoryForCourse(category) {
+  const cleanCategory = String(category || '').trim()
+  if (!cleanCategory) return null
+  const cleanSlug = slugify(cleanCategory)
+  return prisma.category.findFirst({
+    where: {
+      OR: [
+        { id: cleanCategory },
+        { name: { equals: cleanCategory, mode: 'insensitive' } },
+        { slug: { equals: cleanSlug, mode: 'insensitive' } },
+      ],
+    },
+  })
+}
+
+async function getOptionalUserId(req) {
+  const header = req.headers.authorization || ''
+  const token = header.startsWith('Bearer ') ? header.slice(7) : ''
+  if (!token) return null
   try {
+    const payload = verifyToken(token)
+    const session = await prisma.session.findUnique({
+      where: { tokenHash: crypto.createHash('sha256').update(token).digest('hex') },
+      select: { revokedAt: true, expiresAt: true },
+    })
+    if (!session || session.revokedAt || session.expiresAt < new Date()) return null
+    return payload.sub
+  } catch {
+    return null
+  }
+}
+
+function attachEnrollmentState(course, userId) {
+  const enrollmentCount = course._count?.enrollments ?? course.enrollments?.length ?? 0
+  const isEnrolled = userId ? Boolean(course.enrollments?.some((item) => item.userId === userId)) : false
+  const { enrollments: _enrollments, ...rest } = course
+  return {
+    ...rest,
+    isEnrolled,
+    enrollmentCount,
+    _count: {
+      ...(course._count || {}),
+      enrollments: enrollmentCount,
+    },
+  }
+}
+
+router.get('/', async (req, res, next) => {
+  try {
+    const userId = await getOptionalUserId(req)
     const courses = await prisma.course.findMany({
       where: { isPublished: true },
       include: {
         lessons: { orderBy: { sortOrder: 'asc' } },
-        enrollments: true,
+        enrollments: { select: { userId: true } },
+        _count: { select: { enrollments: true, lessons: true } },
         createdBy: { select: instructorSelect },
       },
       orderBy: { createdAt: 'desc' },
     })
-    res.json({ success: true, courses })
+    res.json({ success: true, courses: courses.map((course) => attachEnrollmentState(course, userId)) })
   } catch (error) {
     next(error)
   }
@@ -46,15 +97,18 @@ router.get('/', async (_req, res, next) => {
 
 router.get('/:id', async (req, res, next) => {
   try {
+    const userId = await getOptionalUserId(req)
     const course = await prisma.course.findFirst({
       where: { OR: [{ id: req.params.id }, { slug: req.params.id }] },
       include: {
         lessons: { orderBy: { sortOrder: 'asc' } },
+        enrollments: { select: { userId: true } },
+        _count: { select: { enrollments: true, lessons: true } },
         createdBy: { select: instructorSelect },
       },
     })
     if (!course) return res.status(404).json({ success: false, message: 'Course not found.' })
-    res.json({ success: true, course })
+    res.json({ success: true, course: attachEnrollmentState(course, userId) })
   } catch (error) {
     next(error)
   }
@@ -78,6 +132,7 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res, next) => {
     }
 
     const randomInstructorId = await pickRandomInstructorId()
+    const categoryRecord = await findCategoryForCourse(category)
 
     const course = await prisma.course.create({
       data: {
@@ -85,6 +140,7 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res, next) => {
         slug: `${slugify(title)}-${Date.now()}`,
         description,
         category,
+        categoryId: categoryRecord?.id || null,
         level,
         priceCents: Number(priceCents || 0),
         thumbnailUrl,
@@ -137,21 +193,64 @@ router.post('/:id/enroll', requireAuth, requireRole('learner', 'admin'), async (
       currentInstructorId = instructor?.id || course.createdById || null
     }
 
+    const existingEnrollment = await prisma.enrollment.findUnique({
+      where: { userId_courseId: { userId: req.user.id, courseId: course.id } },
+      select: { id: true },
+    })
+
     const enrollment = await prisma.enrollment.upsert({
       where: { userId_courseId: { userId: req.user.id, courseId: course.id } },
       update: { personalityId: personalityId || undefined, currentInstructorId: currentInstructorId || undefined },
       create: { userId: req.user.id, courseId: course.id, personalityId, currentInstructorId },
       include: { currentInstructor: { select: instructorSelect } },
     })
+    if (!existingEnrollment) {
+      await prisma.analyticsEvent.create({
+        data: {
+          userId: req.user.id,
+          courseId: course.id,
+          personalityId,
+          eventType: 'course_enrolled',
+        },
+      })
+    }
+    const enrollmentCount = await prisma.enrollment.count({ where: { courseId: course.id } })
+    res.status(201).json({ success: true, enrollment, isEnrolled: true, enrollmentCount, wasAlreadyEnrolled: Boolean(existingEnrollment) })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.delete('/:id/enroll', requireAuth, requireRole('learner', 'admin'), async (req, res, next) => {
+  try {
+    const course = await prisma.course.findFirst({
+      where: { OR: [{ id: req.params.id }, { slug: req.params.id }] },
+      select: { id: true },
+    })
+    if (!course) return res.status(404).json({ success: false, message: 'Course not found.' })
+
+    const existing = await prisma.enrollment.findUnique({
+      where: { userId_courseId: { userId: req.user.id, courseId: course.id } },
+      select: { id: true },
+    })
+    if (!existing) {
+      const enrollmentCount = await prisma.enrollment.count({ where: { courseId: course.id } })
+      return res.json({ success: true, isEnrolled: false, enrollmentCount, message: 'Learner is already unenrolled.' })
+    }
+
+    await prisma.$transaction([
+      prisma.progress.deleteMany({ where: { userId: req.user.id, courseId: course.id } }),
+      prisma.enrollment.delete({ where: { id: existing.id } }),
+    ])
     await prisma.analyticsEvent.create({
       data: {
         userId: req.user.id,
         courseId: course.id,
-        personalityId,
-        eventType: 'course_enrolled',
+        eventType: 'course_unenrolled',
       },
     })
-    res.status(201).json({ success: true, enrollment })
+    const enrollmentCount = await prisma.enrollment.count({ where: { courseId: course.id } })
+    res.json({ success: true, isEnrolled: false, enrollmentCount, message: 'Unenrolled from course.' })
   } catch (error) {
     next(error)
   }

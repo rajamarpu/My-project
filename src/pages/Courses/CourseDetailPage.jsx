@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { Star, Heart, Users, Clock, BarChart3, FileText } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import Button from '../../components/common/Button/Button.jsx'
-import { enrollCourseRequest, fetchCourseById, fetchCourseInstructors } from '../../api/api.js'
-import { toggleWishlist, enrollCourse } from '../../store/slices/authSlice.js'
+import { enrollCourseRequest, fetchCourseById, fetchCourseInstructors, unenrollCourseRequest } from '../../api/api.js'
+import { toggleWishlist, enrollCourse, unenrollCourse } from '../../store/slices/authSlice.js'
 import { resolveCourseThumbnail } from '../../utils/courseThumbnail.js'
 
 export default function CourseDetailPage() {
@@ -19,6 +19,7 @@ export default function CourseDetailPage() {
   const [switchPanelOpen, setSwitchPanelOpen] = useState(false)
   const [notice, setNotice] = useState('')
   const [loading, setLoading] = useState(true)
+  const [enrollmentBusy, setEnrollmentBusy] = useState(false)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('overview')
 
@@ -48,17 +49,51 @@ export default function CourseDetailPage() {
   const lessons = course?.lessons || []
   const durationText = useMemo(() => `${lessons.length} lessons`, [lessons.length])
 
-  const handleEnroll = async () => {
+  const enrollmentCount = course?.enrollmentCount ?? course?._count?.enrollments ?? course?.enrollments?.length ?? 0
+  const isEnrolled = Boolean(course?.isEnrolled)
+
+  const handleEnroll = async ({ openPlayer = false } = {}) => {
     if (!auth.user) {
       navigate('/login')
       return
     }
     try {
+      setEnrollmentBusy(true)
+      setError('')
       const response = await enrollCourseRequest(course.id, { instructorId: selectedInstructorId ? Number(selectedInstructorId) : undefined })
       dispatch(enrollCourse(response.data.enrollment.courseId))
-      navigate(`/player/${course.id}`)
+      setCourse((current) => {
+        const currentCount = Number(current?.enrollmentCount ?? current?._count?.enrollments ?? 0)
+        const nextCount = response.data?.enrollmentCount ?? (current?.isEnrolled ? currentCount : currentCount + 1)
+        return { ...current, isEnrolled: true, enrollmentCount: nextCount, _count: { ...(current?._count || {}), enrollments: nextCount } }
+      })
+      setNotice('You are enrolled in this course.')
+      if (openPlayer) navigate(`/player/${course.id}`)
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Enrollment failed.')
+    } finally {
+      setEnrollmentBusy(false)
+    }
+  }
+
+  const handleUnenroll = async () => {
+    if (!auth.user) {
+      navigate('/login')
+      return
+    }
+    try {
+      setEnrollmentBusy(true)
+      setError('')
+      setNotice('')
+      const response = await unenrollCourseRequest(course.id)
+      dispatch(unenrollCourse(course.id))
+      const nextCount = response.data?.enrollmentCount ?? Math.max(0, Number(enrollmentCount) - 1)
+      setCourse((current) => ({ ...current, isEnrolled: false, enrollmentCount: nextCount, _count: { ...(current?._count || {}), enrollments: nextCount } }))
+      setNotice('You are unenrolled from this course.')
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Unenrollment failed.')
+    } finally {
+      setEnrollmentBusy(false)
     }
   }
 
@@ -111,7 +146,7 @@ export default function CourseDetailPage() {
                 <BarChart3 size={16} className="text-teal-300 light:text-teal-700" /> {course.level}
               </span>
               <span className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-sm text-slate-100 light:bg-black/5 light:text-slate-900">
-                <Users size={16} className="text-green-300 light:text-emerald-700" /> {course.enrollments?.length || 0} learners
+                <Users size={16} className="text-green-300 light:text-emerald-700" /> {enrollmentCount} learners
               </span>
             </div>
           </div>
@@ -130,7 +165,18 @@ export default function CourseDetailPage() {
               </div>
             </div>
             <div className="grid gap-3">
-              <Button onClick={handleEnroll} size="lg">{auth.user ? 'Start Learning' : 'Enroll Now'}</Button>
+              {isEnrolled ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Button onClick={() => navigate(`/player/${course.id}`)} size="lg" disabled={enrollmentBusy}>Start Learning</Button>
+                  <Button variant="secondary" onClick={handleUnenroll} size="lg" disabled={enrollmentBusy}>
+                    {enrollmentBusy ? 'Updating...' : 'Unenroll'}
+                  </Button>
+                </div>
+              ) : (
+                <Button onClick={() => handleEnroll()} size="lg" disabled={enrollmentBusy}>
+                  {enrollmentBusy ? 'Enrolling...' : auth.user ? 'Enroll Course' : 'Login to Enroll'}
+                </Button>
+              )}
               <div className="flex gap-2">
                 <Button variant="secondary" onClick={() => dispatch(toggleWishlist(course.id))} className="flex-1">
                   <Heart size={16} className="mr-2" /> {isSaved ? 'Saved' : 'Add Wishlist'}
@@ -292,8 +338,8 @@ export default function CourseDetailPage() {
                       Selected: <span className="font-semibold text-slate-950 dark:text-slate-100">{selectedInstructor.name}</span>
                     </p>
                   ) : null}
-                  <Button onClick={handleEnroll} disabled={!selectedInstructorId} className="w-full">
-                    Start with {selectedInstructor?.name || 'Selected Instructor'}
+                  <Button onClick={() => handleEnroll({ openPlayer: true })} disabled={!selectedInstructorId || enrollmentBusy} className="w-full">
+                    {isEnrolled ? `Continue with ${selectedInstructor?.name || 'Selected Instructor'}` : `Enroll with ${selectedInstructor?.name || 'Selected Instructor'}`}
                   </Button>
                 </div>
               </div>

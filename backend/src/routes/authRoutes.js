@@ -4,6 +4,7 @@ import crypto from 'crypto'
 import { prisma } from '../config/prisma.js'
 import { normalizeRole, publicUser, roleToDatabase, signToken } from '../utils/tokens.js'
 import { requireAuth } from '../middleware/auth.js'
+import { sendOtpEmail } from '../utils/mailer.js'
 
 const router = Router()
 
@@ -110,6 +111,17 @@ function consumeOtp(email, otp, purpose = 'login') {
   if (!record || record.expiresAt < Date.now() || record.otp !== String(otp || '').trim()) return false
   otpStore.delete(key)
   return true
+}
+
+async function revokeUserSessions(userId, exceptToken = '') {
+  const where = { userId, revokedAt: null }
+  if (exceptToken) {
+    where.tokenHash = { not: crypto.createHash('sha256').update(exceptToken).digest('hex') }
+  }
+  await prisma.session.updateMany({
+    where,
+    data: { revokedAt: new Date() },
+  })
 }
 
 function providerEmail(provider, value) {
@@ -396,8 +408,8 @@ router.post('/otp/send', async (req, res, next) => {
     const user = await prisma.user.findUnique({ where: { email: cleanEmail } })
     if (!user) return res.status(404).json({ success: false, message: 'No account found for this email.' })
     const otp = createOtp(cleanEmail, 'login')
-    console.log(`Development OTP for ${cleanEmail}: ${otp}`)
-    res.json({ success: true, message: 'OTP sent. In development, check the backend console.' })
+    await sendOtpEmail({ to: cleanEmail, otp, purpose: 'login' })
+    res.json({ success: true, message: 'OTP sent to your registered email.' })
   } catch (error) {
     next(error)
   }
@@ -432,8 +444,8 @@ router.post('/password/forgot', async (req, res, next) => {
     const user = await prisma.user.findUnique({ where: { email: cleanEmail } })
     if (!user) return res.status(404).json({ success: false, message: 'No account found for this email.' })
     const otp = createOtp(cleanEmail, 'reset')
-    console.log(`Development password reset OTP for ${cleanEmail}: ${otp}`)
-    res.json({ success: true, message: 'Reset code sent. In development, check the backend console.' })
+    await sendOtpEmail({ to: cleanEmail, otp, purpose: 'password reset' })
+    res.json({ success: true, message: 'Reset code sent to your registered email.' })
   } catch (error) {
     next(error)
   }
@@ -453,8 +465,55 @@ router.post('/password/reset', async (req, res, next) => {
       where: { email: cleanEmail },
       data: { passwordHash: await bcrypt.hash(newPassword, 12) },
     })
+    await revokeUserSessions(user.id)
     await recordAnalytics({ userId: user.id, eventType: 'password_reset' })
     res.json({ success: true, message: 'Password updated successfully.' })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.post('/password/change', requireAuth, async (req, res, next) => {
+  try {
+    const currentPassword = String(req.body.currentPassword || '')
+    const newPassword = String(req.body.newPassword || req.body.password || '')
+    const confirmPassword = String(req.body.confirmPassword || '')
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Current password and new password are required.' })
+    }
+    if (newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'Password must be at least 8 characters.' })
+    }
+    if (confirmPassword && newPassword !== confirmPassword) {
+      return res.status(400).json({ success: false, message: 'Passwords do not match.' })
+    }
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ success: false, message: 'New password must be different from current password.' })
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: req.user.id } })
+    const validCurrentPassword = user ? await bcrypt.compare(currentPassword, user.passwordHash) : false
+    if (!user || !validCurrentPassword) {
+      return res.status(401).json({ success: false, message: 'Current password is incorrect.' })
+    }
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: await bcrypt.hash(newPassword, 12) },
+    })
+    const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '')
+    await revokeUserSessions(user.id, token)
+    await prisma.activityLog.create({
+      data: {
+        userId: user.id,
+        action: 'password_changed',
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      },
+    })
+    await recordAnalytics({ userId: user.id, eventType: 'password_changed' })
+    res.json({ success: true, message: 'Password changed successfully.' })
   } catch (error) {
     next(error)
   }

@@ -19,11 +19,11 @@ export default class ErrorBoundary extends Component {
     if (!this.state.hasError) return this.props.children
 
     return (
-      <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-white">
-        <section className="max-w-md rounded-lg border border-white/10 bg-white/5 p-6 shadow-2xl">
-          <p className="text-sm font-semibold uppercase tracking-wide text-cyan-200">Something went wrong</p>
+      <main className="flex min-h-screen items-center justify-center bg-[var(--bg-primary)] px-6 text-[var(--text-primary)]">
+        <section className="theme-card max-w-md rounded-lg p-6">
+          <p className="theme-eyebrow text-sm font-semibold uppercase tracking-wide">Something went wrong</p>
           <h1 className="mt-3 text-2xl font-bold">We could not render this screen.</h1>
-          <p className="mt-3 text-sm leading-6 text-slate-300">
+          <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
             Refresh the page to retry. If the problem keeps happening, check the browser console and backend logs for the failing route.
           </p>
           <Button className="mt-6" onClick={() => window.location.reload()}>

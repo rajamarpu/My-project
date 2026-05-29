@@ -14,7 +14,7 @@ export default function PersonalitySelector({ personalities = [] }) {
 
   return (
     <div className="space-y-6">
-      <h3 className="text-lg font-semibold text-white">Choose Your AI Instructor</h3>
+      <h3 className="text-lg font-semibold text-[var(--text-primary)]">Choose Your AI Instructor</h3>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {personalities.map((personality) => (
           <motion.button
@@ -26,7 +26,7 @@ export default function PersonalitySelector({ personalities = [] }) {
               'relative rounded-2xl p-4 border transition-all duration-300',
               selectedPersonality?.id === personality.id
                 ? `border-transparent bg-gradient-to-br ${personality.colorTheme.primary} shadow-lg`
-                : 'border-white/10 bg-white/5 hover:bg-white/10'
+                : 'border-[var(--border-color)] bg-[var(--bg-subtle)] hover:bg-[var(--bg-card-hover)]'
             )}
           >
             <div className="flex flex-col items-center space-y-3">
@@ -42,7 +42,7 @@ export default function PersonalitySelector({ personalities = [] }) {
               </div>
               <span className={cn(
                 'text-sm font-medium text-center',
-                selectedPersonality?.id === personality.id ? 'text-white' : 'text-slate-300'
+                selectedPersonality?.id === personality.id ? 'text-white' : 'text-[var(--text-secondary)]'
               )}>
                 {personality.name}
               </span>

@@ -1,18 +1,24 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useDispatch, useSelector } from 'react-redux'
 import { Search, SlidersHorizontal, X } from 'lucide-react'
 import { motion } from 'framer-motion'
 import CourseCard from '../../components/ui/Course/CourseCard.jsx'
 import Button from '../../components/common/Button/Button.jsx'
 import { fadeInUp } from '../../utils/animationVariants.js'
-import { fetchCourses } from '../../api/api.js'
+import { enrollCourseRequest, fetchCourses, unenrollCourseRequest } from '../../api/api.js'
+import { enrollCourse, unenrollCourse } from '../../store/slices/authSlice.js'
 
 export default function ExploreCoursesPage() {
   const navigate = useNavigate()
+  const dispatch = useDispatch()
+  const auth = useSelector((state) => state.auth)
   const [searchParams] = useSearchParams()
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [busyCourseId, setBusyCourseId] = useState('')
   const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get('category') || 'All')
   const [selectedLevel, setSelectedLevel] = useState('All')
   const [query, setQuery] = useState('')
@@ -33,7 +39,45 @@ export default function ExploreCoursesPage() {
       }
     }
     void loadCourses()
-  }, [])
+  }, [auth.token])
+
+  async function handleEnrollmentToggle(course) {
+    if (!auth.user) {
+      navigate('/login')
+      return
+    }
+    try {
+      setBusyCourseId(course.id)
+      setError('')
+      setNotice('')
+      if (course.isEnrolled) {
+        const response = await unenrollCourseRequest(course.id)
+        dispatch(unenrollCourse(course.id))
+        const nextCount = response.data?.enrollmentCount ?? Math.max(0, Number(course.enrollmentCount ?? course._count?.enrollments ?? 1) - 1)
+        setCourses((items) => items.map((item) => (
+          item.id === course.id
+            ? { ...item, isEnrolled: false, enrollmentCount: nextCount, _count: { ...(item._count || {}), enrollments: nextCount } }
+            : item
+        )))
+        setNotice(`Unenrolled from ${course.title}.`)
+      } else {
+        const response = await enrollCourseRequest(course.id)
+        dispatch(enrollCourse(response.data.enrollment.courseId))
+        const currentCount = Number(course.enrollmentCount ?? course._count?.enrollments ?? 0)
+        const nextCount = response.data?.enrollmentCount ?? currentCount + (response.data?.wasAlreadyEnrolled ? 0 : 1)
+        setCourses((items) => items.map((item) => (
+          item.id === course.id
+            ? { ...item, isEnrolled: true, enrollmentCount: nextCount, _count: { ...(item._count || {}), enrollments: nextCount } }
+            : item
+        )))
+        setNotice(`Enrolled in ${course.title}.`)
+      }
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Could not update enrollment.')
+    } finally {
+      setBusyCourseId('')
+    }
+  }
 
   const categories = useMemo(() => ['All', ...new Set(courses.map((course) => course.category).filter(Boolean))], [courses])
   const levels = ['All', 'BEGINNER', 'INTERMEDIATE', 'ADVANCED']
@@ -89,7 +133,8 @@ export default function ExploreCoursesPage() {
         </label>
       </div>
 
-      {error ? <p className="rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</p> : null}
+      {notice ? <p className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-100">{notice}</p> : null}
+      {error ? <p className="rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-100">{error}</p> : null}
 
       <div className="grid gap-8 xl:grid-cols-[0.9fr_0.35fr]">
         <div className="grid gap-6">
@@ -125,6 +170,8 @@ export default function ExploreCoursesPage() {
                   key={course.id}
                   course={course}
                   onViewDetails={() => navigate(`/course/${course.id}`)}
+                  onEnrollToggle={handleEnrollmentToggle}
+                  enrollmentBusy={busyCourseId === course.id}
                 />
               ))
             ) : (

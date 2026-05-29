@@ -8,7 +8,7 @@ export default function MainLayout({ children }) {
     <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-300">
       <Navbar />
       <motion.main
-        className="mx-auto flex w-full max-w-7xl flex-col px-6 pb-24 pt-8 lg:px-8"
+        className="mx-auto flex w-full max-w-7xl flex-col px-4 pb-24 pt-6 sm:px-6 lg:px-8"
         initial="hidden"
         animate="enter"
         exit="exit"

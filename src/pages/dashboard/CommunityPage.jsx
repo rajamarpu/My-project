@@ -22,8 +22,8 @@ export default function CommunityPage() {
         <div className="glass-card p-8 shadow-glow">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm uppercase tracking-[0.3em] text-cyan-300">Community</p>
-              <h1 className="mt-3 text-4xl font-semibold text-slate-100">
+              <p className="theme-eyebrow text-sm uppercase tracking-[0.3em]">Community</p>
+              <h1 className="mt-3 text-4xl font-semibold text-[var(--text-primary)]">
                 {topics.find(t => t.id === activeTopic)?.title || 'Chat Room'}
               </h1>
             </div>
@@ -46,8 +46,8 @@ export default function CommunityPage() {
       <div className="glass-card p-8 shadow-glow">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-cyan-300">Community</p>
-            <h1 className="mt-3 text-4xl font-semibold text-slate-100">
+            <p className="theme-eyebrow text-sm uppercase tracking-[0.3em]">Community</p>
+            <h1 className="mt-3 text-4xl font-semibold text-[var(--text-primary)]">
               Join conversations with learners and expert instructors.
             </h1>
           </div>
@@ -60,20 +60,20 @@ export default function CommunityPage() {
           <motion.div
             key={topic.id}
             whileHover={{ scale: 1.02 }}
-            className="glass-card rounded-[2rem] p-6 shadow-soft bg-white/80 cursor-pointer"
+            className="glass-card cursor-pointer rounded-[2rem] p-6 shadow-soft"
             onClick={() => {
               setActiveTopic(topic.id)
               setShowChat(true)
               navigate(`/community/${topic.id}`)
             }}
           >
-            <p className="text-lg font-semibold text-slate-100">{topic.title}</p>
-            <p className="mt-3 text-sm text-slate-400">
+            <p className="text-lg font-semibold text-[var(--text-primary)]">{topic.title}</p>
+            <p className="mt-3 text-sm text-[var(--text-muted)]">
               {topic.members} members
             </p>
 
             <div className="mt-5 flex items-center justify-between">
-              <span className="rounded-full bg-cyan-500/15 px-3 py-1 text-xs uppercase tracking-[0.2em] text-cyan-200">
+              <span className="rounded-full bg-cyan-500/15 px-3 py-1 text-xs uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-200">
                 Hot
               </span>
               <Button variant="secondary">Join Chat</Button>

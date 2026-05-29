@@ -67,6 +67,7 @@ export default function Navbar() {
               {auth.user ? (
                 <div className="relative hidden lg:block">
                   <button
+                    type="button"
                     onClick={() => setProfileOpen((value) => !value)}
                     className="btn-secondary gap-2"
                   >
@@ -80,11 +81,11 @@ export default function Navbar() {
                         ['Settings', '/settings'],
                         ['Notifications', '/notifications'],
                       ].map(([label, href]) => (
-                        <button key={href} onClick={() => { setProfileOpen(false); navigate(href) }} className="block w-full rounded-2xl px-4 py-3 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10">
+                        <button type="button" key={href} onClick={() => { setProfileOpen(false); navigate(href) }} className="block w-full rounded-2xl px-4 py-3 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10">
                           {label}
                         </button>
                       ))}
-                      <button onClick={() => { dispatch(logout()); setProfileOpen(false); navigate('/') }} className="flex w-full items-center gap-2 rounded-2xl px-4 py-3 text-left text-sm text-red-600 hover:bg-red-500/10">
+                      <button type="button" onClick={() => { dispatch(logout()); setProfileOpen(false); navigate('/') }} className="flex w-full items-center gap-2 rounded-2xl px-4 py-3 text-left text-sm text-red-600 hover:bg-red-500/10">
                         <LogOut size={16} /> Logout
                       </button>
                     </div>
@@ -92,13 +93,14 @@ export default function Navbar() {
                 </div>
               ) : (
                 <div className="hidden items-center gap-2 lg:flex">
-                  <button onClick={() => navigate('/login')} className="btn-secondary">Learner Login</button>
-                  {isAdminHost ? <button onClick={() => navigate('/admin-login')} className="btn-secondary">Admin</button> : null}
-                  <button onClick={() => navigate('/register')} className="btn-primary">Register</button>
+                  <button type="button" onClick={() => navigate('/login')} className="btn-secondary">Learner Login</button>
+                  {isAdminHost ? <button type="button" onClick={() => navigate('/admin-login')} className="btn-secondary">Admin</button> : null}
+                  <button type="button" onClick={() => navigate('/register')} className="btn-primary">Register</button>
                 </div>
               )}
 
               <button
+                type="button"
                 onClick={() => setDrawerOpen((state) => !state)}
                 className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] text-[var(--text-primary)] lg:hidden"
                 aria-label="Mobile menu"
@@ -122,6 +124,7 @@ export default function Navbar() {
                   </Link>
                 ))}
                 <button
+                  type="button"
                   onClick={() => {
                     setDrawerOpen(false)
                     navigate(dashboardPath)
@@ -132,6 +135,7 @@ export default function Navbar() {
                 </button>
                 {!auth.user ? (
                   <button
+                    type="button"
                     onClick={() => {
                       setDrawerOpen(false)
                       navigate('/register')

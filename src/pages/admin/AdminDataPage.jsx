@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSelector } from 'react-redux'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Search, Trash2 } from 'lucide-react'
+import { Ban, CheckCircle2, Search, Trash2, XCircle } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
+import { AdminEmptyState, AdminLoadingState, AdminNotice, AdminPageHeader } from '../../components/admin/AdminUI.jsx'
 import {
   approveAdminUser,
   deleteAdminUser,
@@ -162,10 +164,13 @@ function valueFor(row, column) {
 export default function AdminDataPage({ resource }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const authUser = useSelector((state) => state.auth.user)
   const config = resources[resource] || resources.users
   const [rows, setRows] = useState([])
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const [actionKey, setActionKey] = useState('')
+  const [notice, setNotice] = useState({ type: '', message: '' })
   const [error, setError] = useState('')
   const hasActions = config.actions || ['users', 'learners', 'instructors', 'categories'].includes(resource)
 
@@ -173,6 +178,7 @@ export default function AdminDataPage({ resource }) {
     try {
       setLoading(true)
       setError('')
+      setNotice({ type: '', message: '' })
       const response = await config.load()
       setRows(config.rows(response.data))
     } catch (err) {
@@ -210,18 +216,44 @@ export default function AdminDataPage({ resource }) {
   }
 
   async function approveUser(user) {
-    await approveAdminUser(user.id)
-    await load()
+    await moderateUser(user, 'approve')
   }
 
   async function rejectUser(user) {
-    await rejectAdminUser(user.id)
-    await load()
+    if (!window.confirm(`Reject "${user.name || user.email}" and disable their access?`)) return
+    await moderateUser(user, 'reject')
   }
 
   async function suspendUser(user) {
-    await suspendAdminUser(user.id)
-    await load()
+    if (!window.confirm(`Suspend "${user.name || user.email}" and revoke active sessions?`)) return
+    await moderateUser(user, 'suspend')
+  }
+
+  async function moderateUser(user, action) {
+    const key = `${action}:${user.id}`
+    const requestByAction = {
+      approve: approveAdminUser,
+      reject: rejectAdminUser,
+      suspend: suspendAdminUser,
+    }
+    const pastTense = {
+      approve: 'approved',
+      reject: 'rejected',
+      suspend: 'suspended',
+    }
+    try {
+      setActionKey(key)
+      setError('')
+      setNotice({ type: '', message: '' })
+      const response = await requestByAction[action](user.id)
+      const updatedUser = response.data.user
+      setRows((currentRows) => currentRows.map((row) => (row.id === updatedUser.id ? { ...row, ...updatedUser } : row)))
+      setNotice({ type: 'success', message: `${updatedUser.name || updatedUser.email} ${pastTense[action]} successfully.` })
+    } catch (err) {
+      setNotice({ type: 'error', message: err?.response?.data?.message || err.message || `Could not ${action} user.` })
+    } finally {
+      setActionKey('')
+    }
   }
 
   async function removeUser(user) {
@@ -232,84 +264,128 @@ export default function AdminDataPage({ resource }) {
 
   return (
     <section className="space-y-6 pb-16">
-      <div className="rounded-lg border border-white/10 bg-slate-950/80 p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm uppercase tracking-[0.24em] text-cyan-300">{config.eyebrow}</p>
-            <h1 className="mt-3 text-3xl font-semibold text-white">{config.title}</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">{config.description}</p>
-          </div>
-          <div className="flex flex-wrap gap-3">
+      <AdminPageHeader
+        eyebrow={config.eyebrow}
+        title={config.title}
+        description={config.description}
+        actions={(
+          <>
             {resource === 'courses' ? <Button onClick={() => navigate('/admin/upload-course')}>Upload Course</Button> : null}
             {resource === 'categories' ? <Button onClick={() => navigate('/admin/create-category')}>Create Category</Button> : null}
+            {resource === 'certificates' ? <Button onClick={() => navigate('/admin/generate-certificate')}>Generate Certificate</Button> : null}
             <Button variant="secondary" onClick={load} disabled={loading}>{loading ? 'Loading...' : 'Refresh'}</Button>
-          </div>
-        </div>
-        {error ? <p className="mt-4 rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</p> : null}
-      </div>
+          </>
+        )}
+      />
+      <AdminNotice type="error">{error}</AdminNotice>
+      <AdminNotice type={notice.type || 'info'}>{notice.message}</AdminNotice>
 
-      <div className="rounded-lg border border-white/10 bg-slate-950/70 p-4">
-        <label className="flex items-center gap-3 rounded-lg border border-white/10 bg-slate-900 px-4 py-3 text-slate-300">
+      <div className="admin-panel p-4">
+        <label className="theme-subcard flex items-center gap-3 rounded-lg px-4 py-3 text-[var(--text-secondary)]">
           <Search size={18} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} className="w-full bg-transparent text-sm outline-none placeholder:text-slate-500" placeholder={`Search ${config.title.toLowerCase()}`} />
+          <input value={query} onChange={(event) => setQuery(event.target.value)} className="w-full bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" placeholder={`Search ${config.title.toLowerCase()}`} />
         </label>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-white/10 bg-slate-950/70">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-white/10 text-sm">
-            <thead className="bg-slate-900/80">
+      {loading ? <AdminLoadingState label={`Loading ${config.title.toLowerCase()}...`} /> : null}
+
+      {!loading && !filtered.length ? <AdminEmptyState title={`No ${config.title.toLowerCase()} found`} message="Try another search term or refresh the latest database rows." /> : null}
+
+      {!loading && filtered.length ? (
+        <div className="grid gap-3 md:hidden">
+          {filtered.map((row) => (
+            <div key={row.id} className="admin-panel p-4">
+              <div className="grid gap-3">
+                {config.columns.map((column) => (
+                  <div key={column} className="flex items-start justify-between gap-4 border-b border-[var(--border-color)] pb-2 last:border-0 last:pb-0">
+                    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">{column}</span>
+                    <span className="max-w-[60%] text-right text-sm font-medium text-[var(--text-primary)]">{String(valueFor(row, column))}</span>
+                  </div>
+                ))}
+              </div>
+              {hasActions ? <div className="mt-4">{renderActions(row)}</div> : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {!loading && filtered.length ? (
+      <div className="admin-table-card hidden md:block">
+        <div className="admin-scrollbar overflow-x-auto">
+          <table className="min-w-full divide-y divide-[var(--border-color)] text-sm">
+            <thead className="bg-[var(--bg-subtle)]">
               <tr>
                 {config.columns.map((column) => (
-                  <th key={column} className="px-4 py-3 text-left font-semibold uppercase tracking-[0.12em] text-slate-400">{column}</th>
+                  <th key={column} className="px-4 py-3 text-left font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">{column}</th>
                 ))}
-                {hasActions ? <th className="px-4 py-3 text-right font-semibold uppercase tracking-[0.12em] text-slate-400">Actions</th> : null}
+                {hasActions ? <th className="px-4 py-3 text-right font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">Actions</th> : null}
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/10">
-              {loading ? (
-                <tr><td colSpan={config.columns.length + (hasActions ? 1 : 0)} className="px-4 py-8 text-center text-slate-400">Loading database rows...</td></tr>
-              ) : filtered.length ? filtered.map((row) => (
-                <tr key={row.id} className="hover:bg-white/[0.03]">
+            <tbody className="divide-y divide-[var(--border-color)]">
+              {filtered.map((row) => (
+                <tr key={row.id} className="transition hover:bg-[var(--bg-subtle)]">
                   {config.columns.map((column) => (
-                    <td key={column} className="max-w-xs px-4 py-3 text-slate-200">{String(valueFor(row, column))}</td>
+                    <td key={column} className="max-w-xs px-4 py-3 text-[var(--text-primary)]">{String(valueFor(row, column))}</td>
                   ))}
-                  {config.actions === 'courses' ? (
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="secondary" onClick={() => navigate(`/admin/edit-course/${row.id}`)}>Edit</Button>
-                        <Button variant="secondary" onClick={() => togglePublish(row)}>{row.isPublished ? 'Unpublish' : 'Publish'}</Button>
-                        <button type="button" onClick={() => removeCourse(row)} className="grid h-10 w-10 place-items-center rounded-lg border border-red-400/30 text-red-200 hover:bg-red-500/10" aria-label="Delete course">
-                          <Trash2 size={17} />
-                        </button>
-                      </div>
-                    </td>
-                  ) : (resource === 'users' || resource === 'learners' || resource === 'instructors') ? (
-                    <td className="px-4 py-3">
-                      <div className="flex flex-wrap justify-end gap-2">
-                        <Button variant="secondary" onClick={() => approveUser(row)}>Approve</Button>
-                        <Button variant="secondary" onClick={() => suspendUser(row)}>Suspend</Button>
-                        <Button variant="secondary" onClick={() => rejectUser(row)}>Reject</Button>
-                        <button type="button" onClick={() => removeUser(row)} className="grid h-10 w-10 place-items-center rounded-lg border border-red-400/30 text-red-200 hover:bg-red-500/10" aria-label="Remove user">
-                          <Trash2 size={17} />
-                        </button>
-                      </div>
-                    </td>
-                  ) : resource === 'categories' ? (
-                    <td className="px-4 py-3">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="secondary" onClick={() => navigate(`/admin/edit-category/${row.id}`)}>Edit</Button>
-                      </div>
-                    </td>
-                  ) : null}
+                  {hasActions ? <td className="px-4 py-3">{renderActions(row)}</td> : null}
                 </tr>
-              )) : (
-                <tr><td colSpan={config.columns.length + (hasActions ? 1 : 0)} className="px-4 py-8 text-center text-slate-400">No records found.</td></tr>
-              )}
+              ))}
             </tbody>
           </table>
         </div>
       </div>
+      ) : null}
     </section>
+  )
+
+  function renderActions(row) {
+    if (config.actions === 'courses') {
+      return (
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button variant="secondary" onClick={() => navigate(`/admin/edit-course/${row.id}`)}>Edit</Button>
+          <Button variant="secondary" onClick={() => togglePublish(row)}>{row.isPublished ? 'Unpublish' : 'Publish'}</Button>
+          <button type="button" onClick={() => removeCourse(row)} className="grid h-10 w-10 place-items-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-500/10 dark:text-red-200" aria-label="Delete course">
+            <Trash2 size={17} />
+          </button>
+        </div>
+      )
+    }
+
+    if (resource === 'users' || resource === 'learners' || resource === 'instructors') {
+      return (
+        <div className="flex flex-wrap justify-end gap-2">
+          <ModerationButton label="Approve" icon={<CheckCircle2 size={16} />} disabled={actionKey !== '' || (row.approvalStatus === 'APPROVED' && row.isActive)} loading={actionKey === `approve:${row.id}`} onClick={() => approveUser(row)} />
+          <ModerationButton label="Suspend" icon={<Ban size={16} />} disabled={actionKey !== '' || row.approvalStatus === 'SUSPENDED' || Number(authUser?.id) === Number(row.id)} loading={actionKey === `suspend:${row.id}`} onClick={() => suspendUser(row)} />
+          <ModerationButton label="Reject" icon={<XCircle size={16} />} disabled={actionKey !== '' || row.approvalStatus === 'REJECTED' || Number(authUser?.id) === Number(row.id)} loading={actionKey === `reject:${row.id}`} onClick={() => rejectUser(row)} />
+          <button type="button" onClick={() => removeUser(row)} className="grid h-10 w-10 place-items-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-500/10 dark:text-red-200" aria-label="Remove user">
+            <Trash2 size={17} />
+          </button>
+        </div>
+      )
+    }
+
+    if (resource === 'categories') {
+      return (
+        <div className="flex justify-end gap-2">
+          <Button variant="secondary" onClick={() => navigate(`/admin/edit-category/${row.id}`)}>Edit</Button>
+        </div>
+      )
+    }
+
+    return null
+  }
+}
+
+function ModerationButton({ label, icon, loading, disabled, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-elevated)] px-4 py-2 text-sm font-semibold text-[var(--text-primary)] transition hover:border-cyan-400/50 disabled:cursor-not-allowed disabled:opacity-45"
+    >
+      {icon}
+      {loading ? 'Working...' : label}
+    </button>
   )
 }

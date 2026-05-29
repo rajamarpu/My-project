@@ -23,6 +23,10 @@ const allowedOrigins = (process.env.CLIENT_ORIGINS || 'http://localhost:5173')
   .split(',')
   .map((origin) => origin.trim())
   .filter(Boolean)
+const isProduction = process.env.NODE_ENV === 'production'
+const apiRateLimit = Number(process.env.API_RATE_LIMIT || (isProduction ? 300 : 2000))
+const authRateLimit = Number(process.env.AUTH_RATE_LIMIT || (isProduction ? 60 : 500))
+const rateLimitWindowMs = Number(process.env.RATE_LIMIT_WINDOW_MS || 15 * 60 * 1000)
 
 const io = new Server(server, {
   cors: { origin: allowedOrigins, credentials: true },
@@ -76,8 +80,27 @@ app.use(cors({
 }))
 app.use(express.json({ limit: '10mb' }))
 app.use(requestLogger)
-app.use('/api', rateLimit({ windowMs: 15 * 60 * 1000, limit: 300, standardHeaders: true, legacyHeaders: false }))
-app.use('/api/auth', rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false }))
+app.use('/api/auth', rateLimit({
+  windowMs: rateLimitWindowMs,
+  limit: authRateLimit,
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: true,
+  handler: (_req, res) => res.status(429).json({
+    success: false,
+    message: 'Too many login attempts. Please wait a minute and try again.',
+  }),
+}))
+app.use('/api', rateLimit({
+  windowMs: rateLimitWindowMs,
+  limit: apiRateLimit,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (_req, res) => res.status(429).json({
+    success: false,
+    message: 'Too many API requests. Please wait a minute and try again.',
+  }),
+}))
 
 app.get('/', (_req, res) => {
   res.json({

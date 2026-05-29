@@ -1,9 +1,9 @@
 import { createSlice } from '@reduxjs/toolkit'
 
 const initialState = {
-  user: typeof window !== 'undefined' ? JSON.parse(window.localStorage.getItem('lms-user') || 'null') : null,
-  role: typeof window !== 'undefined' ? window.localStorage.getItem('lms-role') : null,
-  token: typeof window !== 'undefined' ? window.localStorage.getItem('lms-token') : null,
+  user: typeof window !== 'undefined' ? JSON.parse(window.localStorage.getItem('lms-user') || window.sessionStorage.getItem('lms-user') || 'null') : null,
+  role: typeof window !== 'undefined' ? window.localStorage.getItem('lms-role') || window.sessionStorage.getItem('lms-role') : null,
+  token: typeof window !== 'undefined' ? window.localStorage.getItem('lms-token') || window.sessionStorage.getItem('lms-token') : null,
   theme: 'dark',
   wishlist: [],
   enrolledCourses: [],
@@ -22,10 +22,15 @@ const authSlice = createSlice({
       state.role = action.payload.role
       state.token = action.payload.token || state.token
       if (typeof window !== 'undefined') {
-        window.localStorage.setItem('lms-user', JSON.stringify(action.payload.user))
-        window.localStorage.setItem('lms-role', action.payload.role)
+        const storage = action.payload.rememberMe === false ? window.sessionStorage : window.localStorage
+        const otherStorage = action.payload.rememberMe === false ? window.localStorage : window.sessionStorage
+        otherStorage.removeItem('lms-user')
+        otherStorage.removeItem('lms-role')
+        otherStorage.removeItem('lms-token')
+        storage.setItem('lms-user', JSON.stringify(action.payload.user))
+        storage.setItem('lms-role', action.payload.role)
         window.localStorage.setItem('lms-last-online', new Date().toLocaleString())
-        if (action.payload.token) window.localStorage.setItem('lms-token', action.payload.token)
+        if (action.payload.token) storage.setItem('lms-token', action.payload.token)
       }
     },
     logout(state) {
@@ -38,6 +43,9 @@ const authSlice = createSlice({
         window.localStorage.removeItem('lms-user')
         window.localStorage.removeItem('lms-role')
         window.localStorage.removeItem('lms-token')
+        window.sessionStorage.removeItem('lms-user')
+        window.sessionStorage.removeItem('lms-role')
+        window.sessionStorage.removeItem('lms-token')
       }
     },
     toggleWishlist(state, action) {
@@ -54,6 +62,10 @@ const authSlice = createSlice({
         state.enrolledCourses.push(courseId)
       }
     },
+    unenrollCourse(state, action) {
+      const courseId = action.payload
+      state.enrolledCourses = state.enrolledCourses.filter((id) => id !== courseId)
+    },
     markNotificationRead(state, action) {
       state.notifications = state.notifications.map((notification) =>
         notification.id === action.payload ? { ...notification, read: true } : notification,
@@ -65,6 +77,6 @@ const authSlice = createSlice({
   },
 })
 
-export const { login, logout, toggleWishlist, enrollCourse, markNotificationRead, setTheme } = authSlice.actions
+export const { login, logout, toggleWishlist, enrollCourse, unenrollCourse, markNotificationRead, setTheme } = authSlice.actions
 export default authSlice.reducer
 
