@@ -81,6 +81,14 @@ export default function StudentDashboard() {
     goTo(`/player/${nextCourse.id}`)
   }
 
+  function viewEnrolledCourses() {
+    setNotice('')
+    const enrolledCoursesSection = document.getElementById('enrolled-courses')
+    if (enrolledCoursesSection) {
+      enrolledCoursesSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }
+
   async function loadDashboardData() {
     try {
       setLoading(true)
@@ -111,6 +119,43 @@ export default function StudentDashboard() {
     void Promise.resolve().then(loadDashboardData)
   }, [])
 
+  const metricActions = [
+    {
+      icon: BookOpenCheck,
+      label: 'Enrolled',
+      value: analytics.totalCourses,
+      detail: 'active learning paths',
+      onClick: viewEnrolledCourses,
+      actionLabel: 'View enrolled courses',
+    },
+    {
+      icon: LineChartIcon,
+      label: 'Avg Progress',
+      value: `${analytics.avgProgress}%`,
+      detail: 'across tracked courses',
+    },
+    {
+      icon: Flame,
+      label: 'Streak',
+      value: `${analytics.streak} days`,
+      detail: 'learning consistency',
+    },
+    {
+      icon: Clock3,
+      label: 'Hours',
+      value: analytics.hoursStudied,
+      detail: 'studied so far',
+    },
+    {
+      icon: Award,
+      label: 'Certificates',
+      value: analytics.certificates,
+      detail: 'earned credentials',
+      onClick: () => goTo('/certificates'),
+      actionLabel: 'Open certificates',
+    },
+  ]
+
   return (
     <section className="space-y-8 pb-16">
       <div className="upto-premium-panel overflow-hidden rounded-xl p-5 sm:p-8">
@@ -136,11 +181,9 @@ export default function StudentDashboard() {
       ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        <LearnerMetric icon={BookOpenCheck} label="Enrolled" value={analytics.totalCourses} detail="active learning paths" loading={loading} />
-        <LearnerMetric icon={LineChartIcon} label="Avg Progress" value={`${analytics.avgProgress}%`} detail="across tracked courses" loading={loading} />
-        <LearnerMetric icon={Flame} label="Streak" value={`${analytics.streak} days`} detail="learning consistency" loading={loading} />
-        <LearnerMetric icon={Clock3} label="Hours" value={analytics.hoursStudied} detail="studied so far" loading={loading} />
-        <LearnerMetric icon={Award} label="Certificates" value={analytics.certificates} detail="earned credentials" loading={loading} />
+        {metricActions.map((metric) => (
+          <LearnerMetric key={metric.label} {...metric} loading={loading} />
+        ))}
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
@@ -243,7 +286,7 @@ export default function StudentDashboard() {
         </div>
       </div>
 
-      <div className="glass-card p-5 sm:p-6">
+      <div id="enrolled-courses" className="glass-card scroll-mt-24 p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Continue learning</p>
@@ -298,9 +341,10 @@ export default function StudentDashboard() {
   )
 }
 
-function LearnerMetric({ icon: Icon, label, value, detail, loading }) {
-  return (
-    <div className="theme-card theme-subcard-hover rounded-lg p-5">
+function LearnerMetric({ icon: Icon, label, value, detail, loading, onClick, actionLabel }) {
+  const canNavigate = typeof onClick === 'function'
+  const content = (
+    <>
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">{label}</p>
         <span className="theme-icon-badge grid h-10 w-10 place-items-center rounded-lg">
@@ -309,6 +353,26 @@ function LearnerMetric({ icon: Icon, label, value, detail, loading }) {
       </div>
       <p className="mt-4 text-2xl font-semibold text-[var(--text-primary)]">{loading ? <span className="skeleton inline-block h-8 w-16" /> : value}</p>
       <p className="mt-1 text-sm text-[var(--text-muted)]">{detail}</p>
+    </>
+  )
+
+  if (canNavigate) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label={actionLabel || `Open ${label}`}
+        title={actionLabel || `Open ${label}`}
+        className="theme-card theme-subcard-hover w-full rounded-lg p-5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]/60"
+      >
+        {content}
+      </button>
+    )
+  }
+
+  return (
+    <div className="theme-card rounded-lg p-5">
+      {content}
     </div>
   )
 }
