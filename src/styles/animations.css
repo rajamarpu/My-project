@@ -21,6 +21,47 @@
   }
 }
 
+@keyframes upto-fade-slide {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes upto-success-pop {
+  0% {
+    transform: scale(0.96);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .animate-upto-float {
   animation: upto-float 5s ease-in-out infinite;
+}
+
+.animate-upto-fade-slide {
+  animation: upto-fade-slide 220ms ease-out both;
+}
+
+.animate-upto-success-pop {
+  animation: upto-success-pop 180ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }

@@ -13,8 +13,9 @@ const topics = [
 export default function CommunityPage() {
   const navigate = useNavigate()
   const { topicId } = useParams()
-  const [activeTopic, setActiveTopic] = useState(topicId || 'celebrity-mentors')
-  const [showChat, setShowChat] = useState(!!topicId)
+  const defaultTopic = topics.some((topic) => topic.id === topicId) ? topicId : 'celebrity-mentors'
+  const [activeTopic, setActiveTopic] = useState(defaultTopic)
+  const [showChat, setShowChat] = useState(Boolean(topicId && topics.some((topic) => topic.id === topicId)))
 
   if (showChat) {
     return (
@@ -51,7 +52,16 @@ export default function CommunityPage() {
               Join conversations with learners and expert instructors.
             </h1>
           </div>
-          <Button variant="secondary" onClick={() => navigate('/community/new-topic')}>Create topic</Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setActiveTopic('ai-roadmaps')
+              setShowChat(true)
+              navigate('/community/ai-roadmaps')
+            }}
+          >
+            Start discussion
+          </Button>
         </div>
       </div>
 
@@ -76,7 +86,17 @@ export default function CommunityPage() {
               <span className="rounded-full bg-cyan-500/15 px-3 py-1 text-xs uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-200">
                 Hot
               </span>
-              <Button variant="secondary">Join Chat</Button>
+              <Button
+                variant="secondary"
+                onClick={(event) => {
+                  event.stopPropagation()
+                  setActiveTopic(topic.id)
+                  setShowChat(true)
+                  navigate(`/community/${topic.id}`)
+                }}
+              >
+                Join Chat
+              </Button>
             </div>
           </motion.div>
         ))}

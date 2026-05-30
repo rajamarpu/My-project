@@ -155,6 +155,7 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res, next) => {
             durationMin: Number(lesson.durationMin || 0),
             sortOrder: index,
             type: lesson.type || 'VIDEO',
+            quizJson: lesson.quizJson || null,
           })),
         },
       },
@@ -170,9 +171,30 @@ router.post('/:id/enroll', requireAuth, requireRole('learner', 'admin'), async (
   try {
     const course = await prisma.course.findFirst({
       where: { OR: [{ id: req.params.id }, { slug: req.params.id }] },
-      select: { id: true, createdById: true },
+      select: { id: true, createdById: true, priceCents: true },
     })
     if (!course) return res.status(404).json({ success: false, message: 'Course not found.' })
+
+    if (Number(course.priceCents || 0) > 0) {
+      const paidPayment = await prisma.payment.findFirst({
+        where: {
+          userId: req.user.id,
+          courseId: course.id,
+          status: 'PAID',
+          amountCents: { gte: Number(course.priceCents || 0) },
+        },
+        select: { id: true },
+      })
+      if (!paidPayment) {
+        return res.status(402).json({
+          success: false,
+          paymentRequired: true,
+          priceCents: course.priceCents,
+          priceRupees: course.priceCents / 100,
+          message: `Payment required. Cost to enroll is ₹${(course.priceCents / 100).toLocaleString('en-IN')}.`,
+        })
+      }
+    }
 
     let personalityId = req.body.personalityId || null
     if (!personalityId && req.body.personalitySlug) {

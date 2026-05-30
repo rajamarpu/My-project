@@ -32,7 +32,7 @@ export default function Navbar() {
     : '/login'
 
   return (
-    <header className="sticky top-0 z-50 border-b border-[var(--border-color)] bg-white/90 text-[var(--text-primary)] shadow-[0_10px_35px_rgba(37,99,235,0.08)] backdrop-blur-xl transition-colors duration-300 dark:bg-[var(--bg-elevated)]">
+    <header className="sticky top-0 z-50 border-b border-[var(--border-color)] bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-[0_12px_36px_rgba(15,23,42,0.08)] backdrop-blur-xl transition-colors duration-300">
       <div>
         <div className="border-b border-[var(--border-color)]">
           <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
@@ -45,10 +45,10 @@ export default function Navbar() {
                   to={item.href}
                   className={({ isActive }) =>
                     cn(
-                      'text-sm font-medium transition-colors',
-                      isActive
-                        ? 'text-blue-600 dark:text-cyan-300'
-                        : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
+                    'rounded-lg px-3 py-2 text-sm font-semibold transition-all',
+                    isActive
+                        ? 'bg-[var(--accent-soft)] text-[var(--accent-primary)]'
+                        : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]',
                     )
                   }
                 >
@@ -69,23 +69,23 @@ export default function Navbar() {
                   <button
                     type="button"
                     onClick={() => setProfileOpen((value) => !value)}
-                    className="btn-secondary gap-2"
+                    className="btn-secondary gap-2 rounded-xl"
                   >
                     {auth.user.fullName || auth.user.email || 'Account'} <ChevronDown size={16} />
                   </button>
                   {profileOpen ? (
-                    <div className="theme-surface absolute right-0 mt-3 w-56 rounded-2xl p-2 shadow-glow">
+                    <div className="theme-surface animate-upto-fade-slide absolute right-0 mt-3 w-60 rounded-xl p-2 shadow-glow">
                       {[
                         ['Dashboard', dashboardPath],
                         ['Profile', '/profile'],
                         ['Settings', '/settings'],
                         ['Notifications', '/notifications'],
                       ].map(([label, href]) => (
-                        <button type="button" key={href} onClick={() => { setProfileOpen(false); navigate(href) }} className="block w-full rounded-2xl px-4 py-3 text-left text-sm hover:bg-black/5 dark:hover:bg-white/10">
+                        <button type="button" key={href} onClick={() => { setProfileOpen(false); navigate(href) }} className="block w-full rounded-lg px-4 py-3 text-left text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]">
                           {label}
                         </button>
                       ))}
-                      <button type="button" onClick={() => { dispatch(logout()); setProfileOpen(false); navigate('/') }} className="flex w-full items-center gap-2 rounded-2xl px-4 py-3 text-left text-sm text-red-600 hover:bg-red-500/10">
+                      <button type="button" onClick={() => { dispatch(logout()); setProfileOpen(false); navigate('/') }} className="flex w-full items-center gap-2 rounded-lg px-4 py-3 text-left text-sm font-medium text-red-600 transition hover:bg-red-500/10 dark:text-red-200">
                         <LogOut size={16} /> Logout
                       </button>
                     </div>
@@ -102,7 +102,7 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={() => setDrawerOpen((state) => !state)}
-                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] text-[var(--text-primary)] lg:hidden"
+                className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] text-[var(--text-primary)] shadow-sm transition hover:border-[var(--accent-primary)]/50 lg:hidden"
                 aria-label="Mobile menu"
               >
                 {drawerOpen ? <X size={20} /> : <Menu size={20} />}
@@ -111,14 +111,14 @@ export default function Navbar() {
           </div>
 
           {drawerOpen && (
-            <div className="theme-surface border-t px-6 py-5 backdrop-blur-xl transition-colors duration-300 lg:hidden">
+            <div className="theme-surface animate-upto-fade-slide border-t px-6 py-5 backdrop-blur-xl transition-colors duration-300 lg:hidden">
               <div className="space-y-3">
                 {navItems.map((item) => (
                   <Link
                     key={item.label}
                     to={item.href}
                     onClick={() => setDrawerOpen(false)}
-                    className="block rounded-2xl px-4 py-3 text-sm font-medium text-[var(--text-secondary)] transition hover:bg-black/5 hover:text-[var(--text-primary)] dark:hover:bg-white/5"
+                    className="block rounded-xl px-4 py-3 text-sm font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]"
                   >
                     {item.label}
                   </Link>
@@ -129,7 +129,7 @@ export default function Navbar() {
                     setDrawerOpen(false)
                     navigate(dashboardPath)
                   }}
-                  className="w-full rounded-2xl bg-gradient-to-r from-blue-600 via-cyan-500 to-orange-500 px-5 py-3 text-sm font-semibold text-white"
+                  className="btn-primary w-full rounded-xl px-5 py-3 text-sm font-semibold text-white shadow-glow"
                 >
                   {auth.user ? 'Dashboard' : 'Login'}
                 </button>
@@ -140,7 +140,7 @@ export default function Navbar() {
                       setDrawerOpen(false)
                       navigate('/register')
                     }}
-                    className="w-full rounded-2xl border border-[var(--border-color)] px-5 py-3 text-sm font-semibold text-[var(--text-primary)]"
+                    className="w-full rounded-xl border border-[var(--border-color)] px-5 py-3 text-sm font-semibold text-[var(--text-primary)] transition hover:border-[var(--accent-primary)]/50 hover:bg-[var(--bg-subtle)]"
                   >
                     Register
                   </button>

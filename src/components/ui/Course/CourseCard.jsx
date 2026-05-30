@@ -4,6 +4,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import { toggleWishlist } from '../../../store/slices/authSlice.js'
 import { cn } from '../../../utils/classNames.js'
 import { resolveCourseThumbnail } from '../../../utils/courseThumbnail.js'
+import { formatRupeesFromPaise } from '../../../utils/money.js'
+import { getCourseAssignments, getCourseLessons } from '../../../utils/courseContent.js'
 
 export default function CourseCard({ course, onViewDetails, onEnrollToggle, enrollmentBusy = false }) {
   const dispatch = useDispatch()
@@ -15,63 +17,70 @@ export default function CourseCard({ course, onViewDetails, onEnrollToggle, enro
   const image = resolveCourseThumbnail(course)
   const isLogoImage = String(image).includes('.svg')
   const isSubjectArtwork = String(image).startsWith('data:image/svg+xml')
-  const glowClass = teacher.colorTheme?.bg || 'from-cyan-500/20 via-teal-500/20 to-amber-300/10'
+  const glowClass = teacher.colorTheme?.bg || 'from-indigo-500/20 via-violet-500/20 to-purple-300/10'
   const enrollmentCount = course.enrollmentCount ?? course._count?.enrollments ?? course.enrollments?.length ?? 0
+  const courseLessons = getCourseLessons(course)
+  const courseAssignments = getCourseAssignments(course)
   const isEnrolled = Boolean(course.isEnrolled)
+  const priceCents = Number(course.priceCents || 0)
+  const priceLabel = priceCents > 0 ? formatRupeesFromPaise(priceCents) : 'Free'
 
   return (
     <motion.article
       whileHover={{ y: -8, scale: 1.01 }}
       onClick={onViewDetails}
-      className="group glass-card relative cursor-pointer overflow-hidden border-white/10 p-4 shadow-glow transition dark:border-white/10 light:border-black/10 sm:p-5"
+      className="group glass-card relative cursor-pointer overflow-hidden p-4 transition sm:p-5"
     >
-      <div className={cn('absolute inset-x-0 top-0 h-32 bg-gradient-to-r blur-3xl transition group-hover:opacity-90', glowClass)} />
-      <div className="theme-dark relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/50">
+      <div className={cn('pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-r opacity-70 blur-3xl transition group-hover:opacity-100', glowClass)} />
+      <div className="theme-dark relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/60">
         <img
           src={image}
           alt={course.title}
           className={cn(
-            'h-40 w-full opacity-80 transition duration-500 group-hover:scale-105 group-hover:opacity-95',
+            'h-40 w-full opacity-90 transition duration-500 group-hover:scale-105 group-hover:opacity-100',
             isSubjectArtwork ? 'object-fill' : isLogoImage ? 'bg-slate-950 object-contain p-7' : 'object-cover',
           )}
         />
         <div className="absolute inset-x-3 bottom-3 flex items-center justify-between gap-3">
-          <span className="rounded-full border border-white/15 bg-slate-950/80 px-3 py-1 text-xs font-semibold text-cyan-100 backdrop-blur">
+          <span className="rounded-full border border-white/15 bg-slate-950/80 px-3 py-1 text-xs font-semibold text-indigo-100 backdrop-blur">
             {course.level || 'Beginner'}
           </span>
-          <span className="rounded-full border border-white/15 bg-slate-950/80 px-3 py-1 text-xs font-semibold text-amber-200 backdrop-blur">
+          <span className="rounded-full border border-white/15 bg-slate-950/80 px-3 py-1 text-xs font-semibold text-violet-100 backdrop-blur">
             {course.isPublished ? 'Published' : 'Draft'}
           </span>
         </div>
       </div>
 
       <div className="relative mt-5 flex items-start gap-3">
-        <img src={teacher.avatarUrl || image} alt={`${teacher.name || 'Instructor'} avatar`} className="h-12 w-12 rounded-2xl border border-cyan-300/30 bg-slate-900 object-cover p-1" />
+        <img src={teacher.avatarUrl || image} alt={`${teacher.name || 'Instructor'} avatar`} className="h-12 w-12 rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] object-cover p-1" />
         <div className="min-w-0">
-          <h3 className="line-clamp-2 text-lg font-semibold text-white dark:text-white light:text-slate-900">{course.title}</h3>
-          <p className="mt-1 text-sm text-slate-300 dark:text-slate-300 light:text-slate-600">
+          <h3 className="line-clamp-2 text-lg font-semibold text-[var(--text-primary)]">{course.title}</h3>
+          <p className="mt-1 line-clamp-2 text-sm text-[var(--text-secondary)]">
             Guided by {teacher.name || 'Instructor'}{teacher.bio ? ` - ${teacher.bio}` : ''}
           </p>
         </div>
       </div>
 
-      <div className="relative mt-5 grid gap-3 text-slate-300 sm:grid-cols-2">
-        <span className="inline-flex items-center gap-2 text-sm text-amber-300">
-          <Star size={16} className="text-amber-300" /> {course.rating ?? '0.0'}
+      <div className="relative mt-5 grid gap-3 sm:grid-cols-2">
+        <span className="inline-flex items-center gap-2 text-sm text-[var(--warning)]">
+          <Star size={16} /> {course.rating ?? '0.0'}
         </span>
-        <span className="inline-flex items-center gap-2 text-sm text-cyan-300 dark:text-cyan-300 light:text-cyan-700">
-          <Clock size={16} className="text-cyan-300 dark:text-cyan-300 light:text-cyan-700" /> {course.duration || `${course.lessons?.length || 0} lessons`}
+        <span className="inline-flex items-center gap-2 text-sm text-[var(--accent-primary)]">
+          <Clock size={16} /> {course.duration || `${courseLessons.length} lessons`}
         </span>
-        <span className="inline-flex items-center gap-2 text-sm text-green-300 dark:text-green-300 light:text-green-700">
-          <Users size={16} className="text-green-300 dark:text-green-300 light:text-green-700" /> {enrollmentCount} learners
+        <span className="inline-flex items-center gap-2 text-sm text-[var(--success)]">
+          <Users size={16} /> {enrollmentCount} learners
         </span>
-        <span className="inline-flex items-center gap-2 text-sm text-teal-300 dark:text-teal-300 light:text-teal-700">
-          <Layers3 size={16} /> {course._count?.lessons ?? course.lessons?.length ?? 0} lessons
+        <span className="inline-flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+          <Layers3 size={16} /> {courseLessons.length} lessons{courseAssignments.length ? `, ${courseAssignments.length} assignments` : ''}
         </span>
-        <span className="inline-flex items-center gap-2 text-sm text-slate-400 dark:text-slate-400 light:text-slate-500">
+        <span className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent-bold)]">
+          {priceLabel}
+        </span>
+        <span className="inline-flex items-center gap-2 text-sm text-[var(--text-muted)]">
           <Heart
             size={16}
-            className={cn('transition', active ? 'text-orange-500' : 'text-slate-500 dark:text-slate-500')}
+            className={cn('transition', active ? 'text-[var(--accent-bold)]' : 'text-[var(--text-muted)]')}
           />
           {active ? 'Wishlisted' : 'Add to Wishlist'}
         </span>
@@ -79,19 +88,19 @@ export default function CourseCard({ course, onViewDetails, onEnrollToggle, enro
 
       <div className="relative mt-5 flex flex-wrap gap-2">
         {tags.slice(0, 3).map((tag) => (
-          <span key={tag} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300 light:text-slate-600">
+          <span key={tag} className="rounded-full border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3 py-1 text-xs font-medium text-[var(--text-secondary)]">
             {tag}
           </span>
         ))}
       </div>
 
       <div className="relative mt-5">
-        <div className="flex items-center justify-between text-xs text-slate-400">
+        <div className="flex items-center justify-between text-xs font-medium text-[var(--text-muted)]">
           <span>Progress</span>
           <span>{progress}%</span>
         </div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-800/80">
-          <div className="h-full rounded-full bg-gradient-to-r from-cyan-300 via-blue-400 to-teal-400" style={{ width: `${progress}%` }} />
+        <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+          <div className="h-full rounded-full" style={{ width: `${progress}%`, background: 'var(--brand-gradient)' }} />
         </div>
       </div>
 
@@ -101,7 +110,7 @@ export default function CourseCard({ course, onViewDetails, onEnrollToggle, enro
             event.stopPropagation()
             onViewDetails()
           }}
-          className="btn-secondary min-w-[130px] dark:border-white/10 light:border-black/10"
+          className="btn-secondary min-w-[130px]"
           type="button"
         >
           View Details
@@ -121,7 +130,7 @@ export default function CourseCard({ course, onViewDetails, onEnrollToggle, enro
                 : 'border-emerald-400/40 text-emerald-700 hover:bg-emerald-500/10 dark:text-emerald-100',
             )}
           >
-            {enrollmentBusy ? 'Updating...' : isEnrolled ? 'Unenroll' : 'Enroll'}
+            {enrollmentBusy ? 'Updating...' : isEnrolled ? 'Unenroll' : priceCents > 0 ? `Pay ${priceLabel}` : 'Enroll'}
           </button>
         ) : null}
         <button
@@ -133,8 +142,8 @@ export default function CourseCard({ course, onViewDetails, onEnrollToggle, enro
           className={cn(
             'btn-glow min-w-[140px] text-sm transition-colors',
             active
-              ? 'bg-white/10 text-white border border-cyan-400 dark:text-white light:text-slate-900 light:bg-black/5'
-              : 'bg-cyan-500 text-slate-950 dark:text-slate-950',
+              ? 'border border-[var(--accent-primary)] bg-[var(--accent-soft)] text-[var(--accent-primary)]'
+              : 'btn-primary text-white shadow-glow',
           )}
         >
           {active ? <><CheckCircle2 size={16} className="mr-2" /> Saved</> : 'Add Wishlist'}

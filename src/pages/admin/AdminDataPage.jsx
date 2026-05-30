@@ -23,6 +23,7 @@ import {
   suspendAdminUser,
   updateAdminCourse,
 } from '../../api/api.js'
+import { formatRupeesFromPaise } from '../../utils/money.js'
 
 const resources = {
   users: {
@@ -55,7 +56,7 @@ const resources = {
     description: 'All published and unpublished courses.',
     load: fetchAdminCourses,
     rows: (data) => data.courses || [],
-    columns: ['title', 'category', 'level', 'isPublished', 'enrollments', 'createdAt'],
+    columns: ['title', 'category', 'level', 'priceCents', 'isPublished', 'enrollments', 'createdAt'],
     actions: 'courses',
   },
   categories: {
@@ -154,6 +155,7 @@ function valueFor(row, column) {
   if (column === 'approvalStatus') return row.approvalStatus || 'APPROVED'
   if (column === 'courses') return row._count?.courses ?? 0
   if (column === 'enrollments') return row._count?.enrollments ?? 0
+  if (column === 'priceCents') return formatRupeesFromPaise(row.priceCents)
   if (column === 'amount') return new Intl.NumberFormat('en-IN', { style: 'currency', currency: row.currency || 'INR' }).format((row.amountCents || 0) / 100)
   const value = row[column]
   if (typeof value === 'boolean') return value ? 'Yes' : 'No'

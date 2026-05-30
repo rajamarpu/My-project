@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { motion } from 'framer-motion'
 import { fadeInUp } from '../../utils/animationVariants.js'
 import Button from '../../components/common/Button/Button.jsx'
 import { fetchCourseById, fetchCourseInstructors, fetchUserProgress, switchCourseInstructor, updateUserProgress } from '../../api/api.js'
+import { getCourseAssignments, getCourseLessons } from '../../utils/courseContent.js'
 
 export default function LearningPlayerPage() {
   const { courseId } = useParams()
+  const navigate = useNavigate()
   const auth = useSelector((state) => state.auth)
   const [course, setCourse] = useState(null)
   const [enrollment, setEnrollment] = useState(null)
@@ -51,7 +53,8 @@ export default function LearningPlayerPage() {
     void loadCourse()
   }, [auth.user, courseId])
 
-  const lessons = useMemo(() => course?.lessons || [], [course])
+  const lessons = useMemo(() => getCourseLessons(course), [course])
+  const assignments = useMemo(() => getCourseAssignments(course), [course])
   const activeLesson = lessons[activeLessonIndex] || lessons[0]
   const completedLessonIds = new Set(lessonProgress.filter((item) => item.completed).map((item) => item.lessonId).filter(Boolean))
   const completedCount = lessons.filter((lesson) => lessonProgress.some((item) => item.lessonId === lesson.id && item.completed)).length
@@ -60,6 +63,7 @@ export default function LearningPlayerPage() {
   const selectedInstructor = instructors.find((item) => String(item.id) === String(selectedInstructorId))
   const switchHistory = enrollment?.instructorChanges || []
   const selectedIsCurrent = selectedInstructor && activeInstructor?.id === selectedInstructor.id
+  const activeResources = activeLesson?.quizJson?.resources || []
 
   const toggleInstructorPanel = async () => {
     const nextOpen = !switchPanelOpen
@@ -150,19 +154,49 @@ export default function LearningPlayerPage() {
 
             <div className="rounded-lg border border-[var(--border-color)] bg-white/85 p-6 dark:bg-slate-900/80">
               <p className="text-sm uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-300">Current lesson</p>
-              <h2 className="mt-3 text-2xl font-semibold text-slate-950 dark:text-slate-100">{activeLesson?.title || 'Lesson'}</h2>
-              <p className="mt-2 text-slate-600 dark:text-slate-400">{activeLesson?.description || 'Lesson details will appear here.'}</p>
+              <h2 className="mt-3 text-2xl font-semibold text-slate-950 dark:text-slate-100">{activeLesson?.title || 'No lesson selected'}</h2>
+              {activeLesson ? (
+                <div className="mt-3 whitespace-pre-line rounded-lg border border-[var(--border-color)] bg-black/[0.025] p-4 text-sm leading-7 text-slate-700 dark:bg-white/5 dark:text-slate-300">
+                  {activeLesson.description || 'Lesson details will appear here.'}
+                </div>
+              ) : (
+                <div className="mt-3 rounded-lg border border-[var(--border-color)] bg-black/[0.025] p-5 text-sm leading-7 text-slate-700 dark:bg-white/5 dark:text-slate-300">
+                  No course lessons have been added yet.
+                </div>
+              )}
               {activeLesson?.videoUrl ? (
                 <iframe className="mt-5 aspect-video w-full rounded-3xl border border-white/10" src={activeLesson.videoUrl} title={activeLesson.title} allow="autoplay; fullscreen" />
-              ) : (
+              ) : activeLesson ? (
                 <div className="mt-5 rounded-lg border border-[var(--border-color)] bg-black/[0.03] p-5 text-slate-700 dark:bg-white/5 dark:text-slate-300">
                   This lesson is stored as a structured learning module in PostgreSQL. You can still mark it complete and advance to the next lesson.
                 </div>
-              )}
+              ) : null}
+              {activeResources.length ? (
+                <div className="mt-5 rounded-lg border border-[var(--border-color)] bg-white/70 p-4 dark:bg-slate-950/40">
+                  <p className="text-sm font-semibold text-slate-950 dark:text-slate-100">Attached files</p>
+                  <div className="mt-3 grid gap-2">
+                    {activeResources.map((resource, index) => (
+                      <a
+                        key={`${resource.url}-${index}`}
+                        href={resource.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border-color)] bg-black/[0.025] px-3 py-2 text-sm text-cyan-700 transition hover:border-cyan-400/50 dark:bg-white/5 dark:text-cyan-200"
+                      >
+                        <span className="min-w-0 flex-1 truncate font-medium">{resource.name || resource.url}</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">{resource.mimeType || 'file'}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
               <div className="mt-5 flex flex-wrap items-center gap-3">
                 <Button onClick={markComplete} disabled={!auth.user}>Mark complete</Button>
                 <Button variant="secondary" onClick={() => setActiveLessonIndex((index) => Math.min(index + 1, lessons.length - 1))} disabled={activeLessonIndex >= lessons.length - 1}>
                   Next lesson
+                </Button>
+                <Button variant="secondary" onClick={() => navigate(`/course/${course.id}/assessments`)}>
+                  View assignments{assignments.length ? ` (${assignments.length})` : ''}
                 </Button>
               </div>
             </div>
@@ -258,7 +292,7 @@ export default function LearningPlayerPage() {
 
             <p className="text-sm uppercase tracking-[0.3em] text-cyan-700 dark:text-cyan-300">Lesson playlist</p>
             <div className="mt-5 space-y-3">
-              {lessons.map((lesson, index) => {
+              {lessons.length ? lessons.map((lesson, index) => {
                 const completed = completedLessonIds.has(lesson.id)
                 const isActive = index === activeLessonIndex
                 return (
@@ -277,8 +311,22 @@ export default function LearningPlayerPage() {
                     </div>
                   </button>
                 )
-              })}
+              }) : (
+                <div className="rounded-lg border border-[var(--border-color)] bg-black/[0.03] p-4 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">
+                  No lessons yet.
+                </div>
+              )}
             </div>
+
+            {assignments.length ? (
+              <button
+                type="button"
+                onClick={() => navigate(`/course/${course.id}/assessments`)}
+                className="w-full rounded-lg border border-amber-400/30 bg-amber-500/10 p-4 text-left text-sm font-semibold text-amber-700 transition hover:bg-amber-500/15 dark:text-amber-100"
+              >
+                {assignments.length} assignment{assignments.length === 1 ? '' : 's'} available on the assignments page
+              </button>
+            ) : null}
 
             <div className="rounded-lg border border-[var(--border-color)] bg-black/[0.03] p-5 dark:bg-white/5">
               <p className="text-sm uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Completion</p>

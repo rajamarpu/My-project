@@ -1,6 +1,8 @@
 import './loadEnv.js'
 import express from 'express'
 import http from 'http'
+import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
@@ -13,12 +15,14 @@ import personalityRoutes from './routes/personalityRoutes.js'
 import adminRoutes from './routes/adminRoutes.js'
 import chatRoutes from './routes/chatRoutes.v2.js'
 import certificateRoutes from './routes/certificateRoutes.js'
+import questionRoutes from './routes/questionRoutes.js'
 import { publicUser, verifyToken } from './utils/tokens.js'
 import { requireAuth, requestLogger } from './middleware/auth.js'
 
 const app = express()
 const server = http.createServer(app)
 const port = Number(process.env.API_PORT || process.env.PORT || 5000)
+const uploadsDir = resolve(dirname(fileURLToPath(import.meta.url)), '../../public/uploads')
 const allowedOrigins = (process.env.CLIENT_ORIGINS || 'http://localhost:5173')
   .split(',')
   .map((origin) => origin.trim())
@@ -78,7 +82,8 @@ app.use(cors({
   },
   credentials: true,
 }))
-app.use(express.json({ limit: '10mb' }))
+app.use(express.json({ limit: '75mb' }))
+app.use('/uploads', express.static(uploadsDir))
 app.use(requestLogger)
 app.use('/api/auth', rateLimit({
   windowMs: rateLimitWindowMs,
@@ -236,6 +241,7 @@ app.use('/api/personalities', personalityRoutes)
 app.use('/api/admin', adminRoutes)
 app.use('/api/chat', chatRoutes)
 app.use('/api/certificates', certificateRoutes)
+app.use('/api/questions', questionRoutes)
 
 app.use((req, res) => res.status(404).json({ success: false, message: `Route not found: ${req.method} ${req.path}` }))
 

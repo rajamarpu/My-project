@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import bcrypt from 'bcryptjs'
+import { mkdir, writeFile } from 'node:fs/promises'
+import { extname, resolve } from 'node:path'
 import { prisma } from '../config/prisma.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
 import { publicUser, roleToDatabase } from '../utils/tokens.js'
@@ -8,6 +10,17 @@ const router = Router()
 router.use(requireAuth, requireRole('admin'))
 
 const userSelect = { id: true, name: true, email: true, phone: true, role: true, approvalStatus: true, avatarUrl: true, bio: true, expertise: true, socialLinks: true, isActive: true, createdAt: true }
+const uploadDir = resolve(process.cwd(), 'public/uploads')
+const uploadExtensionByMime = {
+  'application/pdf': '.pdf',
+  'application/vnd.ms-powerpoint': '.ppt',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation': '.pptx',
+  'application/msword': '.doc',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+  'application/zip': '.zip',
+  'text/plain': '.txt',
+  'text/csv': '.csv',
+}
 
 function dateKey(value) {
   return value.toISOString().slice(0, 10)
@@ -19,6 +32,24 @@ function pct(part, total) {
 
 function slugify(value) {
   return String(value || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+}
+
+function safeFileBase(value) {
+  return String(value || 'course-file')
+    .replace(/\.[^.]+$/, '')
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+    .slice(0, 80) || 'course-file'
+}
+
+function extensionForUpload(fileName, mimeType) {
+  const ext = extname(fileName || '').toLowerCase()
+  if (ext && ext.length <= 8) return ext
+  if (mimeType?.startsWith('video/')) return '.mp4'
+  if (mimeType?.startsWith('image/')) return '.png'
+  return uploadExtensionByMime[mimeType] || '.bin'
 }
 
 async function findCategoryForCourse(category) {
@@ -272,10 +303,45 @@ router.get('/courses', async (req, res, next) => {
     const search = String(req.query.search || '').trim()
     const courses = await prisma.course.findMany({
       where: search ? { OR: [{ title: { contains: search, mode: 'insensitive' } }, { category: { contains: search, mode: 'insensitive' } }] } : {},
-      include: { createdBy: { select: userSelect }, _count: { select: { enrollments: true, lessons: true, certificates: true } } },
+      include: {
+        lessons: { orderBy: { sortOrder: 'asc' } },
+        createdBy: { select: userSelect },
+        _count: { select: { enrollments: true, lessons: true, certificates: true } },
+      },
       orderBy: { createdAt: 'desc' },
     })
     res.json({ success: true, courses })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.post('/uploads', async (req, res, next) => {
+  try {
+    const { fileName, mimeType, dataUrl } = req.body || {}
+    const match = String(dataUrl || '').match(/^data:([^;]+);base64,(.+)$/)
+    if (!fileName || !match) {
+      return res.status(400).json({ success: false, message: 'A file name and base64 dataUrl are required.' })
+    }
+
+    const detectedMime = mimeType || match[1]
+    const buffer = Buffer.from(match[2], 'base64')
+    if (!buffer.length) return res.status(400).json({ success: false, message: 'Uploaded file is empty.' })
+    if (buffer.length > 60 * 1024 * 1024) return res.status(413).json({ success: false, message: 'File must be 60 MB or smaller.' })
+
+    await mkdir(uploadDir, { recursive: true })
+    const storedName = `${Date.now()}-${safeFileBase(fileName)}${extensionForUpload(fileName, detectedMime)}`
+    await writeFile(resolve(uploadDir, storedName), buffer)
+
+    res.status(201).json({
+      success: true,
+      asset: {
+        name: fileName,
+        url: `/uploads/${storedName}`,
+        mimeType: detectedMime,
+        size: buffer.length,
+      },
+    })
   } catch (error) {
     next(error)
   }
@@ -285,20 +351,53 @@ router.patch('/courses/:id', async (req, res, next) => {
   try {
     const category = req.body.category
     const categoryRecord = category !== undefined ? await findCategoryForCourse(category) : null
-    const course = await prisma.course.update({
-      where: { id: req.params.id },
-      data: {
-        title: req.body.title,
-        description: req.body.description,
-        category,
-        categoryId: category !== undefined ? categoryRecord?.id || null : undefined,
-        level: req.body.level,
-        priceCents: typeof req.body.priceCents === 'number' ? req.body.priceCents : undefined,
-        isPublished: typeof req.body.isPublished === 'boolean' ? req.body.isPublished : undefined,
-        thumbnailUrl: req.body.thumbnailUrl,
-        videoPreviewUrl: req.body.videoPreviewUrl,
-      },
-      include: { createdBy: { select: userSelect } },
+    const lessons = Array.isArray(req.body.lessons)
+      ? req.body.lessons
+        .map((lesson, index) => ({
+          title: String(lesson.title || '').trim(),
+          description: String(lesson.description || '').trim() || null,
+          videoUrl: String(lesson.videoUrl || '').trim() || null,
+          durationMin: Number(lesson.durationMin || 0),
+          sortOrder: index,
+          type: lesson.type || 'ARTICLE',
+          quizJson: lesson.quizJson || null,
+        }))
+        .filter((lesson) => lesson.title)
+      : null
+
+    const course = await prisma.$transaction(async (tx) => {
+      const updatedCourse = await tx.course.update({
+        where: { id: req.params.id },
+        data: {
+          title: req.body.title,
+          description: req.body.description,
+          category,
+          categoryId: category !== undefined ? categoryRecord?.id || null : undefined,
+          level: req.body.level,
+          priceCents: typeof req.body.priceCents === 'number' ? req.body.priceCents : undefined,
+          isPublished: typeof req.body.isPublished === 'boolean' ? req.body.isPublished : undefined,
+          thumbnailUrl: req.body.thumbnailUrl,
+          videoPreviewUrl: req.body.videoPreviewUrl,
+        },
+      })
+
+      if (lessons) {
+        await tx.lesson.deleteMany({ where: { courseId: req.params.id } })
+        if (lessons.length) {
+          await tx.lesson.createMany({
+            data: lessons.map((lesson) => ({ ...lesson, courseId: req.params.id })),
+          })
+        }
+      }
+
+      return tx.course.findUnique({
+        where: { id: updatedCourse.id },
+        include: {
+          lessons: { orderBy: { sortOrder: 'asc' } },
+          createdBy: { select: userSelect },
+          _count: { select: { enrollments: true, lessons: true, certificates: true } },
+        },
+      })
     })
     res.json({ success: true, course })
   } catch (error) {

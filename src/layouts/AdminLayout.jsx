@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
-import { Activity, Award, BarChart3, Bell, BookOpenCheck, CreditCard, FolderTree, GraduationCap, LogOut, Menu, Settings, Upload, UserCircle, Users, X } from 'lucide-react'
+import { Activity, Award, BarChart3, Bell, BookOpenCheck, CircleHelp, CreditCard, FolderTree, GraduationCap, LogOut, Menu, Settings, Upload, UserCircle, Users, X } from 'lucide-react'
 import { useState } from 'react'
 import { logout } from '../store/slices/authSlice.js'
 import { cn } from '../utils/classNames.js'
@@ -13,6 +13,7 @@ const adminNav = [
   { label: 'Learners', href: '/admin/learners', icon: GraduationCap },
   { label: 'Instructors', href: '/admin/instructors', icon: Users },
   { label: 'Courses', href: '/admin/courses', icon: BookOpenCheck },
+  { label: 'Questions', href: '/admin/questions', icon: CircleHelp },
   { label: 'Categories', href: '/admin/categories', icon: FolderTree },
   { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { label: 'Revenue', href: '/admin/revenue', icon: CreditCard },
@@ -54,7 +55,7 @@ export default function AdminLayout({ children }) {
           </div>
         </div>
 
-        <aside className={`${navOpen ? 'block' : 'hidden'} fixed inset-x-4 top-20 z-40 max-h-[calc(100vh-6rem)] overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-5 shadow-soft lg:sticky lg:top-0 lg:block lg:h-screen lg:rounded-none lg:border-x-0 lg:border-y-0 lg:border-r lg:shadow-none`}>
+        <aside className={`${navOpen ? 'block animate-upto-fade-slide' : 'hidden'} fixed inset-x-4 top-20 z-40 max-h-[calc(100vh-6rem)] overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-5 shadow-soft backdrop-blur-xl lg:sticky lg:top-0 lg:block lg:h-screen lg:rounded-none lg:border-x-0 lg:border-y-0 lg:border-r lg:shadow-none`}>
           <div className="flex items-center justify-between gap-3">
             <Logo to="/admin" admin />
             <div className="hidden lg:block">
@@ -73,10 +74,10 @@ export default function AdminLayout({ children }) {
                 }}
                 className={({ isActive }) =>
                   cn(
-                    'flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition',
+                    'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-semibold transition-all',
                     isActive
-                      ? 'bg-cyan-400/15 text-cyan-600 ring-1 ring-cyan-300/25 dark:text-cyan-100'
-                      : 'text-[var(--text-secondary)] hover:bg-black/[0.04] hover:text-[var(--text-primary)] dark:hover:bg-white/[0.06]',
+                      ? 'bg-[var(--accent-soft)] text-[var(--accent-primary)] ring-1 ring-[var(--accent-primary)]/20 shadow-sm'
+                      : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]',
                   )
                 }
               >
@@ -92,7 +93,7 @@ export default function AdminLayout({ children }) {
               dispatch(logout())
               navigate('/admin-login')
             }}
-            className="mt-5 flex w-full items-center gap-3 rounded-lg border border-red-500/20 px-4 py-3 text-sm font-medium text-red-600 transition hover:bg-red-500/10 dark:text-red-200"
+            className="mt-5 flex w-full items-center gap-3 rounded-xl border border-red-500/20 px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-500/10 dark:text-red-200"
           >
             <LogOut size={18} />
             Logout

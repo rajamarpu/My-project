@@ -36,6 +36,19 @@ enum AccountStatus {
   SUSPENDED
 }
 
+enum QuestionType {
+  MCQ_SINGLE
+  MCQ_MULTIPLE
+  FILL_BLANK
+  DESCRIPTIVE
+}
+
+enum DifficultyLevel {
+  EASY
+  MEDIUM
+  HARD
+}
+
 model User {
   id             Int             @id @default(autoincrement())
   name           String          @map("full_name")
@@ -64,6 +77,7 @@ model User {
   analytics      AnalyticsEvent[]
   moderatedChats ChatMessage[]    @relation("ModeratorActions")
   coursesCreated Course[]         @relation("CourseCreator")
+  questionsCreated Question[]     @relation("QuestionCreator")
   payments       Payment[]
   sessions       Session[]
   activityLogs   ActivityLog[]
@@ -112,12 +126,37 @@ model Course {
   analytics       AnalyticsEvent[]
   payments        Payment[]
   instructorChanges InstructorChangeHistory[]
+  questions       Question[]
 
   @@index([category])
   @@index([categoryId])
   @@index([isPublished])
   @@index([createdAt])
   @@map("courses")
+}
+
+model Question {
+  id             String          @id @default(cuid())
+  type           QuestionType
+  text           String
+  options        Json?
+  correctAnswers Json?
+  marks          Int             @default(1)
+  difficulty     DifficultyLevel @default(MEDIUM)
+  courseId       String?
+  explanation    String?
+  caseSensitive  Boolean         @default(false)
+  createdById    Int?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  course         Course?         @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  createdBy      User?           @relation("QuestionCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([type])
+  @@index([difficulty])
+  @@index([courseId])
+  @@index([createdAt])
+  @@map("questions")
 }
 
 model Lesson {

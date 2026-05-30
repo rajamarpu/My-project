@@ -1,19 +1,21 @@
 :root {
-  --upto-bg: #f7fafc;
-  --upto-bg-deep: #083e57;
-  --upto-orange: #f97316;
-  --upto-teal: #10b9a7;
-  --upto-cyan: #16a9d8;
-  --upto-blue: #0e7cc1;
-  --upto-navy: #083e57;
+  --upto-bg: #f8fafc;
+  --upto-bg-deep: #0f172a;
+  --upto-orange: #f59e0b;
+  --upto-teal: #10b981;
+  --upto-cyan: #6366f1;
+  --upto-blue: #4f46e5;
+  --upto-navy: #0f172a;
+  --upto-indigo: #4f46e5;
+  --upto-violet: #8b5cf6;
   --upto-radius-sm: 0.5rem;
   --upto-radius-md: 0.75rem;
   --upto-radius-lg: 1rem;
   --upto-radius-xl: 1.25rem;
-  --upto-shadow-soft: 0 20px 70px rgba(8, 62, 87, 0.16);
-  --upto-shadow-glow: 0 20px 70px rgba(16, 185, 167, 0.2);
-  --upto-gradient-brand: linear-gradient(135deg, #f97316 0%, #16a9d8 48%, #10b9a7 100%);
-  --upto-gradient-hologram: linear-gradient(135deg, rgba(249, 115, 22, 0.14), rgba(22, 169, 216, 0.12), rgba(16, 185, 167, 0.14));
+  --upto-shadow-soft: 0 24px 70px rgba(15, 23, 42, 0.12);
+  --upto-shadow-glow: 0 24px 70px rgba(79, 70, 229, 0.2);
+  --upto-gradient-brand: linear-gradient(135deg, #4f46e5 0%, #6366f1 48%, #8b5cf6 100%);
+  --upto-gradient-hologram: linear-gradient(135deg, rgba(79, 70, 229, 0.14), rgba(99, 102, 241, 0.12), rgba(139, 92, 246, 0.14));
 }
 
 .upto-premium-panel {
@@ -27,7 +29,7 @@
 .theme-dark .upto-premium-panel,
 .dark .upto-premium-panel {
   background:
-    linear-gradient(180deg, rgba(8, 62, 87, 0.92), rgba(5, 31, 46, 0.88)),
+    linear-gradient(180deg, rgba(30, 41, 59, 0.92), rgba(15, 23, 42, 0.88)),
     var(--upto-gradient-hologram);
 }
 

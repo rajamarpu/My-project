@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { Star, Heart, Users, Clock, BarChart3, FileText } from 'lucide-react'
+import { ClipboardList, Star, Heart, Users, Clock, BarChart3, FileText } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import Button from '../../components/common/Button/Button.jsx'
 import { enrollCourseRequest, fetchCourseById, fetchCourseInstructors, unenrollCourseRequest } from '../../api/api.js'
 import { toggleWishlist, enrollCourse, unenrollCourse } from '../../store/slices/authSlice.js'
 import { resolveCourseThumbnail } from '../../utils/courseThumbnail.js'
+import { formatRupeesFromPaise } from '../../utils/money.js'
+import { getCourseAssignments, getCourseLessons } from '../../utils/courseContent.js'
 
 export default function CourseDetailPage() {
   const { courseId } = useParams()
@@ -46,11 +48,14 @@ export default function CourseDetailPage() {
   }, [auth.user, courseId])
 
   const isSaved = wishlist.includes(course?.id)
-  const lessons = course?.lessons || []
+  const lessons = getCourseLessons(course)
+  const assignments = getCourseAssignments(course)
   const durationText = useMemo(() => `${lessons.length} lessons`, [lessons.length])
 
   const enrollmentCount = course?.enrollmentCount ?? course?._count?.enrollments ?? course?.enrollments?.length ?? 0
   const isEnrolled = Boolean(course?.isEnrolled)
+  const priceCents = Number(course?.priceCents || 0)
+  const priceLabel = priceCents > 0 ? formatRupeesFromPaise(priceCents) : 'Free'
 
   const handleEnroll = async ({ openPlayer = false } = {}) => {
     if (!auth.user) {
@@ -70,7 +75,11 @@ export default function CourseDetailPage() {
       setNotice('You are enrolled in this course.')
       if (openPlayer) navigate(`/player/${course.id}`)
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || 'Enrollment failed.')
+      if (err?.response?.status === 402) {
+        setError(err.response.data?.message || `Payment required. Cost to enroll is ${priceLabel}.`)
+      } else {
+        setError(err?.response?.data?.message || err.message || 'Enrollment failed.')
+      }
     } finally {
       setEnrollmentBusy(false)
     }
@@ -148,6 +157,9 @@ export default function CourseDetailPage() {
               <span className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-sm text-slate-100 light:bg-black/5 light:text-slate-900">
                 <Users size={16} className="text-green-300 light:text-emerald-700" /> {enrollmentCount} learners
               </span>
+              <span className="inline-flex items-center gap-2 rounded-full bg-orange-400/10 px-4 py-2 text-sm font-semibold text-orange-700 dark:text-orange-200">
+                Cost to enroll: {priceLabel}
+              </span>
             </div>
           </div>
 
@@ -174,7 +186,7 @@ export default function CourseDetailPage() {
                 </div>
               ) : (
                 <Button onClick={() => handleEnroll()} size="lg" disabled={enrollmentBusy}>
-                  {enrollmentBusy ? 'Enrolling...' : auth.user ? 'Enroll Course' : 'Login to Enroll'}
+                  {enrollmentBusy ? 'Enrolling...' : auth.user ? (priceCents > 0 ? `Pay ${priceLabel} to Enroll` : 'Enroll Course') : 'Login to Enroll'}
                 </Button>
               )}
               <div className="flex gap-2">
@@ -206,6 +218,14 @@ export default function CourseDetailPage() {
                 {tab}
               </button>
             ))}
+            <button
+              type="button"
+              onClick={() => navigate(`/course/${course.id}/assessments`)}
+              className="inline-flex items-center gap-2 rounded-full bg-[var(--bg-subtle)] px-4 py-2 text-[var(--text-secondary)] transition hover:bg-[var(--accent-soft)] hover:text-[var(--accent-primary)]"
+            >
+              <ClipboardList size={16} />
+              Assignments {assignments.length ? `(${assignments.length})` : ''}
+            </button>
           </div>
 
           {activeTab === 'overview' && (
@@ -269,6 +289,7 @@ export default function CourseDetailPage() {
               <li>Category: {course.category}</li>
               <li>Level: {course.level}</li>
               <li>Lessons: {lessons.length}</li>
+              <li>Assignments: {assignments.length}</li>
               <li>Published: {course.isPublished ? 'Yes' : 'No'}</li>
             </ul>
           </div>
@@ -339,7 +360,7 @@ export default function CourseDetailPage() {
                     </p>
                   ) : null}
                   <Button onClick={() => handleEnroll({ openPlayer: true })} disabled={!selectedInstructorId || enrollmentBusy} className="w-full">
-                    {isEnrolled ? `Continue with ${selectedInstructor?.name || 'Selected Instructor'}` : `Enroll with ${selectedInstructor?.name || 'Selected Instructor'}`}
+                    {isEnrolled ? `Continue with ${selectedInstructor?.name || 'Selected Instructor'}` : priceCents > 0 ? `Pay ${priceLabel} to Enroll` : `Enroll with ${selectedInstructor?.name || 'Selected Instructor'}`}
                   </Button>
                 </div>
               </div>

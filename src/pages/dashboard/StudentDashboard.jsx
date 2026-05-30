@@ -56,6 +56,30 @@ export default function StudentDashboard() {
   const [analytics, setAnalytics] = useState(normalizeAnalytics(emptyAnalytics, 0))
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
+  const [notice, setNotice] = useState('')
+
+  function goTo(path, fallbackMessage = '') {
+    if (!path) {
+      if (fallbackMessage) setNotice(fallbackMessage)
+      return
+    }
+    setNotice('')
+    navigate(path)
+  }
+
+  function resumeLearning() {
+    const activeCourses = [...courses].sort((a, b) => {
+      const dateA = new Date(a.enrollment?.enrolledAt || a.updatedAt || a.createdAt || 0).getTime()
+      const dateB = new Date(b.enrollment?.enrolledAt || b.updatedAt || b.createdAt || 0).getTime()
+      return dateB - dateA
+    })
+    const nextCourse = activeCourses[0]
+    if (!nextCourse?.id) {
+      goTo('/explore', 'No active enrolled course found. Pick a course to start learning.')
+      return
+    }
+    goTo(`/player/${nextCourse.id}`)
+  }
 
   async function loadDashboardData() {
     try {
@@ -65,7 +89,7 @@ export default function StudentDashboard() {
         fetchLearnerDashboard().catch(() => ({ data: { dashboard: { enrollments: [] } } })),
       ])
       const enrollments = coursesRes.data?.dashboard?.enrollments || []
-      const courseList = enrollments.map((enrollment) => ({
+        const courseList = enrollments.map((enrollment) => ({
         ...enrollment.course,
         enrollmentId: enrollment.id,
         enrollment,
@@ -99,11 +123,17 @@ export default function StudentDashboard() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button onClick={() => navigate('/explore')}>Explore Courses</Button>
-            <Button variant="secondary" onClick={() => navigate('/certificates')}>Certificates</Button>
+            <Button onClick={() => goTo('/explore')}>Explore Courses</Button>
+            <Button variant="secondary" onClick={() => goTo('/certificates')}>Certificates</Button>
           </div>
         </div>
       </div>
+
+      {notice ? (
+        <div className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-700 dark:text-cyan-100">
+          {notice}
+        </div>
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
         <LearnerMetric icon={BookOpenCheck} label="Enrolled" value={analytics.totalCourses} detail="active learning paths" loading={loading} />
@@ -120,7 +150,7 @@ export default function StudentDashboard() {
               <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Learner permissions</p>
               <h2 className="mt-3 text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">What you can do</h2>
             </div>
-            <Button variant="secondary" onClick={() => navigate('/user')}>
+            <Button variant="secondary" onClick={() => goTo('/user')}>
               View profile
             </Button>
           </div>
@@ -141,9 +171,9 @@ export default function StudentDashboard() {
           <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Quick actions</p>
           <h2 className="mt-3 text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">Next best steps</h2>
           <div className="mt-6 grid gap-3">
-            <LearnerAction icon={Compass} title="Find a course" text="Browse current catalog and pick your next skill." onClick={() => navigate('/explore')} />
-            <LearnerAction icon={PlayCircle} title="Resume learning" text="Open your most recent course player." onClick={() => courses[0] ? navigate(`/player/${courses[0].id}`) : navigate('/explore')} />
-            <LearnerAction icon={Sparkles} title="Join community" text="Ask questions and learn with peers." onClick={() => navigate('/community')} />
+            <LearnerAction icon={Compass} title="Find a course" text="Browse current catalog and pick your next skill." onClick={() => goTo('/explore')} />
+            <LearnerAction icon={PlayCircle} title="Resume learning" text="Open your most recent course player." onClick={resumeLearning} />
+            <LearnerAction icon={Sparkles} title="Join community" text="Ask questions and learn with peers." onClick={() => goTo('/community')} />
           </div>
         </div>
       </div>
@@ -155,7 +185,7 @@ export default function StudentDashboard() {
               <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Learning progress</p>
               <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">Time spent this week</h2>
             </div>
-            <Button variant="secondary" onClick={() => navigate('/reports')}>View report</Button>
+            <Button variant="secondary" onClick={() => goTo('/reports')}>View report</Button>
           </div>
           <div className="mt-8 h-72">
             <ResponsiveContainer width="100%" height="100%">
@@ -219,7 +249,7 @@ export default function StudentDashboard() {
             <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Continue learning</p>
             <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">Your active courses</h2>
           </div>
-          <Button variant="secondary" onClick={() => navigate('/explore')}>Explore New Courses</Button>
+          <Button variant="secondary" onClick={() => goTo('/explore')}>Explore New Courses</Button>
         </div>
 
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
@@ -230,7 +260,7 @@ export default function StudentDashboard() {
               <GraduationCap className="mx-auto text-[var(--text-muted)]" size={32} />
               <p className="mt-3 font-semibold text-[var(--text-primary)]">No active courses yet</p>
               <p className="mt-1 text-sm text-[var(--text-secondary)]">Explore courses to begin your learning path.</p>
-              <Button className="mt-5" onClick={() => navigate('/explore')}>Explore Courses</Button>
+              <Button className="mt-5" onClick={() => goTo('/explore')}>Explore Courses</Button>
             </div>
           ) : (
             courses.slice(0, 2).map((course) => (
@@ -256,8 +286,8 @@ export default function StudentDashboard() {
                 </div>
 
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <Button variant="secondary" onClick={() => navigate(`/course/${course.id}`)}>View Course</Button>
-                  <Button onClick={() => navigate(`/player/${course.id}`)}>Open Player</Button>
+                  <Button variant="secondary" onClick={() => goTo(`/course/${course.id}`)}>View Course</Button>
+                  <Button onClick={() => goTo(`/player/${course.id}`)}>Open Player</Button>
                 </div>
               </div>
             ))

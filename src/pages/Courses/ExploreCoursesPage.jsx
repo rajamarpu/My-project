@@ -8,6 +8,7 @@ import Button from '../../components/common/Button/Button.jsx'
 import { fadeInUp } from '../../utils/animationVariants.js'
 import { enrollCourseRequest, fetchCourses, unenrollCourseRequest } from '../../api/api.js'
 import { enrollCourse, unenrollCourse } from '../../store/slices/authSlice.js'
+import { formatRupeesFromPaise } from '../../utils/money.js'
 
 export default function ExploreCoursesPage() {
   const navigate = useNavigate()
@@ -73,7 +74,12 @@ export default function ExploreCoursesPage() {
         setNotice(`Enrolled in ${course.title}.`)
       }
     } catch (err) {
-      setError(err?.response?.data?.message || err.message || 'Could not update enrollment.')
+      if (err?.response?.status === 402) {
+        const price = formatRupeesFromPaise(err.response.data?.priceCents || course.priceCents || 0)
+        setError(err.response.data?.message || `Payment required. Cost to enroll is ${price}.`)
+      } else {
+        setError(err?.response?.data?.message || err.message || 'Could not update enrollment.')
+      }
     } finally {
       setBusyCourseId('')
     }

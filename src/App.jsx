@@ -18,8 +18,10 @@ import AdminDashboard from './pages/Admin/AdminDashboard.jsx'
 import AdminDataPage from './pages/Admin/AdminDataPage.jsx'
 import AdminCourseFormPage from './pages/Admin/AdminCourseFormPage.jsx'
 import AdminCategoryFormPage from './pages/Admin/AdminCategoryFormPage.jsx'
+import QuestionManagementPage from './pages/Admin/QuestionManagementPage.jsx'
 import UserPage from './pages/Dashboard/UserPage.jsx'
 import LearningPlayerPage from './pages/Courses/LearningPlayerPage.jsx'
+import QuestionPracticePage from './pages/Courses/QuestionPracticePage.jsx'
 import CommunityPage from './pages/Dashboard/CommunityPage.jsx'
 import CertificatesPage from './pages/Dashboard/CertificatesPage.jsx'
 import AdminReviewPage from './pages/Admin/AdminReviewPage.jsx'
@@ -136,6 +138,7 @@ function AnimatedRoutes() {
             <Route path="/admin/learners" element={<AdminLayout><AdminDataPage resource="learners" /></AdminLayout>} />
             <Route path="/admin/instructors" element={<AdminLayout><AdminDataPage resource="instructors" /></AdminLayout>} />
             <Route path="/admin/courses" element={<AdminLayout><AdminDataPage resource="courses" /></AdminLayout>} />
+            <Route path="/admin/questions" element={<AdminLayout><QuestionManagementPage /></AdminLayout>} />
             <Route path="/admin/categories" element={<AdminLayout><AdminDataPage resource="categories" /></AdminLayout>} />
             <Route path="/admin/create-category" element={<AdminLayout><AdminCategoryFormPage /></AdminLayout>} />
             <Route path="/admin/edit-category/:categoryId" element={<AdminLayout><AdminCategoryFormPage mode="edit" /></AdminLayout>} />
@@ -205,6 +208,7 @@ function AnimatedRoutes() {
 
         <Route element={<ProtectedRoute allowedRoles={['learner', 'admin']} />}>
           <Route path="/dashboard" element={<MainLayout><StudentDashboard /></MainLayout>} />
+          <Route path="/questions" element={<MainLayout><QuestionPracticePage /></MainLayout>} />
           <Route path="/user" element={<MainLayout><UserPage /></MainLayout>} />
           <Route path="/profile" element={<MainLayout><UserPage /></MainLayout>} />
           <Route path="/settings" element={<MainLayout><SettingsPage /></MainLayout>} />
