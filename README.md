@@ -2,6 +2,8 @@
 
 Premium AI learning platform built with React, Vite, Express, Prisma, and PostgreSQL.
 
+Learning Management System repository for UptoSkills.
+
 ## Stack
 
 - Frontend: React, Vite, Tailwind CSS, Redux Toolkit, Framer Motion
