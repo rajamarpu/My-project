@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
-import { Activity, Award, BarChart3, Bell, BookOpenCheck, CircleHelp, CreditCard, FolderTree, GraduationCap, LogOut, Menu, Settings, Upload, UserCircle, Users, X } from 'lucide-react'
+import { Activity, Award, BarChart3, Bell, BookOpenCheck, CircleHelp, ClipboardCheck, CreditCard, FolderTree, GraduationCap, LogOut, Menu, Settings, Upload, UserCircle, Users, X } from 'lucide-react'
 import { useState } from 'react'
 import { logout } from '../store/slices/authSlice.js'
 import { cn } from '../utils/classNames.js'
@@ -14,6 +14,7 @@ const adminNav = [
   { label: 'Instructors', href: '/admin/instructors', icon: Users },
   { label: 'Courses', href: '/admin/courses', icon: BookOpenCheck },
   { label: 'Questions', href: '/admin/questions', icon: CircleHelp },
+  { label: 'Assessment Evaluations', href: '/admin/evaluations', icon: ClipboardCheck },
   { label: 'Categories', href: '/admin/categories', icon: FolderTree },
   { label: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
   { label: 'Revenue', href: '/admin/revenue', icon: CreditCard },

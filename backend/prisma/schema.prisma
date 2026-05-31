@@ -49,6 +49,12 @@ enum DifficultyLevel {
   HARD
 }
 
+enum SubmissionStatus {
+  PASSED
+  FAILED
+  PENDING_EVALUATION
+}
+
 model User {
   id             Int             @id @default(autoincrement())
   name           String          @map("full_name")
@@ -78,6 +84,7 @@ model User {
   moderatedChats ChatMessage[]    @relation("ModeratorActions")
   coursesCreated Course[]         @relation("CourseCreator")
   questionsCreated Question[]     @relation("QuestionCreator")
+  assessmentSubmissions AssessmentSubmission[]
   payments       Payment[]
   sessions       Session[]
   activityLogs   ActivityLog[]
@@ -127,6 +134,7 @@ model Course {
   payments        Payment[]
   instructorChanges InstructorChangeHistory[]
   questions       Question[]
+  assessmentSubmissions AssessmentSubmission[]
 
   @@index([category])
   @@index([categoryId])
@@ -157,6 +165,36 @@ model Question {
   @@index([courseId])
   @@index([createdAt])
   @@map("questions")
+}
+
+model AssessmentSubmission {
+  id                  String           @id @default(cuid())
+  studentId           Int
+  courseId            String
+  assignmentId        String?
+  assignmentName      String
+  studentAnswers      Json
+  questionReviews     Json
+  totalMarks          Int              @default(0)
+  obtainedMarks       Float            @default(0)
+  correctCount        Int              @default(0)
+  wrongCount          Int              @default(0)
+  skippedCount        Int              @default(0)
+  percentage          Float            @default(0)
+  status              SubmissionStatus @default(FAILED)
+  attemptNumber       Int              @default(1)
+  completionTimeSec   Int?
+  submittedAt         DateTime         @default(now())
+  evaluatedAt         DateTime?
+  publishedAt         DateTime?
+  student             User             @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  course              Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@index([studentId, submittedAt])
+  @@index([courseId, submittedAt])
+  @@index([assignmentId])
+  @@index([status])
+  @@map("assessment_submissions")
 }
 
 model Lesson {

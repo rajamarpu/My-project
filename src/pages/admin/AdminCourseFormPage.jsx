@@ -46,6 +46,9 @@ function createAssessmentQuestion(type = 'MCQ_SINGLE') {
       : [],
     correctAnswers: [],
     correctAnswer: '',
+    modelAnswer: '',
+    evaluationNotes: '',
+    marks: 1,
   }
 }
 
@@ -430,6 +433,12 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
         if (question.type === 'FILL_BLANK' && !question.correctAnswer) {
           nextErrors[`${key}-answer`] = 'Correct answer is required.'
         }
+        if (question.type === 'DESCRIPTIVE' && !question.modelAnswer) {
+          nextErrors[`${key}-answer`] = 'Model answer is required.'
+        }
+        if (Number(question.marks || 0) < 1) {
+          nextErrors[`${key}-marks`] = 'Marks must be at least 1.'
+        }
       })
     })
     setFieldErrors(nextErrors)
@@ -679,6 +688,17 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
                                       onChange={(value) => updateAssessmentQuestion(index, questionIndex, { correctAnswer: value })}
                                     />
                                   ) : null}
+                                  <label className="admin-label">
+                                    Marks
+                                    <input
+                                      type="number"
+                                      min="1"
+                                      value={question.marks || 1}
+                                      onChange={(event) => updateAssessmentQuestion(index, questionIndex, { marks: event.target.value })}
+                                      className="admin-input"
+                                    />
+                                    <FieldError>{fieldErrors[`${questionKey}-marks`]}</FieldError>
+                                  </label>
                                   <label className="admin-label lg:col-span-2">
                                     Question text
                                     <textarea
@@ -741,8 +761,28 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
                                     </div>
                                   ) : null}
                                   {question.type === 'DESCRIPTIVE' ? (
-                                    <div className="lg:col-span-2 rounded-lg border border-indigo-400/20 bg-indigo-500/10 p-4 text-sm text-indigo-900 dark:text-indigo-100">
-                                      Learners will see a large text box for a multi-line written answer.
+                                    <div className="lg:col-span-2 grid gap-4 rounded-lg border border-indigo-400/20 bg-indigo-500/10 p-4">
+                                      <label className="admin-label">
+                                        Model answer / expected answer
+                                        <textarea
+                                          value={question.modelAnswer || ''}
+                                          onChange={(event) => updateAssessmentQuestion(index, questionIndex, { modelAnswer: event.target.value })}
+                                          rows={3}
+                                          className="admin-input"
+                                          placeholder="Write the answer admins can use while evaluating."
+                                        />
+                                        <FieldError>{fieldErrors[`${questionKey}-answer`]}</FieldError>
+                                      </label>
+                                      <label className="admin-label">
+                                        Evaluation notes
+                                        <textarea
+                                          value={question.evaluationNotes || ''}
+                                          onChange={(event) => updateAssessmentQuestion(index, questionIndex, { evaluationNotes: event.target.value })}
+                                          rows={2}
+                                          className="admin-input"
+                                          placeholder="Optional rubric or marking guidance."
+                                        />
+                                      </label>
                                     </div>
                                   ) : null}
                                 </div>
@@ -838,6 +878,9 @@ function normalizeAssessmentQuestions(questions = []) {
         ? (question.correctAnswers || []).filter((id) => options.some((option) => option.id === id))
         : [],
       correctAnswer: type === 'FILL_BLANK' ? String(question.correctAnswer || '').trim() : '',
+      modelAnswer: type === 'DESCRIPTIVE' ? String(question.modelAnswer || question.expectedAnswer || '').trim() : '',
+      evaluationNotes: type === 'DESCRIPTIVE' ? String(question.evaluationNotes || '').trim() : '',
+      marks: Math.max(1, Number.parseInt(question.marks, 10) || 1),
     }
   })
   return normalized.length ? normalized : [createAssessmentQuestion()]
@@ -847,6 +890,7 @@ function questionHasContent(question) {
   return Boolean(
     question.text
     || question.correctAnswer
+    || question.modelAnswer
     || question.correctAnswers?.length
     || question.options?.some((option) => option.text)
   )

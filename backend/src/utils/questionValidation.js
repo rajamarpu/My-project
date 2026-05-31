@@ -62,7 +62,7 @@ export function validateQuestionPayload(question) {
 
   if (question.type === 'DESCRIPTIVE') {
     question.options = []
-    question.correctAnswers = []
+    if (!question.correctAnswers.length) errors.correctAnswers = 'Descriptive questions require a model answer.'
   }
 
   return errors

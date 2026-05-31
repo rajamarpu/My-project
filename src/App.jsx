@@ -19,6 +19,7 @@ import AdminDataPage from './pages/Admin/AdminDataPage.jsx'
 import AdminCourseFormPage from './pages/Admin/AdminCourseFormPage.jsx'
 import AdminCategoryFormPage from './pages/Admin/AdminCategoryFormPage.jsx'
 import QuestionManagementPage from './pages/Admin/QuestionManagementPage.jsx'
+import AssessmentEvaluationsPage from './pages/Admin/AssessmentEvaluationsPage.jsx'
 import UserPage from './pages/Dashboard/UserPage.jsx'
 import LearningPlayerPage from './pages/Courses/LearningPlayerPage.jsx'
 import QuestionPracticePage from './pages/Courses/QuestionPracticePage.jsx'
@@ -139,6 +140,7 @@ function AnimatedRoutes() {
             <Route path="/admin/instructors" element={<AdminLayout><AdminDataPage resource="instructors" /></AdminLayout>} />
             <Route path="/admin/courses" element={<AdminLayout><AdminDataPage resource="courses" /></AdminLayout>} />
             <Route path="/admin/questions" element={<AdminLayout><QuestionManagementPage /></AdminLayout>} />
+            <Route path="/admin/evaluations" element={<AdminLayout><AssessmentEvaluationsPage /></AdminLayout>} />
             <Route path="/admin/categories" element={<AdminLayout><AdminDataPage resource="categories" /></AdminLayout>} />
             <Route path="/admin/create-category" element={<AdminLayout><AdminCategoryFormPage /></AdminLayout>} />
             <Route path="/admin/edit-category/:categoryId" element={<AdminLayout><AdminCategoryFormPage mode="edit" /></AdminLayout>} />

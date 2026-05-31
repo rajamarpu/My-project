@@ -101,6 +101,7 @@ export default function QuestionManagementPage() {
       if (form.type === 'MCQ_SINGLE' && form.correctAnswers.length !== 1) nextErrors.correctAnswers = 'Select exactly one correct answer.'
     }
     if (form.type === 'FILL_BLANK' && !form.correctAnswers[0]?.trim()) nextErrors.correctAnswers = 'Correct answer is required.'
+    if (form.type === 'DESCRIPTIVE' && !form.correctAnswers[0]?.trim()) nextErrors.correctAnswers = 'Model answer is required.'
     setErrors(nextErrors)
     return !Object.keys(nextErrors).length
   }
@@ -113,7 +114,7 @@ export default function QuestionManagementPage() {
     const payload = {
       ...form,
       options: form.type.includes('MCQ') ? form.options.filter((option) => option.text.trim()) : [],
-      correctAnswers: form.type === 'FILL_BLANK' ? [form.correctAnswers[0]] : form.correctAnswers,
+      correctAnswers: ['FILL_BLANK', 'DESCRIPTIVE'].includes(form.type) ? [form.correctAnswers[0]] : form.correctAnswers,
       marks: Number(form.marks || 1),
     }
 
@@ -235,9 +236,22 @@ export default function QuestionManagementPage() {
             ) : null}
 
             {form.type === 'DESCRIPTIVE' ? (
-              <p className="rounded-lg border border-cyan-400/25 bg-cyan-400/10 p-3 text-sm text-cyan-800 dark:text-cyan-100">
-                Descriptive questions have no predefined correct answer and are marked for manual review.
-              </p>
+              <div className="grid gap-4">
+                <label className="admin-label">
+                  Model answer / expected answer
+                  <textarea
+                    className="admin-input min-h-28"
+                    value={form.correctAnswers[0] || ''}
+                    onChange={(event) => update('correctAnswers', [event.target.value])}
+                    placeholder="Write the answer admins can use during manual evaluation."
+                  />
+                  <FieldError>{errors.correctAnswers}</FieldError>
+                </label>
+                <label className="admin-label">
+                  Evaluation notes
+                  <textarea className="admin-input min-h-20" value={form.explanation} onChange={(event) => update('explanation', event.target.value)} placeholder="Optional rubric or marking guidance." />
+                </label>
+              </div>
             ) : null}
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -253,10 +267,10 @@ export default function QuestionManagementPage() {
               </label>
             </div>
 
-            <label className="admin-label">
+            {form.type !== 'DESCRIPTIVE' ? <label className="admin-label">
               Explanation
               <textarea className="admin-input min-h-20" value={form.explanation} onChange={(event) => update('explanation', event.target.value)} placeholder="Optional explanation shown to staff." />
-            </label>
+            </label> : null}
           </div>
 
           <div className="mt-5 flex flex-wrap gap-3">

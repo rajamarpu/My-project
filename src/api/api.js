@@ -50,6 +50,12 @@ export const updateQuestion = async (id, payload) => api.patch(`/questions/${id}
 export const deleteQuestion = async (id) => api.delete(`/questions/${id}`)
 export const validateQuestionAnswer = async (id, answer) => api.post(`/questions/${id}/validate`, { answer })
 export const bulkImportQuestions = async (questions) => api.post('/questions/bulk', { questions })
+export const submitStructuredAssessment = async (payload) => api.post('/assessments/submit', payload)
+export const fetchMyAssessmentSubmissions = async (params = {}) => api.get('/assessments/submissions', { params })
+export const fetchAssessmentSubmission = async (id) => api.get(`/assessments/submissions/${id}`)
+export const fetchAdminAssessmentSubmissions = async (params = {}) => api.get('/assessments/admin/submissions', { params })
+export const evaluateAssessmentSubmission = async (id, evaluations) => api.patch(`/assessments/admin/submissions/${id}/evaluate`, { evaluations })
+export const downloadAssessmentSubmissionUrl = (id) => `${api.defaults.baseURL}/assessments/admin/submissions/${id}/download`
 export const uploadContentRequest = async (payload) => api.post('/content/upload', payload)
 export const createTaskRequest = async (payload) => api.post('/tasks', payload)
 export const fetchContentLibrary = async () => api.get('/content')

@@ -16,6 +16,7 @@ import adminRoutes from './routes/adminRoutes.js'
 import chatRoutes from './routes/chatRoutes.v2.js'
 import certificateRoutes from './routes/certificateRoutes.js'
 import questionRoutes from './routes/questionRoutes.js'
+import assessmentRoutes from './routes/assessmentRoutes.js'
 import { publicUser, verifyToken } from './utils/tokens.js'
 import { requireAuth, requestLogger } from './middleware/auth.js'
 
@@ -242,6 +243,7 @@ app.use('/api/admin', adminRoutes)
 app.use('/api/chat', chatRoutes)
 app.use('/api/certificates', certificateRoutes)
 app.use('/api/questions', questionRoutes)
+app.use('/api/assessments', assessmentRoutes)
 
 app.use((req, res) => res.status(404).json({ success: false, message: `Route not found: ${req.method} ${req.path}` }))
 
