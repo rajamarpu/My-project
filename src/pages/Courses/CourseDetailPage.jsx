@@ -137,14 +137,14 @@ export default function CourseDetailPage() {
 
   return (
     <section className="space-y-10 pb-16">
-      <div className="upto-hero-panel overflow-hidden rounded-3xl p-8">
-        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-          <div className="space-y-6">
+      <div className="upto-hero-panel overflow-hidden rounded-3xl p-6 sm:p-8">
+        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
+          <div className="space-y-5">
             <p className="text-sm uppercase tracking-[0.3em] text-cyan-300 light:text-cyan-700">Course detail</p>
             <h1 className="text-4xl font-semibold text-slate-100 light:text-slate-900">{course.title}</h1>
             <p className="max-w-2xl text-slate-300 light:text-slate-600">{course.description}</p>
 
-            <div className="flex flex-wrap items-center gap-4">
+            <div className="flex flex-wrap items-center gap-3 pt-1">
               <span className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-sm text-slate-100 light:bg-black/5 light:text-slate-900">
                 <Star size={16} className="text-amber-300" /> {course.rating ?? '0.0'}
               </span>
@@ -160,6 +160,30 @@ export default function CourseDetailPage() {
               <span className="inline-flex items-center gap-2 rounded-full bg-orange-400/10 px-4 py-2 text-sm font-semibold text-orange-700 dark:text-orange-200">
                 Cost to enroll: {priceLabel}
               </span>
+            </div>
+
+            <div className="grid gap-3 pt-2 sm:grid-cols-3">
+              <div className="rounded-2xl border border-[var(--border-color)] bg-white/78 p-4 shadow-sm dark:bg-slate-950/42">
+                <p className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
+                  <BarChart3 size={16} className="text-cyan-700 dark:text-cyan-300" />
+                  Practical Skills
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Analytics, visualization, and decision-ready data workflows.</p>
+              </div>
+              <div className="rounded-2xl border border-[var(--border-color)] bg-white/78 p-4 shadow-sm dark:bg-slate-950/42">
+                <p className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
+                  <ClipboardList size={16} className="text-cyan-700 dark:text-cyan-300" />
+                  Assignments
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{isEnrolled ? `${assignments.length} unlocked for this course.` : 'Available after enrollment.'}</p>
+              </div>
+              <div className="rounded-2xl border border-[var(--border-color)] bg-white/78 p-4 shadow-sm dark:bg-slate-950/42">
+                <p className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
+                  <Users size={16} className="text-cyan-700 dark:text-cyan-300" />
+                  Guided Learning
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Learn with {displayInstructor.name || 'your selected instructor'}.</p>
+              </div>
             </div>
           </div>
 
@@ -220,11 +244,14 @@ export default function CourseDetailPage() {
             ))}
             <button
               type="button"
-              onClick={() => navigate(`/course/${course.id}/assessments`)}
+              onClick={() => {
+                if (isEnrolled || auth.role === 'admin') navigate(`/course/${course.id}/assessments`)
+                else void handleEnroll()
+              }}
               className="inline-flex items-center gap-2 rounded-full bg-[var(--bg-subtle)] px-4 py-2 text-[var(--text-secondary)] transition hover:bg-[var(--accent-soft)] hover:text-[var(--accent-primary)]"
             >
               <ClipboardList size={16} />
-              Assignments {assignments.length ? `(${assignments.length})` : ''}
+              {isEnrolled || auth.role === 'admin' ? `Assignments ${assignments.length ? `(${assignments.length})` : ''}` : 'Enroll to view assignments'}
             </button>
           </div>
 

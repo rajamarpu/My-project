@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Download, Eye, Save, Search } from 'lucide-react'
+import { Download, Eye, RotateCcw, Save, Search } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
 import { AdminEmptyState, AdminLoadingState, AdminNotice, AdminPageHeader } from '../../components/admin/AdminUI.jsx'
-import { downloadAssessmentSubmissionUrl, evaluateAssessmentSubmission, fetchAdminAssessmentSubmissions } from '../../api/api.js'
+import { downloadAssessmentSubmissionUrl, evaluateAssessmentSubmission, fetchAdminAssessmentSubmissions, grantAssessmentRetake } from '../../api/api.js'
 
 const statusOptions = [
   { value: 'ALL', label: 'All statuses' },
@@ -19,6 +19,8 @@ export default function AssessmentEvaluationsPage() {
   const [notice, setNotice] = useState({ type: '', message: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [reopeningId, setReopeningId] = useState('')
+  const [retakeTarget, setRetakeTarget] = useState(null)
 
   async function loadSubmissions(nextFilters = filters) {
     try {
@@ -83,6 +85,25 @@ export default function AssessmentEvaluationsPage() {
     }
   }
 
+  async function reopenRetake(submission = retakeTarget) {
+    if (!submission?.studentId || !submission.courseId || !submission.assignmentId) return
+    try {
+      setReopeningId(submission.id)
+      const response = await grantAssessmentRetake({
+        studentId: submission.studentId,
+        courseId: submission.courseId,
+        assignmentId: submission.assignmentId,
+      })
+      setNotice({ type: 'success', message: response.data.message || 'Retake opened for this student.' })
+      setRetakeTarget(null)
+      await loadSubmissions()
+    } catch (err) {
+      setNotice({ type: 'error', message: err?.response?.data?.message || err.message || 'Could not reopen this assignment.' })
+    } finally {
+      setReopeningId('')
+    }
+  }
+
   return (
     <section className="space-y-6 pb-16">
       <AdminPageHeader
@@ -91,6 +112,24 @@ export default function AssessmentEvaluationsPage() {
         description="View assignment submissions, inspect answers, evaluate descriptive responses, publish marks, and download submission records."
       />
       <AdminNotice type={notice.type || 'info'}>{notice.message}</AdminNotice>
+      {retakeTarget ? (
+        <div className="admin-panel border-amber-400/30 bg-amber-500/10 p-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-[var(--text-primary)]">Open one extra attempt?</p>
+              <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                {retakeTarget.student?.name || 'This student'} will be able to retake {retakeTarget.assignmentName}. Other learners stay closed.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="secondary" onClick={() => setRetakeTarget(null)}>Cancel</Button>
+              <Button type="button" onClick={() => reopenRetake()} disabled={reopeningId === retakeTarget.id}>
+                <RotateCcw size={16} /> {reopeningId === retakeTarget.id ? 'Opening...' : 'Open Retake'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <div className="grid gap-3 md:grid-cols-4">
         <Metric label="Total submissions" value={metrics.total} />
@@ -132,6 +171,9 @@ export default function AssessmentEvaluationsPage() {
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button type="button" variant="secondary" onClick={() => selectSubmission(submission)}><Eye size={16} /> View</Button>
+                  <Button type="button" variant="secondary" onClick={() => setRetakeTarget(submission)} disabled={reopeningId === submission.id}>
+                    <RotateCcw size={16} /> Reopen Retake
+                  </Button>
                   <a className="inline-flex h-10 items-center gap-2 rounded-lg border border-[var(--border-color)] px-3 text-sm font-semibold text-[var(--text-primary)] transition hover:border-cyan-400/50" href={downloadAssessmentSubmissionUrl(submission.id)}>
                     <Download size={16} /> Download
                   </a>

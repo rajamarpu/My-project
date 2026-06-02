@@ -347,6 +347,172 @@ router.post('/uploads', async (req, res, next) => {
   }
 })
 
+const licensedAvatars = [
+  {
+    id: 'uptoskills-studio-female',
+    name: 'UptoSkills Studio Instructor',
+    style: 'Professional studio',
+    license: 'Company-owned avatar',
+    thumbnailUrl: '/favicon.svg',
+  },
+  {
+    id: 'uptoskills-boardroom-male',
+    name: 'UptoSkills Boardroom Instructor',
+    style: 'Enterprise trainer',
+    license: 'Licensed avatar',
+    thumbnailUrl: '/favicon.svg',
+  },
+  {
+    id: 'custom-consented-avatar',
+    name: 'Custom Consented Avatar',
+    style: 'Uploaded instructor identity',
+    license: 'User-consented avatar only',
+    thumbnailUrl: '/favicon.svg',
+  },
+]
+
+const authorizedVoices = [
+  { id: 'en-in-professional-female', name: 'Professional Female', language: 'English India', license: 'Authorized voice model' },
+  { id: 'en-in-clear-male', name: 'Clear Male Narrator', language: 'English India', license: 'Authorized voice model' },
+  { id: 'en-us-training-neutral', name: 'Training Neutral', language: 'English US', license: 'Authorized voice model' },
+]
+
+router.get('/ai-content/options', async (_req, res) => {
+  res.json({ success: true, avatars: licensedAvatars, voices: authorizedVoices })
+})
+
+function animatedLessonHtml({ title, script, imageUrl, voiceSampleUrl, pdfUrl, captionsUrl, generationId }) {
+  const payload = JSON.stringify({
+    title,
+    script,
+    imageUrl,
+    voiceSampleUrl,
+    pdfUrl,
+    captionsUrl,
+    generationId,
+  }).replace(/</g, '\\u003c')
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${String(title).replace(/[<>&"]/g, '')}</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    body { margin: 0; min-height: 100vh; background: #020617; color: white; display: grid; place-items: center; }
+    .stage { position: relative; width: min(100vw, 1280px); aspect-ratio: 16 / 9; overflow: hidden; background: radial-gradient(circle at 20% 10%, #1d4ed8 0, transparent 26%), linear-gradient(135deg, #020617, #111827 70%); }
+    .avatarWrap { position: absolute; inset: 8% 7% 18% auto; width: min(38%, 430px); aspect-ratio: 1; border-radius: 36% 44% 34% 42%; overflow: hidden; border: 6px solid rgba(255,255,255,.2); box-shadow: 0 30px 90px rgba(0,0,0,.45); animation: float 4s ease-in-out infinite; }
+    .avatar { width: 100%; height: 100%; object-fit: cover; filter: saturate(1.22) contrast(1.08) hue-rotate(4deg); transform: scale(1.03); }
+    .mouth { position: absolute; left: 50%; bottom: 22%; width: 54px; height: 14px; border-radius: 999px; transform: translateX(-50%); background: rgba(15,23,42,.82); animation: talk .34s ease-in-out infinite alternate; }
+    .content { position: absolute; left: 6%; top: 10%; width: 50%; }
+    .eyebrow { color: #38bdf8; font-size: clamp(12px, 1.4vw, 16px); letter-spacing: .22em; text-transform: uppercase; font-weight: 800; }
+    h1 { margin: 18px 0 0; font-size: clamp(34px, 5vw, 70px); line-height: 1; }
+    .caption { position: absolute; left: 6%; right: 6%; bottom: 7%; padding: 18px 22px; border-radius: 18px; background: rgba(2,6,23,.72); border: 1px solid rgba(255,255,255,.16); font-size: clamp(16px, 2vw, 27px); line-height: 1.35; }
+    .controls { position: absolute; right: 22px; top: 20px; display: flex; gap: 10px; }
+    button, a { border: 0; border-radius: 12px; background: white; color: #020617; padding: 10px 14px; font-weight: 800; text-decoration: none; cursor: pointer; }
+    .note { margin-top: 24px; max-width: 560px; color: rgba(255,255,255,.76); line-height: 1.65; }
+    @keyframes float { 0%, 100% { transform: translateY(0) rotate(-1deg); } 50% { transform: translateY(-12px) rotate(1deg); } }
+    @keyframes talk { from { transform: translateX(-50%) scaleY(.55); } to { transform: translateX(-50%) scaleY(1.7); } }
+  </style>
+</head>
+<body>
+  <main class="stage">
+    <div class="controls">
+      <button type="button" id="play">Play narration</button>
+      ${pdfUrl ? '<a id="pdf" target="_blank" rel="noreferrer">PDF</a>' : ''}
+    </div>
+    <section class="content">
+      <div class="eyebrow">UptoSkills animated instructor</div>
+      <h1 id="title"></h1>
+      <p class="note">This is a stylized animated instructor lesson. It does not clone a real person's face or voice.</p>
+    </section>
+    <div class="avatarWrap">
+      <img id="avatar" class="avatar" alt="Animated instructor" />
+      <div class="mouth" aria-hidden="true"></div>
+    </div>
+    <div class="caption" id="caption"></div>
+  </main>
+  <script>
+    const lesson = ${payload};
+    document.getElementById('title').textContent = lesson.title;
+    document.getElementById('avatar').src = lesson.imageUrl;
+    document.getElementById('caption').textContent = lesson.script;
+    if (lesson.pdfUrl && document.getElementById('pdf')) document.getElementById('pdf').href = lesson.pdfUrl;
+    document.getElementById('play').addEventListener('click', () => {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(lesson.script);
+      utterance.rate = 0.95;
+      utterance.pitch = 1.02;
+      window.speechSynthesis.speak(utterance);
+    });
+  </script>
+</body>
+</html>`
+}
+
+router.post('/ai-content/generate', async (req, res) => {
+  const { title, script, avatarId, voiceId, slideUrl, imageUrl = '', voiceSampleUrl = '', pdfUrl = '', captionsUrl = '', captions = true, branding = true } = req.body || {}
+  const avatar = licensedAvatars.find((item) => item.id === avatarId)
+  const voice = authorizedVoices.find((item) => item.id === voiceId)
+  if (!title || !script || !avatar || !voice) {
+    return res.status(400).json({
+      success: false,
+      message: 'Title, script, licensed avatar, and authorized voice are required.',
+    })
+  }
+
+  const wordCount = String(script).trim().split(/\s+/).filter(Boolean).length
+  const durationMin = Math.min(10, Math.max(8, Math.ceil(wordCount / 120) || 8))
+  const generationId = `ai-video-${Date.now()}`
+  let generatedVideoUrl = slideUrl || ''
+
+  if (imageUrl) {
+    await mkdir(uploadDir, { recursive: true })
+    const storedName = `${generationId}-${safeFileBase(title)}.html`
+    await writeFile(resolve(uploadDir, storedName), animatedLessonHtml({ title, script, imageUrl, voiceSampleUrl, pdfUrl, captionsUrl, generationId }), 'utf8')
+    generatedVideoUrl = `/uploads/${storedName}`
+  }
+
+  res.status(201).json({
+    success: true,
+    generation: {
+      id: generationId,
+      status: imageUrl ? 'ANIMATED_LINK_READY' : 'READY_FOR_PROVIDER',
+      providerStatus: imageUrl
+        ? 'Animated instructor lesson link generated. Paste this URL into the course lesson Video URL box.'
+        : 'AI video draft prepared. Upload the rendered MP4 or paste the final video URL when it is ready.',
+      lesson: {
+        type: 'AI_AVATAR_VIDEO',
+        title,
+        description: String(script).slice(0, 220),
+        durationMin,
+        videoUrl: generatedVideoUrl,
+        resources: [
+          ...(pdfUrl ? [{ name: 'Lesson PDF', url: pdfUrl, mimeType: 'application/pdf' }] : []),
+          ...(voiceSampleUrl ? [{ name: 'Voice reference sample', url: voiceSampleUrl, mimeType: 'audio/reference' }] : []),
+        ],
+        metadata: {
+          aiGenerated: true,
+          generationId,
+          avatar,
+          voice,
+          script,
+          slideUrl: slideUrl || '',
+          imageUrl,
+          voiceSampleUrl,
+          pdfUrl,
+          captionsUrl,
+          captions,
+          branding,
+          compliance: 'This creates a stylized animated instructor and browser narration. It does not clone a real face or voice.',
+        },
+      },
+    },
+  })
+})
+
 router.patch('/courses/:id', async (req, res, next) => {
   try {
     const category = req.body.category
@@ -354,6 +520,7 @@ router.patch('/courses/:id', async (req, res, next) => {
     const lessons = Array.isArray(req.body.lessons)
       ? req.body.lessons
         .map((lesson, index) => ({
+          ...(typeof lesson.id === 'string' && lesson.id.trim() ? { id: lesson.id } : {}),
           title: String(lesson.title || '').trim(),
           description: String(lesson.description || '').trim() || null,
           videoUrl: String(lesson.videoUrl || '').trim() || null,

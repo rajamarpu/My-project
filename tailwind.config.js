@@ -4,19 +4,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        rich: '#0F172A',
-        halo: '#EEF2FF',
-        aurora: '#6366F1',
-        cyanGlow: '#4F46E5',
+        rich: '#111827',
+        halo: '#EFF6FF',
+        aurora: '#3B82F6',
+        cyanGlow: '#2563EB',
         gold: '#F59E0B',
-        ice: '#F8FAFC',
+        ice: '#FFFFFF',
       },
       boxShadow: {
-        glow: '0 24px 70px rgba(79, 70, 229, 0.22)',
-        soft: '0 18px 45px rgba(15, 23, 42, 0.1)',
+        glow: '0 24px 70px rgba(37, 99, 235, 0.2)',
+        soft: '0 18px 45px rgba(17, 24, 39, 0.08)',
       },
       backgroundImage: {
-        'hero-gradient': 'radial-gradient(circle at top, rgba(79,70,229,0.16), transparent 35%), radial-gradient(circle at right, rgba(139,92,246,0.14), transparent 25%), linear-gradient(180deg, rgba(248,250,252,1) 0%, rgba(238,242,255,1) 100%)',
+        'hero-gradient': 'linear-gradient(180deg, rgba(239,246,255,1) 0%, rgba(255,255,255,1) 100%)',
       },
       keyframes: {
         float: {

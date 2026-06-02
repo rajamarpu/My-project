@@ -85,6 +85,8 @@ model User {
   coursesCreated Course[]         @relation("CourseCreator")
   questionsCreated Question[]     @relation("QuestionCreator")
   assessmentSubmissions AssessmentSubmission[]
+  assessmentRetakeGrants AssessmentRetakeGrant[] @relation("AssessmentRetakeStudent")
+  assessmentRetakesGranted AssessmentRetakeGrant[] @relation("AssessmentRetakeCreatedBy")
   payments       Payment[]
   sessions       Session[]
   activityLogs   ActivityLog[]
@@ -135,6 +137,7 @@ model Course {
   instructorChanges InstructorChangeHistory[]
   questions       Question[]
   assessmentSubmissions AssessmentSubmission[]
+  assessmentRetakeGrants AssessmentRetakeGrant[]
 
   @@index([category])
   @@index([categoryId])
@@ -195,6 +198,25 @@ model AssessmentSubmission {
   @@index([assignmentId])
   @@index([status])
   @@map("assessment_submissions")
+}
+
+model AssessmentRetakeGrant {
+  id            String   @id @default(cuid())
+  studentId     Int
+  courseId      String
+  assignmentId  String
+  extraAttempts Int      @default(1)
+  createdById   Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  student       User     @relation("AssessmentRetakeStudent", fields: [studentId], references: [id], onDelete: Cascade)
+  course        Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdBy     User?    @relation("AssessmentRetakeCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@unique([studentId, courseId, assignmentId])
+  @@index([courseId, assignmentId])
+  @@index([createdById])
+  @@map("assessment_retake_grants")
 }
 
 model Lesson {

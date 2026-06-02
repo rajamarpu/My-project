@@ -16,12 +16,19 @@ function questionWhere(req) {
   const search = String(req.query.search || '').trim()
   const type = String(req.query.type || '').trim().toUpperCase()
   const difficulty = String(req.query.difficulty || '').trim().toUpperCase()
+  const courseId = String(req.query.courseId || '').trim()
   return {
     ...(search ? { text: { contains: search, mode: 'insensitive' } } : {}),
     ...(type && type !== 'ALL' ? { type } : {}),
     ...(difficulty && difficulty !== 'ALL' ? { difficulty } : {}),
-    ...(req.query.courseId ? { courseId: String(req.query.courseId) } : {}),
+    ...(courseId && courseId !== 'ALL' ? { courseId } : {}),
   }
+}
+
+async function courseExists(courseId) {
+  if (!courseId) return false
+  const course = await prisma.course.findUnique({ where: { id: courseId }, select: { id: true } })
+  return Boolean(course)
 }
 
 router.get('/', async (req, res, next) => {
@@ -54,6 +61,9 @@ router.post('/', requireRole('admin'), async (req, res, next) => {
     const question = sanitizeQuestionPayload(req.body)
     const errors = validateQuestionPayload(question)
     if (Object.keys(errors).length) return res.status(400).json({ success: false, errors, message: 'Question validation failed.' })
+    if (!(await courseExists(question.courseId))) {
+      return res.status(400).json({ success: false, errors: { courseId: 'Selected course was not found.' }, message: 'Question validation failed.' })
+    }
 
     const created = await prisma.question.create({
       data: { ...question, createdById: req.user.id },
@@ -76,11 +86,24 @@ router.post('/bulk', requireRole('admin'), async (req, res, next) => {
       const question = sanitizeQuestionPayload(row)
       const errors = validateQuestionPayload(question)
       if (Object.keys(errors).length) rejected.push({ index, errors })
-      else validQuestions.push({ ...question, createdById: req.user.id })
+      else validQuestions.push({ index, question: { ...question, createdById: req.user.id } })
     })
 
-    if (validQuestions.length) await prisma.question.createMany({ data: validQuestions })
-    res.status(201).json({ success: true, imported: validQuestions.length, rejected })
+    const courseIds = [...new Set(validQuestions.map((item) => item.question.courseId))]
+    const courses = await prisma.course.findMany({ where: { id: { in: courseIds } }, select: { id: true } })
+    const validCourseIds = new Set(courses.map((course) => course.id))
+    const importableQuestions = []
+
+    validQuestions.forEach(({ index, question }) => {
+      if (!validCourseIds.has(question.courseId)) {
+        rejected.push({ index, errors: { courseId: 'Selected course was not found.' } })
+      } else {
+        importableQuestions.push(question)
+      }
+    })
+
+    if (importableQuestions.length) await prisma.question.createMany({ data: importableQuestions })
+    res.status(201).json({ success: true, imported: importableQuestions.length, rejected })
   } catch (error) {
     next(error)
   }
@@ -91,6 +114,9 @@ router.patch('/:id', requireRole('admin'), async (req, res, next) => {
     const question = sanitizeQuestionPayload(req.body)
     const errors = validateQuestionPayload(question)
     if (Object.keys(errors).length) return res.status(400).json({ success: false, errors, message: 'Question validation failed.' })
+    if (!(await courseExists(question.courseId))) {
+      return res.status(400).json({ success: false, errors: { courseId: 'Selected course was not found.' }, message: 'Question validation failed.' })
+    }
 
     const updated = await prisma.question.update({
       where: { id: req.params.id },

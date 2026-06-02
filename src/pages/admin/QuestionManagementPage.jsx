@@ -4,16 +4,17 @@ import Button from '../../components/common/Button/Button.jsx'
 import { AdminEmptyState, AdminLoadingState, AdminNotice, AdminPageHeader, FieldError } from '../../components/admin/AdminUI.jsx'
 import { QuestionPreview } from '../../components/questions/QuestionRenderer.jsx'
 import { DIFFICULTY_LABELS, QUESTION_TYPE_LABELS, emptyQuestion, normalizeQuestionForForm } from '../../components/questions/questionUtils.js'
-import { bulkImportQuestions, createQuestion, deleteQuestion, fetchQuestions, updateQuestion } from '../../api/api.js'
+import { bulkImportQuestions, createQuestion, deleteQuestion, fetchAdminCourses, fetchQuestions, updateQuestion } from '../../api/api.js'
 
 const questionTypes = Object.keys(QUESTION_TYPE_LABELS)
 const difficulties = Object.keys(DIFFICULTY_LABELS)
 
 export default function QuestionManagementPage() {
   const [questions, setQuestions] = useState([])
+  const [courses, setCourses] = useState([])
   const [form, setForm] = useState(emptyQuestion())
   const [editingId, setEditingId] = useState('')
-  const [filters, setFilters] = useState({ search: '', type: 'ALL', difficulty: 'ALL', page: 1, pageSize: 10 })
+  const [filters, setFilters] = useState({ search: '', type: 'ALL', difficulty: 'ALL', courseId: 'ALL', page: 1, pageSize: 10 })
   const [pagination, setPagination] = useState({ page: 1, pageSize: 10, total: 0, totalPages: 1 })
   const [errors, setErrors] = useState({})
   const [notice, setNotice] = useState({ type: '', message: '' })
@@ -21,11 +22,17 @@ export default function QuestionManagementPage() {
   const [saving, setSaving] = useState(false)
   const [showImport, setShowImport] = useState(false)
   const [importText, setImportText] = useState('')
+  const [importCourseId, setImportCourseId] = useState('')
+
+  const selectedFilterCourseId = filters.courseId !== 'ALL' ? filters.courseId : ''
+  const newDraft = (courseId = selectedFilterCourseId) => ({ ...emptyQuestion(), courseId })
 
   async function loadQuestions(nextFilters = filters) {
     try {
       setLoading(true)
-      const response = await fetchQuestions(nextFilters)
+      const query = { ...nextFilters }
+      if (query.courseId === 'ALL') delete query.courseId
+      const response = await fetchQuestions(query)
       setQuestions(response.data.questions || [])
       setPagination(response.data.pagination || pagination)
     } catch (err) {
@@ -35,19 +42,32 @@ export default function QuestionManagementPage() {
     }
   }
 
+  async function loadCourses() {
+    try {
+      const response = await fetchAdminCourses()
+      setCourses(response.data.courses || [])
+    } catch (err) {
+      setNotice({ type: 'error', message: err?.response?.data?.message || err.message || 'Could not load courses for question assignment.' })
+    }
+  }
+
+  useEffect(() => {
+    void loadCourses()
+  }, [])
+
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadQuestions()
     }, 250)
     return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.search, filters.type, filters.difficulty, filters.page, filters.pageSize])
+  }, [filters.search, filters.type, filters.difficulty, filters.courseId, filters.page, filters.pageSize])
 
   const previewQuestion = useMemo(() => normalizeQuestionForForm(form), [form])
 
   function update(key, value) {
     if (key === 'type') {
-      setForm({ ...emptyQuestion(value), type: value, marks: form.marks, difficulty: form.difficulty })
+      setForm({ ...emptyQuestion(value), type: value, marks: form.marks, difficulty: form.difficulty, courseId: form.courseId })
       setErrors({})
       return
     }
@@ -93,6 +113,7 @@ export default function QuestionManagementPage() {
 
   function validate() {
     const nextErrors = {}
+    if (!form.courseId) nextErrors.courseId = 'Select the course this question belongs to.'
     if (!form.text.trim()) nextErrors.text = 'Question text cannot be empty.'
     if (form.type.includes('MCQ')) {
       const filledOptions = form.options.filter((option) => option.text.trim())
@@ -124,7 +145,7 @@ export default function QuestionManagementPage() {
       else await createQuestion(payload)
       setNotice({ type: 'success', message: editingId ? 'Question updated.' : 'Question added.' })
       setEditingId('')
-      setForm(emptyQuestion())
+      setForm(newDraft())
       await loadQuestions()
     } catch (err) {
       setErrors(err?.response?.data?.errors || {})
@@ -143,10 +164,20 @@ export default function QuestionManagementPage() {
 
   async function importQuestions() {
     try {
+      if (!importCourseId) {
+        setNotice({ type: 'error', message: 'Select a course before importing questions.' })
+        return
+      }
       const parsed = JSON.parse(importText)
-      const response = await bulkImportQuestions(Array.isArray(parsed) ? parsed : parsed.questions)
+      const rows = Array.isArray(parsed) ? parsed : parsed.questions
+      if (!Array.isArray(rows) || !rows.length) {
+        setNotice({ type: 'error', message: 'Import JSON must be an array or an object with a questions array.' })
+        return
+      }
+      const response = await bulkImportQuestions(rows.map((question) => ({ ...question, courseId: question.courseId || importCourseId })))
       setNotice({ type: 'success', message: `Imported ${response.data.imported} questions. Rejected: ${response.data.rejected?.length || 0}.` })
       setImportText('')
+      setImportCourseId('')
       setShowImport(false)
       await loadQuestions()
     } catch (err) {
@@ -167,6 +198,13 @@ export default function QuestionManagementPage() {
       {showImport ? (
         <div className="admin-panel p-5">
           <p className="font-semibold text-[var(--text-primary)]">Bulk import JSON</p>
+          <label className="admin-label mt-3">
+            Assign imported questions to course
+            <select className="admin-input" value={importCourseId} onChange={(event) => setImportCourseId(event.target.value)}>
+              <option value="">Select course / subject</option>
+              {courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
+            </select>
+          </label>
           <textarea className="admin-input mt-3 min-h-44" value={importText} onChange={(event) => setImportText(event.target.value)} placeholder='[{"type":"FILL_BLANK","text":"React is a ____ library.","correctAnswers":["JavaScript"],"marks":1,"difficulty":"EASY"}]' />
           <div className="mt-3 flex gap-3">
             <Button type="button" onClick={importQuestions}>Import Questions</Button>
@@ -182,10 +220,19 @@ export default function QuestionManagementPage() {
               <p className="theme-eyebrow text-sm uppercase tracking-[0.22em]">{editingId ? 'Edit question' : 'Add question'}</p>
               <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Question builder</h2>
             </div>
-            <Button type="button" variant="secondary" onClick={() => { setEditingId(''); setForm(emptyQuestion()); setErrors({}) }}><Plus size={16} /> New</Button>
+            <Button type="button" variant="secondary" onClick={() => { setEditingId(''); setForm(newDraft()); setErrors({}) }}><Plus size={16} /> New</Button>
           </div>
 
           <div className="mt-5 grid gap-4">
+            <label className="admin-label">
+              Course / subject
+              <select className="admin-input" value={form.courseId} onChange={(event) => update('courseId', event.target.value)}>
+                <option value="">Select course</option>
+                {courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
+              </select>
+              <FieldError>{errors.courseId}</FieldError>
+            </label>
+
             <label className="admin-label">
               Question type
               <select className="admin-input" value={form.type} onChange={(event) => update('type', event.target.value)}>
@@ -275,7 +322,7 @@ export default function QuestionManagementPage() {
 
           <div className="mt-5 flex flex-wrap gap-3">
             <Button type="submit" disabled={saving}>{saving ? 'Saving...' : editingId ? 'Update Question' : 'Add Question'}</Button>
-            <Button type="button" variant="secondary" onClick={() => { setEditingId(''); setForm(emptyQuestion()) }}>Reset</Button>
+            <Button type="button" variant="secondary" onClick={() => { setEditingId(''); setForm(newDraft()) }}>Reset</Button>
           </div>
         </form>
 
@@ -288,11 +335,15 @@ export default function QuestionManagementPage() {
           </div>
 
           <div className="admin-panel p-5">
-            <div className="grid gap-3 lg:grid-cols-[1fr_180px_160px]">
+            <div className="grid gap-3 lg:grid-cols-[1fr_220px_180px_160px]">
               <label className="theme-subcard flex items-center gap-3 rounded-lg px-4 py-3">
                 <Search size={18} />
                 <input className="w-full bg-transparent text-sm outline-none" value={filters.search} onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value, page: 1 }))} placeholder="Search questions" />
               </label>
+              <select className="admin-input" value={filters.courseId} onChange={(event) => setFilters((current) => ({ ...current, courseId: event.target.value, page: 1 }))}>
+                <option value="ALL">All courses</option>
+                {courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
+              </select>
               <select className="admin-input" value={filters.type} onChange={(event) => setFilters((current) => ({ ...current, type: event.target.value, page: 1 }))}>
                 <option value="ALL">All types</option>
                 {questionTypes.map((type) => <option key={type} value={type}>{QUESTION_TYPE_LABELS[type]}</option>)}
@@ -314,6 +365,7 @@ export default function QuestionManagementPage() {
                   <div className="min-w-0">
                     <div className="flex flex-wrap gap-2 text-xs">
                       <span className="rounded-lg bg-cyan-400/10 px-2 py-1 font-semibold text-cyan-700 dark:text-cyan-200">{QUESTION_TYPE_LABELS[question.type]}</span>
+                      <span className="rounded-lg bg-blue-500/10 px-2 py-1 font-semibold text-blue-700 dark:text-blue-200">{question.course?.title || 'No course'}</span>
                       <span className="rounded-lg bg-[var(--bg-subtle)] px-2 py-1 text-[var(--text-muted)]">{DIFFICULTY_LABELS[question.difficulty]}</span>
                       <span className="rounded-lg bg-[var(--bg-subtle)] px-2 py-1 text-[var(--text-muted)]">{question.marks} marks</span>
                     </div>
