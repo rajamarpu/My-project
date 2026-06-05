@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom'
 
 export default function Footer() {
   return (
-    <footer className="border-t border-[var(--border-color)] bg-[var(--bg-elevated)]/90 px-4 py-8 text-[var(--text-secondary)] backdrop-blur-xl transition-colors duration-300 sm:px-6">
-      <div className="mx-auto flex max-w-7xl flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+    <footer className="border-t border-[var(--border-color)] bg-[var(--bg-elevated)]/90 px-[clamp(16px,4vw,64px)] py-8 text-[var(--text-secondary)] backdrop-blur-xl transition-colors duration-300">
+      <div className="mx-auto flex w-full max-w-full flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-sm font-semibold text-[var(--text-primary)]">UptoSkills</p>
           <p className="mt-1 text-sm">Making freshers employable with guided learning.</p>

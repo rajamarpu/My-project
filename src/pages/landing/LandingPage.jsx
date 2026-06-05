@@ -101,8 +101,8 @@ export default function LandingPage() {
   }
 
   return (
-    <motion.section className="space-y-20 pb-20" variants={pageTransition} initial="hidden" animate="enter" exit="exit">
-      <section className="relative isolate overflow-hidden rounded-[2rem] border border-[var(--border-color)] bg-white px-5 py-8 text-[var(--text-primary)] shadow-[0_28px_90px_rgba(37,99,235,0.14)] transition-colors dark:bg-[var(--bg-secondary)] sm:px-8 lg:px-10">
+    <motion.section className="w-full max-w-full space-y-12 pb-20 sm:space-y-16 xl:space-y-20" variants={pageTransition} initial="hidden" animate="enter" exit="exit">
+      <section className="homepage-laptop-fill relative isolate w-full max-w-full overflow-hidden rounded-xl border border-[var(--border-color)] bg-white px-[clamp(16px,4vw,64px)] py-[clamp(32px,6vw,72px)] text-[var(--text-primary)] shadow-[0_28px_90px_rgba(37,99,235,0.14)] transition-colors dark:bg-[var(--bg-secondary)] sm:rounded-[2rem]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_15%,rgba(37,99,235,0.15),transparent_28%),radial-gradient(circle_at_82%_16%,rgba(6,182,212,0.16),transparent_30%),radial-gradient(circle_at_54%_90%,rgba(219,39,119,0.10),transparent_26%),linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,251,255,0.96))] dark:bg-[radial-gradient(circle_at_18%_15%,rgba(56,189,248,0.22),transparent_28%),radial-gradient(circle_at_82%_16%,rgba(45,212,191,0.16),transparent_30%),linear-gradient(135deg,rgba(7,29,47,0.98),rgba(8,62,87,0.94))]" />
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--accent-secondary)]/50 to-transparent" />
         {particles.map((pos, index) => (
@@ -115,14 +115,14 @@ export default function LandingPage() {
           />
         ))}
 
-        <div className="relative grid gap-10 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
-          <div className="max-w-3xl space-y-7">
+        <div className="relative grid w-full gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] lg:items-center xl:gap-12 2xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
+          <div className="w-full max-w-[72rem] space-y-7">
             <div className="inline-flex items-center gap-2 rounded-full border border-[var(--accent-secondary)]/35 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700 dark:bg-white/10 dark:text-cyan-100">
               <Sparkles size={16} />
               XP tracks, badges, and AI teachers built for freshers
             </div>
             <div className="space-y-5">
-              <h1 className="text-4xl font-semibold tracking-normal text-slate-800 dark:text-white sm:text-5xl lg:text-6xl">
+              <h1 className="text-[clamp(2.25rem,6vw,5.25rem)] font-semibold leading-[1.04] tracking-normal text-slate-800 dark:text-white">
                 Learn faster with a
                 <span className="block text-[var(--accent-bold)] dark:text-pink-300">
                   gamified skill campus
@@ -133,7 +133,7 @@ export default function LandingPage() {
                 </span>
               </h1>
               <motion.p
-                className="max-w-2xl text-lg leading-8 text-[var(--text-secondary)] dark:text-slate-300"
+                className="max-w-[56rem] text-base leading-7 text-[var(--text-secondary)] dark:text-slate-300 sm:text-lg sm:leading-8 xl:text-xl xl:leading-9"
                 initial={{ opacity: 0.2 }}
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.8 }}
@@ -142,7 +142,7 @@ export default function LandingPage() {
               </motion.p>
             </div>
 
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
               <Button onClick={startLearning} className="min-h-12">
                 Start learning <ArrowRight size={16} className="ml-2" />
               </Button>
@@ -151,7 +151,7 @@ export default function LandingPage() {
               </Button>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3 sm:grid-cols-3 xl:max-w-4xl">
               {[
                 [summary.totalLearners, 'learners on leaderboard'],
                 [summary.totalInstructors, 'AI mentor styles'],
@@ -165,16 +165,16 @@ export default function LandingPage() {
             </div>
           </div>
 
-          <div className="relative">
-            <div className="absolute -inset-5 rounded-[2rem] bg-gradient-to-r from-blue-500/18 via-cyan-400/18 to-pink-500/12 blur-2xl" />
-            <div className="relative rounded-[2rem] border border-[var(--border-color)] bg-white/88 p-5 shadow-2xl backdrop-blur-xl dark:bg-white/[0.08]">
-              <div className="flex items-center justify-between gap-4">
+          <div className="relative w-full">
+            <div className="absolute -inset-3 rounded-[2rem] bg-gradient-to-r from-blue-500/18 via-cyan-400/18 to-pink-500/12 blur-2xl sm:-inset-5" />
+            <div className="relative rounded-xl border border-[var(--border-color)] bg-white/88 p-4 shadow-2xl backdrop-blur-xl dark:bg-white/[0.08] sm:rounded-[2rem] sm:p-5">
+              <div className="flex flex-col gap-4 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
                 <div>
                   <p className="text-sm uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-200">Live mentor quest</p>
                   <h2 className="mt-2 text-2xl font-semibold text-slate-800 dark:text-white">{activeTeacher.name}</h2>
                   <p className="mt-1 text-sm text-[var(--text-secondary)] dark:text-slate-300">{activeTeacher.specialty}</p>
                 </div>
-                <div className="grid h-20 w-20 place-items-center rounded-3xl border border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-[0_16px_38px_rgba(37,99,235,0.18)] dark:border-cyan-200/30 dark:from-slate-900 dark:to-slate-800">
+                <div className="grid h-20 w-20 shrink-0 place-items-center rounded-3xl border border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-[0_16px_38px_rgba(37,99,235,0.18)] dark:border-cyan-200/30 dark:from-slate-900 dark:to-slate-800">
                   <OwlMascot />
                 </div>
               </div>
@@ -192,7 +192,7 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div className="mt-5 grid grid-cols-2 gap-3">
+              <div className="mt-5 grid gap-3 min-[420px]:grid-cols-2">
                 {aiPersonalities.map((teacher) => (
                   <button
                     key={teacher.id}
@@ -215,30 +215,30 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="space-y-6">
+      <section className="w-full max-w-full space-y-6">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <p className="text-sm uppercase tracking-[0.25em] text-cyan-300">Indian celebrity AI teachers</p>
-            <h2 className="mt-2 text-3xl font-semibold text-white">Pick an actor or cricketer personality for the lesson</h2>
+            <h2 className="mt-2 text-[clamp(1.65rem,4vw,2.35rem)] font-semibold leading-tight text-white">Pick an actor or cricketer personality for the lesson</h2>
           </div>
           <Button variant="secondary" onClick={() => navigate('/personalities')}>View all</Button>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {aiPersonalities.map((personality) => (
             <PersonalityCard key={personality.id} personality={personality} />
           ))}
         </div>
       </section>
 
-      <section className="space-y-6">
+      <section className="w-full max-w-full space-y-6">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
           <div>
             <p className="text-sm uppercase tracking-[0.25em] text-cyan-300">Trending AI courses</p>
-            <h2 className="mt-2 text-3xl font-semibold text-white">Career tracks with adaptive guidance</h2>
+            <h2 className="mt-2 text-[clamp(1.65rem,4vw,2.35rem)] font-semibold leading-tight text-white">Career tracks with adaptive guidance</h2>
           </div>
           <Button variant="secondary" onClick={() => navigate('/explore')}>Explore catalog</Button>
         </div>
-        <div className="grid gap-5 lg:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {courses.length ? (
             courses.slice(0, 3).map((course) => (
               <CourseCard key={course.id} course={course} onViewDetails={() => navigate(`/course/${course.id}`)} />
@@ -251,10 +251,10 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-[0.85fr_1.15fr]">
+      <section className="grid w-full max-w-full gap-5 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
         <div className="glass-card p-6">
           <p className="text-sm uppercase tracking-[0.25em] text-cyan-300">Learning paths</p>
-          <h2 className="mt-2 text-3xl font-semibold text-white">Structured routes, not random browsing</h2>
+          <h2 className="mt-2 text-[clamp(1.65rem,4vw,2.35rem)] font-semibold leading-tight text-white">Structured routes, not random browsing</h2>
           <p className="mt-4 text-slate-300">Each path pairs courses with an AI mentor mode, weekly goals, and project checkpoints.</p>
           <div className="mt-6 space-y-3">
             {learningPaths.map((path) => (
@@ -265,7 +265,7 @@ export default function LandingPage() {
             ))}
           </div>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {categories.length ? categories.map((category) => (
             <button
               key={category.id}
@@ -285,7 +285,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-3">
+      <section className="grid w-full max-w-full gap-5 md:grid-cols-3">
         {[
           ['Learners', summary.totalLearners],
           ['Courses', summary.totalCourses],
@@ -299,9 +299,9 @@ export default function LandingPage() {
         ))}
       </section>
 
-      <section className="glass-card p-6 sm:p-8">
+      <section className="glass-card w-full max-w-full p-5 sm:p-8">
         <p className="text-sm uppercase tracking-[0.25em] text-cyan-300">FAQ</p>
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {faqs.map(([question, answer]) => (
             <div key={question} className="rounded-2xl border border-white/10 bg-slate-950/50 p-5">
               <h3 className="font-semibold text-white">{question}</h3>

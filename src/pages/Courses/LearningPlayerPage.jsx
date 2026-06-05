@@ -70,10 +70,14 @@ export default function LearningPlayerPage() {
   const activeMeta = lessonMeta(activeLesson)
   const activeKind = getLessonKind(activeLesson)
   const activeOutcomes = getLessonOutcomes(activeLesson)
+  const activeVideoUrl = resolveActiveLessonVideoUrl(activeLesson, activeInstructor)
 
   useEffect(() => {
     if (!course?.id || !activeLesson?.id) return
-    setLessonNotes(window.localStorage.getItem(`lesson-notes:${course.id}:${activeLesson.id}`) || '')
+    const initial = window.setTimeout(() => {
+      setLessonNotes(window.localStorage.getItem(`lesson-notes:${course.id}:${activeLesson.id}`) || '')
+    }, 0)
+    return () => window.clearTimeout(initial)
   }, [course?.id, activeLesson?.id])
 
   useEffect(() => {
@@ -184,9 +188,9 @@ export default function LearningPlayerPage() {
               </div>
               {activeLesson ? (
                 <div className="mt-5 overflow-hidden rounded-lg border border-[var(--border-color)] bg-slate-950">
-                  {activeLesson.videoUrl && isDirectVideo(activeLesson.videoUrl) ? (
+                  {activeVideoUrl && isDirectVideo(activeVideoUrl) ? (
                     <video
-                      key={`${activeLesson.id}-${playbackSpeed}`}
+                      key={`${activeLesson.id}-${activeVideoUrl}-${playbackSpeed}`}
                       className="aspect-video w-full bg-black"
                       controls
                       preload="metadata"
@@ -194,11 +198,11 @@ export default function LearningPlayerPage() {
                       onLoadedMetadata={(event) => { event.currentTarget.playbackRate = Number(playbackSpeed) }}
                       onRateChange={(event) => { event.currentTarget.playbackRate = Number(playbackSpeed) }}
                     >
-                      <source src={activeLesson.videoUrl} />
+                      <source src={activeVideoUrl} />
                       {activeMeta.captionsUrl ? <track src={activeMeta.captionsUrl} kind="captions" srcLang="en" label="English" default /> : null}
                     </video>
-                  ) : activeLesson.videoUrl ? (
-                    <iframe className="aspect-video w-full border-0" src={activeLesson.videoUrl} title={activeLesson.title} allow="autoplay; fullscreen; picture-in-picture" />
+                  ) : activeVideoUrl ? (
+                    <iframe className="aspect-video w-full border-0" src={activeVideoUrl} title={activeLesson.title} allow="autoplay; fullscreen; picture-in-picture" />
                   ) : activeKind === 'EXTERNAL_URL' && activeMeta.courseUrl ? (
                     <div className="grid aspect-video place-items-center bg-slate-950 p-8 text-center text-white">
                       <div>
@@ -440,7 +444,7 @@ export default function LearningPlayerPage() {
 function lessonKindLabel(kind) {
   return {
     UPLOADED_VIDEO: 'Uploaded video',
-    AI_AVATAR_VIDEO: 'AI avatar video',
+    AI_AVATAR_VIDEO: 'AI narrated video',
     EXTERNAL_URL: 'External URL',
     PDF_RESOURCE: 'PDF resource',
     DOWNLOADABLE_MATERIAL: 'Downloadable material',
@@ -448,5 +452,14 @@ function lessonKindLabel(kind) {
 }
 
 function isDirectVideo(url = '') {
-  return /^\/uploads\//.test(url) || /\.(mp4|webm|ogg)(\?|#|$)/i.test(url) || /^data:video\//.test(url)
+  return /\.(mp4|webm|ogg)(\?|#|$)/i.test(url) || /^data:video\//.test(url)
+}
+
+function resolveActiveLessonVideoUrl(lesson, instructor) {
+  const variants = lesson?.quizJson?.aiVideo?.instructorVideos
+  if (Array.isArray(variants) && variants.length) {
+    const active = variants.find((item) => String(item.instructorId) === String(instructor?.id))
+    return active?.videoUrl || variants[0]?.videoUrl || lesson?.videoUrl || ''
+  }
+  return lesson?.videoUrl || ''
 }

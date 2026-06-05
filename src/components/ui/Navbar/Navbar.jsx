@@ -35,10 +35,10 @@ export default function Navbar() {
     <header className="site-header sticky top-0 z-50 transition-colors duration-300">
       <div>
         <div>
-          <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+          <div className="mx-auto flex w-full max-w-full items-center justify-between gap-6 px-[clamp(16px,4vw,64px)] py-3">
             <Logo to="/" />
 
-            <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary navigation">
+            <nav className="hidden flex-1 items-center justify-center gap-2 lg:flex" aria-label="Primary navigation">
               {navItems.map((item) => (
                 <NavLink
                   key={item.label}
@@ -55,7 +55,7 @@ export default function Navbar() {
               ))}
             </nav>
 
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-3">
               <ThemeToggleButton />
 
               <div className="hidden lg:block">
@@ -67,24 +67,27 @@ export default function Navbar() {
                   <button
                     type="button"
                     onClick={() => setProfileOpen((value) => !value)}
-                    className="btn-secondary gap-2 rounded-xl"
+                    className="btn-secondary min-w-[112px] gap-2 whitespace-nowrap rounded-xl px-4"
                   >
-                    {auth.user.fullName || auth.user.email || 'Account'} <ChevronDown size={16} />
+                    <span className="max-w-[9rem] truncate">{auth.user.fullName || auth.user.name || auth.user.email || 'Account'}</span>
+                    <ChevronDown size={16} className="shrink-0" />
                   </button>
                   {profileOpen ? (
-                    <div className="theme-surface animate-upto-fade-slide absolute right-0 mt-3 w-72 rounded-xl p-2 shadow-glow">
+                    <div className="absolute right-0 z-[90] mt-3 w-72 overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-2 text-[var(--text-primary)] shadow-glow backdrop-blur-xl animate-upto-fade-slide">
                       {[
                         ['Dashboard', dashboardPath, LayoutDashboard],
                         ['Profile', '/profile', UserCircle],
                         ['Settings', '/settings', Settings],
                         ['Notifications', '/notifications', Bell],
                       ].map(([label, href, Icon]) => (
-                        <button type="button" key={href} onClick={() => { setProfileOpen(false); navigate(href) }} className="block w-full rounded-lg px-4 py-3 text-left text-sm font-medium text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]">
-                          <span className="flex items-center gap-3"><Icon size={16} /> {label}</span>
+                        <button type="button" key={href} onClick={() => { setProfileOpen(false); navigate(href) }} className="flex min-h-11 w-full items-center gap-3 whitespace-nowrap rounded-lg px-4 py-3 text-left text-sm font-semibold text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]">
+                          <Icon size={16} className="shrink-0" />
+                          <span className="min-w-0 flex-1 truncate">{label}</span>
                         </button>
                       ))}
-                      <button type="button" onClick={() => { dispatch(logout()); setProfileOpen(false); navigate('/') }} className="flex w-full items-center gap-2 rounded-lg px-4 py-3 text-left text-sm font-medium text-red-600 transition hover:bg-red-500/10 dark:text-red-200">
-                        <LogOut size={16} /> Logout
+                      <button type="button" onClick={() => { dispatch(logout()); setProfileOpen(false); navigate('/') }} className="flex min-h-11 w-full items-center gap-3 whitespace-nowrap rounded-lg px-4 py-3 text-left text-sm font-semibold text-red-600 transition hover:bg-red-500/10 dark:text-red-200">
+                        <LogOut size={16} className="shrink-0" />
+                        <span className="min-w-0 flex-1 truncate">Logout</span>
                       </button>
                     </div>
                   ) : null}

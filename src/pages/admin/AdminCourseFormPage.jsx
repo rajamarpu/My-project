@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Button from '../../components/common/Button/Button.jsx'
-import { createCourseRequest, fetchAdminCourses, fetchAiContentOptions, generateAiLessonVideo, updateAdminCourse, uploadAdminCourseAsset } from '../../api/api.js'
+import { createCourseRequest, fetchAdminCourses, fetchAdminInstructors, fetchAiContentOptions, generateAiLessonVideo, updateAdminCourse, uploadAdminCourseAsset } from '../../api/api.js'
 import { AdminLoadingState, AdminNotice, AdminPageHeader, FieldError } from '../../components/admin/AdminUI.jsx'
 import { formatRupeesFromPaise } from '../../utils/money.js'
 
@@ -30,7 +30,7 @@ const OPTION_BASED_TYPES = ['MCQ_SINGLE', 'MCQ_MULTIPLE']
 const MAX_ASSESSMENT_OPTIONS = 5
 const LESSON_KIND_OPTIONS = [
   { value: 'UPLOADED_VIDEO', label: 'Uploaded Video' },
-  { value: 'AI_AVATAR_VIDEO', label: 'AI Avatar Video' },
+  { value: 'AI_AVATAR_VIDEO', label: 'AI Narrated Video' },
   { value: 'EXTERNAL_URL', label: 'External Course URL' },
   { value: 'PDF_RESOURCE', label: 'PDF Resource' },
   { value: 'DOWNLOADABLE_MATERIAL', label: 'Downloadable Material' },
@@ -77,6 +77,7 @@ function createLessonDraft(moduleTitle = 'Module 1') {
     resources: [],
     learningOutcomes: '',
     captionsUrl: '',
+    sourceVideoDurationSeconds: 0,
     preview: false,
     aiScript: '',
     aiAvatarId: '',
@@ -85,6 +86,7 @@ function createLessonDraft(moduleTitle = 'Module 1') {
     aiImageUrl: '',
     aiVoiceSampleUrl: '',
     aiPdfUrl: '',
+    aiInstructorVideos: [],
     aiGenerationStatus: '',
   }
 }
@@ -115,6 +117,7 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
   const [fieldErrors, setFieldErrors] = useState({})
   const [uploadingKey, setUploadingKey] = useState('')
   const [aiOptions, setAiOptions] = useState({ avatars: [], voices: [] })
+  const [adminInstructors, setAdminInstructors] = useState([])
   const [generatingLessonIndex, setGeneratingLessonIndex] = useState(null)
 
   useEffect(() => {
@@ -149,10 +152,15 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
   useEffect(() => {
     async function loadAiOptions() {
       try {
-        const response = await fetchAiContentOptions()
-        setAiOptions({ avatars: response.data.avatars || [], voices: response.data.voices || [] })
+        const [optionsResponse, instructorsResponse] = await Promise.all([
+          fetchAiContentOptions(),
+          fetchAdminInstructors().catch(() => ({ data: { instructors: [] } })),
+        ])
+        setAiOptions({ avatars: optionsResponse.data.avatars || [], voices: optionsResponse.data.voices || [] })
+        setAdminInstructors(instructorsResponse.data.instructors || [])
       } catch {
         setAiOptions({ avatars: [], voices: [] })
+        setAdminInstructors([])
       }
     }
     void loadAiOptions()
@@ -195,27 +203,57 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
 
   async function generateAiLesson(index) {
     const lesson = form.lessons[index]
-    if (!lesson?.title || !lesson.aiScript || !lesson.aiAvatarId || !lesson.aiVoiceId || !lesson.aiImageUrl) {
-      setError('Animated AI lessons require title, script, licensed avatar, authorized voice, and instructor image.')
+    const fallbackAvatarId = lesson.aiAvatarId || aiOptions.avatars[0]?.id || 'custom-consented-avatar'
+    const fallbackVoiceId = lesson.aiVoiceId || aiOptions.voices[0]?.id || 'en-in-clear-male'
+    const targetInstructors = adminInstructors.length ? adminInstructors : []
+    if (!lesson?.title || !lesson.videoUrl || !lesson.aiScript || !fallbackAvatarId || !fallbackVoiceId) {
+      setError('AI narration lessons require a title, uploaded/source video, subtitle/script text, and an authorized voice model.')
       return
     }
     try {
       setGeneratingLessonIndex(index)
       setError('')
-      const response = await generateAiLessonVideo({
+      const basePayload = {
         title: lesson.title,
         script: lesson.aiScript,
-        avatarId: lesson.aiAvatarId,
-        voiceId: lesson.aiVoiceId,
+        avatarId: fallbackAvatarId,
+        voiceId: fallbackVoiceId,
         slideUrl: lesson.aiSlideUrl,
-        imageUrl: lesson.aiImageUrl,
         voiceSampleUrl: lesson.aiVoiceSampleUrl,
         pdfUrl: lesson.aiPdfUrl,
         captionsUrl: lesson.captionsUrl,
         captions: true,
         branding: true,
+        sourceVideoUrl: lesson.videoUrl,
+        targetDurationSeconds: Number(lesson.sourceVideoDurationSeconds || lesson.durationMin * 60 || 0),
+      }
+      const generationTargets = targetInstructors.length
+        ? targetInstructors.map((instructor) => ({
+            instructorId: String(instructor.id),
+            instructorName: instructor.name || 'Instructor',
+            imageUrl: instructor.avatarUrl || '',
+          }))
+        : [{
+            instructorId: 'lesson-default',
+            instructorName: 'Generated narrator',
+            imageUrl: '',
+          }]
+      const responses = await Promise.all(generationTargets.map((target) => generateAiLessonVideo({ ...basePayload, ...target })))
+      const generatedLessons = responses.map((response, targetIndex) => {
+        const generated = response.data.generation.lesson
+        const target = generationTargets[targetIndex]
+        return {
+          instructorId: target.instructorId,
+          instructorName: target.instructorName,
+          videoUrl: generated.videoUrl,
+          imageUrl: target.imageUrl,
+          durationMin: generated.durationMin,
+          generationId: generated.metadata?.generationId || response.data.generation.id,
+          voiceId: generated.metadata?.voice?.id || fallbackVoiceId,
+          avatarId: generated.metadata?.avatar?.id || fallbackAvatarId,
+        }
       })
-      const generated = response.data.generation.lesson
+      const primaryGenerated = responses[0].data.generation.lesson
       setForm((prev) => ({
         ...prev,
         lessons: prev.lessons.map((item, lessonIndex) => (
@@ -224,13 +262,14 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
                 ...item,
                 type: 'VIDEO',
                 lessonKind: 'AI_AVATAR_VIDEO',
-                description: item.description || generated.description,
-                durationMin: generated.durationMin,
-                videoUrl: generated.videoUrl || item.videoUrl,
-                resources: [...(item.resources || []), ...(generated.resources || [])],
-                aiGenerationStatus: response.data.generation.providerStatus || 'Animated instructor lesson link generated.',
-                aiAvatarId: generated.metadata.avatar.id,
-                aiVoiceId: generated.metadata.voice.id,
+                description: item.description || primaryGenerated.description,
+                durationMin: primaryGenerated.durationMin,
+                videoUrl: generatedLessons[0]?.videoUrl || item.videoUrl,
+                resources: [...(item.resources || []), ...(primaryGenerated.resources || [])],
+                aiInstructorVideos: generatedLessons,
+                aiGenerationStatus: `${generatedLessons.length} narrated lesson video${generatedLessons.length === 1 ? '' : 's'} generated automatically.`,
+                aiAvatarId: primaryGenerated.metadata.avatar.id,
+                aiVoiceId: primaryGenerated.metadata.voice.id,
               }
             : item
         )),
@@ -403,6 +442,7 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
     try {
       setUploadingKey(key)
       setError('')
+      const sourceVideoDurationSeconds = file.type.startsWith('video/') ? await getVideoDurationSeconds(file).catch(() => 0) : 0
       const dataUrl = await readFileAsDataUrl(file)
       const response = await uploadAdminCourseAsset({ fileName: file.name, mimeType: file.type, dataUrl })
       const asset = response.data.asset
@@ -418,6 +458,8 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
               type: file.type.startsWith('video/') ? 'VIDEO' : lesson.type,
               lessonKind: file.type.startsWith('video/') ? 'UPLOADED_VIDEO' : lesson.lessonKind,
               videoUrl: file.type.startsWith('video/') ? asset.url : lesson.videoUrl,
+              durationMin: sourceVideoDurationSeconds ? Math.max(1, Math.ceil(sourceVideoDurationSeconds / 60)) : lesson.durationMin,
+              sourceVideoDurationSeconds: sourceVideoDurationSeconds || lesson.sourceVideoDurationSeconds || 0,
             }
           }),
         }))
@@ -541,6 +583,7 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
           courseUrl: String(lesson.courseUrl || '').trim(),
           learningOutcomes: splitLines(lesson.learningOutcomes),
           captionsUrl: String(lesson.captionsUrl || '').trim(),
+          sourceVideoDurationSeconds: Number(lesson.sourceVideoDurationSeconds || 0),
           preview: Boolean(lesson.preview),
           aiVideo: lesson.lessonKind === 'AI_AVATAR_VIDEO' ? {
             script: String(lesson.aiScript || '').trim(),
@@ -550,8 +593,9 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
             imageUrl: String(lesson.aiImageUrl || '').trim(),
             voiceSampleUrl: String(lesson.aiVoiceSampleUrl || '').trim(),
             pdfUrl: String(lesson.aiPdfUrl || '').trim(),
+            instructorVideos: lesson.aiInstructorVideos || [],
             generationStatus: String(lesson.aiGenerationStatus || '').trim(),
-            compliance: 'Creates a stylized animated instructor and browser narration. It does not clone a real face or voice.',
+            compliance: 'Creates a narrated lesson video page from the uploaded video and provided subtitles/script. Connect a licensed voice provider for final custom voice audio.',
           } : null,
         },
       }))
@@ -559,14 +603,11 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
     lessons.forEach((lesson, index) => {
       if (!lesson.title) nextErrors[`lesson-${index}-title`] = 'Lesson title is required when adding lesson content.'
       if (lesson.durationMin < 0) nextErrors[`lesson-${index}-duration`] = 'Duration cannot be negative.'
-      if (lesson.type === 'VIDEO' && lesson.durationMin && (lesson.durationMin < 8 || lesson.durationMin > 10)) {
-        nextErrors[`lesson-${index}-duration`] = 'Video lessons should be 8 to 10 minutes for best learner experience.'
-      }
       if (lesson.quizJson.lessonKind === 'EXTERNAL_URL' && !lesson.quizJson.courseUrl) {
         nextErrors[`lesson-${index}-url`] = 'External course URL is required.'
       }
-      if (lesson.quizJson.lessonKind === 'AI_AVATAR_VIDEO' && (!lesson.quizJson.aiVideo.script || !lesson.quizJson.aiVideo.avatarId || !lesson.quizJson.aiVideo.voiceId || !lesson.quizJson.aiVideo.imageUrl)) {
-        nextErrors[`lesson-${index}-ai`] = 'Animated AI video requires script, licensed avatar, authorized voice, and instructor image.'
+      if (lesson.quizJson.lessonKind === 'AI_AVATAR_VIDEO' && (!lesson.videoUrl || !lesson.quizJson.aiVideo.script || !(lesson.quizJson.aiVideo.instructorVideos || []).length)) {
+        nextErrors[`lesson-${index}-ai`] = 'Upload the lesson video and generate narrated AI videos before saving this lesson.'
       }
     })
     const assessments = form.assessments
@@ -684,7 +725,9 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
             {form.thumbnailUrl ? (
               <div className="lg:col-span-2">
                 <p className="mb-2 text-sm text-[var(--text-secondary)]">Thumbnail preview</p>
-                <img src={form.thumbnailUrl} alt="Course thumbnail preview" className="h-48 w-full rounded-lg border border-[var(--border-color)] object-cover" />
+                <div className="flex min-h-48 w-full items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-3">
+                  <img src={form.thumbnailUrl} alt="Course thumbnail preview" className="max-h-[70vh] w-full rounded-md object-contain" />
+                </div>
               </div>
             ) : null}
             <label className="admin-label lg:col-span-2">
@@ -729,7 +772,7 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
                         </select>
                       </label>
                       <Field
-                        label="Duration in minutes (8-10 recommended)"
+                        label="Duration in minutes"
                         type="number"
                         value={lesson.durationMin}
                         error={fieldErrors[`lesson-${index}-duration`]}
@@ -767,30 +810,30 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
                         <div className="lg:col-span-2 rounded-lg border border-blue-400/25 bg-blue-500/10 p-4">
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
-                              <p className="text-sm font-semibold text-[var(--text-primary)]">AI instructor video generation</p>
-                              <p className="mt-1 text-xs text-[var(--text-muted)]">Use only licensed/company-owned/user-consented avatars and authorized voice models. Unauthorized celebrity faces, voices, or identities are not allowed.</p>
+                              <p className="text-sm font-semibold text-[var(--text-primary)]">AI narrated video generation</p>
+                              <p className="mt-1 text-xs text-[var(--text-muted)]">Uses the uploaded lesson video and provided subtitles/script. Replica voice audio requires a licensed voice provider connected to this flow.</p>
                             </div>
                             <Button type="button" onClick={() => generateAiLesson(index)} disabled={generatingLessonIndex === index}>
-                              {generatingLessonIndex === index ? 'Preparing...' : 'Generate AI Video'}
+                              {generatingLessonIndex === index ? 'Generating...' : 'Generate AI Videos'}
                             </Button>
                           </div>
                           <div className="mt-4 grid gap-4 lg:grid-cols-2">
                             <label className="admin-label">
-                              Licensed avatar
+                              Voice generation profile
                               <select value={lesson.aiAvatarId || ''} onChange={(event) => updateLesson(index, 'aiAvatarId', event.target.value)} className="admin-input">
-                                <option value="">Select avatar</option>
+                                <option value="">Use default licensed profile</option>
                                 {aiOptions.avatars.map((avatar) => <option key={avatar.id} value={avatar.id}>{avatar.name} - {avatar.license}</option>)}
                               </select>
                             </label>
                             <label className="admin-label">
                               Authorized voice model
                               <select value={lesson.aiVoiceId || ''} onChange={(event) => updateLesson(index, 'aiVoiceId', event.target.value)} className="admin-input">
-                                <option value="">Select voice</option>
+                                <option value="">Use default voice model</option>
                                 {aiOptions.voices.map((voice) => <option key={voice.id} value={voice.id}>{voice.name} - {voice.language}</option>)}
                               </select>
                             </label>
                             <label className="admin-label">
-                              Instructor image
+                              Optional reference image
                               <input
                                 type="file"
                                 accept="image/*"
@@ -801,7 +844,7 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
                                 className="admin-input file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-400 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-950 file:transition hover:file:bg-cyan-300"
                               />
                               <span className="text-xs text-[var(--text-muted)]">
-                                {lesson.aiImageUrl ? 'Image uploaded. The generated lesson will stylize and animate it.' : 'Upload only an image you have permission to use.'}
+                                {lesson.aiImageUrl ? 'Reference image uploaded.' : 'Optional. Avatar rendering is disabled for now.'}
                                 {uploadingKey === `ai:aiImageUrl:${index}` ? ' Uploading...' : ''}
                               </span>
                             </label>
@@ -817,7 +860,7 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
                                 className="admin-input file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-400 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-950 file:transition hover:file:bg-cyan-300"
                               />
                               <span className="text-xs text-[var(--text-muted)]">
-                                Optional reference only. The generated lesson does not clone the real voice.
+                                Voice reference for provider rendering. Use only authorized samples; this app stores it but does not clone voices locally.
                                 {uploadingKey === `ai:aiVoiceSampleUrl:${index}` ? ' Uploading...' : ''}
                               </span>
                             </label>
@@ -838,7 +881,18 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
                               </span>
                             </label>
                             <Field label="Slide deck / presentation URL" value={lesson.aiSlideUrl || ''} onChange={(value) => updateLesson(index, 'aiSlideUrl', value)} />
-                            {lesson.videoUrl ? (
+                            {lesson.aiInstructorVideos?.length ? (
+                              <div className="lg:col-span-2 rounded-lg border border-blue-400/25 bg-white/70 p-3 text-sm text-blue-700 dark:bg-slate-950/30 dark:text-blue-100">
+                                Generated narrated video for {lesson.aiInstructorVideos.length} instructor{lesson.aiInstructorVideos.length === 1 ? '' : 's'}:
+                                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                  {lesson.aiInstructorVideos.map((item) => (
+                                    <span key={`${item.instructorId}-${item.videoUrl}`} className="truncate rounded-md bg-blue-500/10 px-2 py-1">
+                                      {item.instructorName}: {item.videoUrl}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : lesson.videoUrl ? (
                               <div className="rounded-lg border border-blue-400/25 bg-white/70 p-3 text-sm text-blue-700 dark:bg-slate-950/30 dark:text-blue-100">
                                 Generated lesson link: <span className="font-semibold">{lesson.videoUrl}</span>
                               </div>
@@ -848,7 +902,7 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
                             ) : null}
                             <label className="admin-label lg:col-span-2">
                               Lesson script
-                              <textarea value={lesson.aiScript || ''} onChange={(event) => updateLesson(index, 'aiScript', event.target.value)} rows={6} className="admin-input" placeholder="Paste the narration script for the AI instructor video." />
+                              <textarea value={lesson.aiScript || ''} onChange={(event) => updateLesson(index, 'aiScript', event.target.value)} rows={6} className="admin-input" placeholder="Paste subtitles or narration script for the generated voice." />
                               <FieldError>{fieldErrors[`lesson-${index}-ai`]}</FieldError>
                             </label>
                           </div>
@@ -1139,6 +1193,7 @@ function normalizeLessons(lessons = []) {
     resources: lesson.quizJson?.resources || [],
     learningOutcomes: Array.isArray(lesson.quizJson?.learningOutcomes) ? lesson.quizJson.learningOutcomes.join('\n') : '',
     captionsUrl: lesson.quizJson?.captionsUrl || '',
+    sourceVideoDurationSeconds: Number(lesson.quizJson?.sourceVideoDurationSeconds || lesson.quizJson?.aiVideo?.targetDurationSeconds || 0),
     preview: Boolean(lesson.quizJson?.preview),
     aiScript: lesson.quizJson?.aiVideo?.script || '',
     aiAvatarId: lesson.quizJson?.aiVideo?.avatarId || '',
@@ -1147,6 +1202,7 @@ function normalizeLessons(lessons = []) {
     aiImageUrl: lesson.quizJson?.aiVideo?.imageUrl || '',
     aiVoiceSampleUrl: lesson.quizJson?.aiVideo?.voiceSampleUrl || '',
     aiPdfUrl: lesson.quizJson?.aiVideo?.pdfUrl || '',
+    aiInstructorVideos: Array.isArray(lesson.quizJson?.aiVideo?.instructorVideos) ? lesson.quizJson.aiVideo.instructorVideos : [],
     aiGenerationStatus: normalizeAiGenerationStatus(lesson.quizJson?.aiVideo?.generationStatus || ''),
   }))
   return normalized.length ? normalized : initialForm.lessons
@@ -1170,6 +1226,24 @@ function normalizeLessonUpdate(lesson, key, value) {
 
 function splitLines(value) {
   return String(value || '').split('\n').map((item) => item.trim()).filter(Boolean)
+}
+
+function getVideoDurationSeconds(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const video = document.createElement('video')
+    video.preload = 'metadata'
+    video.onloadedmetadata = () => {
+      const duration = Number.isFinite(video.duration) ? video.duration : 0
+      URL.revokeObjectURL(url)
+      resolve(Math.round(duration))
+    }
+    video.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Could not read video duration.'))
+    }
+    video.src = url
+  })
 }
 
 function normalizeAiGenerationStatus(status) {

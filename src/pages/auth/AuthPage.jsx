@@ -271,14 +271,14 @@ export default function AuthPage() {
 
       {!isAdminPortal && mode === 'login' ? (
         <div className="auth-info-panel">
-          <div className="flex items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
-            <p className="flex items-center gap-2 font-semibold">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
+            <p className="flex items-center gap-2 font-semibold text-slate-950">
               <Rocket size={16} className="text-teal-300" />
               Personalized learning starts after sign in
             </p>
             <Zap size={16} className="text-[#FF6B35]" />
           </div>
-          <p className="px-4 py-3 leading-6 text-slate-300">
+          <p className="px-4 py-3 leading-6 text-slate-700">
             Your courses, certificates, mentor mode, and progress sync into one learner workspace.
           </p>
         </div>
@@ -287,8 +287,8 @@ export default function AuthPage() {
       {!isAdminPortal ? (
         <div className={cn('auth-footer-links', isRegister && 'auth-footer-links-dense')}>
           {mode !== 'login' ? <Link className="font-semibold text-[var(--accent-primary)] transition hover:text-[var(--accent-bold)]" to="/login">Back to learner login</Link> : null}
-          {mode === 'login' ? <span className="text-slate-500">New to UptoSkills? <Link className="font-semibold text-[#FF6B35] transition hover:text-orange-700" to="/register">Create learner account</Link></span> : null}
-          {mode === 'login' ? <Link className="font-semibold text-blue-600 transition hover:text-blue-700" to="/otp-verification">Use OTP instead</Link> : null}
+          {mode === 'login' ? <span className="text-slate-800">New to UptoSkills? <Link className="font-semibold text-[#FF4B1F] transition hover:text-orange-700" to="/register">Create learner account</Link></span> : null}
+          {mode === 'login' ? <Link className="font-semibold text-blue-700 transition hover:text-blue-800" to="/otp-verification">Use OTP instead</Link> : null}
         </div>
       ) : null}
     </AuthShell>

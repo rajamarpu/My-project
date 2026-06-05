@@ -5,8 +5,9 @@ import { motion } from 'framer-motion'
 import { fadeInUp } from '../../utils/animationVariants.js'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { Award, BookOpenCheck, Clock3, Compass, Flame, GraduationCap, LineChart as LineChartIcon, PlayCircle, ShieldCheck, Sparkles } from 'lucide-react'
+import { AlertCircle, Award, BookOpenCheck, Clock3, Compass, Flame, GraduationCap, LineChart as LineChartIcon, PlayCircle, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react'
 import { fetchLearnerDashboard, fetchUserAnalytics } from '../../api/api'
+import { resolveCourseThumbnail } from '../../utils/courseThumbnail'
 
 const learnerPermissions = [
   'Browse upskilling and technical courses',
@@ -56,6 +57,7 @@ export default function StudentDashboard() {
   const [analytics, setAnalytics] = useState(normalizeAnalytics(emptyAnalytics, 0))
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
   function goTo(path, fallbackMessage = '') {
@@ -92,6 +94,7 @@ export default function StudentDashboard() {
   async function loadDashboardData() {
     try {
       setLoading(true)
+      setError('')
       const [analyticsRes, coursesRes] = await Promise.all([
         fetchUserAnalytics().catch(() => ({ data: { analytics: {} } })),
         fetchLearnerDashboard().catch(() => ({ data: { dashboard: { enrollments: [] } } })),
@@ -108,6 +111,7 @@ export default function StudentDashboard() {
       setAnalytics(normalizeAnalytics(analyticsRes.data, courseList.length))
     } catch (error) {
       console.error('Failed to load dashboard data:', error)
+      setError(error?.response?.data?.message || error.message || 'Could not load learner dashboard.')
       setCourses([])
       setAnalytics(normalizeAnalytics(emptyAnalytics, 0))
     } finally {
@@ -159,7 +163,7 @@ export default function StudentDashboard() {
   return (
     <section className="space-y-8 pb-16">
       <div className="upto-premium-panel overflow-hidden rounded-xl p-5 sm:p-8">
-        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr] xl:items-end">
           <div>
             <p className="theme-eyebrow text-xs font-semibold uppercase tracking-[0.3em] sm:text-sm">Learner dashboard</p>
             <h1 className="mt-3 text-3xl font-semibold text-[var(--text-primary)] sm:text-4xl">Welcome back, {auth.user?.name || auth.user?.fullName || 'learner'}.</h1>
@@ -167,12 +171,41 @@ export default function StudentDashboard() {
               Continue your upskilling journey, unlock achievements, and track daily goals with an AI-powered roadmap.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Button onClick={() => goTo('/explore')}>Explore Courses</Button>
-            <Button variant="secondary" onClick={() => goTo('/certificates')}>Certificates</Button>
+          <div className="grid gap-4">
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                ['Today', `${analytics.hoursStudied}h`],
+                ['Streak', `${analytics.streak}d`],
+                ['Progress', `${analytics.avgProgress}%`],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-3 text-center shadow-soft">
+                  <p className="text-lg font-semibold text-[var(--text-primary)]">{loading ? <span className="skeleton mx-auto inline-block h-6 w-10 rounded" /> : value}</p>
+                  <p className="mt-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">{label}</p>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap justify-start gap-3 xl:justify-end">
+              <Button onClick={() => goTo('/explore')}>Explore Courses</Button>
+              <Button variant="secondary" onClick={() => goTo('/certificates')}>Certificates</Button>
+            </div>
           </div>
         </div>
       </div>
+
+      {error ? (
+        <div className="rounded-lg border border-red-400/30 bg-red-500/10 p-5 text-red-700 dark:text-red-100">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="mt-0.5 shrink-0" size={20} />
+              <div>
+                <p className="font-semibold">Unable to load learner dashboard</p>
+                <p className="mt-1 text-sm opacity-85">{error}</p>
+              </div>
+            </div>
+            <Button variant="secondary" onClick={loadDashboardData}><RefreshCw size={16} /> Retry</Button>
+          </div>
+        </div>
+      ) : null}
 
       {notice ? (
         <div className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-700 dark:text-cyan-100">
@@ -297,7 +330,10 @@ export default function StudentDashboard() {
 
         <div className="mt-8 grid gap-5 lg:grid-cols-2">
           {loading ? (
-            <div className="col-span-2 rounded-lg border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] py-10 text-center text-[var(--text-muted)]">Loading courses...</div>
+            <>
+              <CourseSkeleton />
+              <CourseSkeleton />
+            </>
           ) : courses.length === 0 ? (
             <div className="col-span-2 rounded-lg border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] p-8 text-center">
               <GraduationCap className="mx-auto text-[var(--text-muted)]" size={32} />
@@ -306,31 +342,36 @@ export default function StudentDashboard() {
               <Button className="mt-5" onClick={() => goTo('/explore')}>Explore Courses</Button>
             </div>
           ) : (
-            courses.slice(0, 2).map((course) => (
+            courses.slice(0, 4).map((course) => (
               <div
                 key={course.id}
-                className="theme-subcard theme-subcard-hover rounded-lg p-5 shadow-soft"
+                className="theme-subcard theme-subcard-hover overflow-hidden rounded-lg shadow-soft"
               >
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-base font-semibold text-[var(--text-primary)]">{course.title}</p>
-                    <p className="mt-2 text-sm text-[var(--text-muted)]">{course.createdBy?.name || course.instructor?.full_name || course.instructor?.name || course.instructor || 'Instructor'}</p>
-                  </div>
-                  <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-sm text-emerald-700 dark:text-emerald-200">
-                    {analytics.avgProgress}%
-                  </span>
+                <div className="aspect-[16/7] bg-slate-950">
+                  <img src={resolveCourseThumbnail(course)} alt={course.title} className="h-full w-full object-cover" />
                 </div>
-
-                <div className="mt-6 flex items-center justify-between gap-4">
-                  <div className="h-3 flex-1 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
-                    <div className="h-full bg-gradient-to-r from-orange-500 to-teal-500" style={{ width: `${analytics.avgProgress}%` }} />
+                <div className="p-5">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="line-clamp-2 text-base font-semibold text-[var(--text-primary)]">{course.title}</p>
+                      <p className="mt-2 truncate text-sm text-[var(--text-muted)]">{course.createdBy?.name || course.instructor?.full_name || course.instructor?.name || course.instructor || 'Instructor'}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-emerald-400/15 px-3 py-1 text-sm text-emerald-700 dark:text-emerald-200">
+                      {course.progress || 0}%
+                    </span>
                   </div>
-                  <span className="text-sm text-[var(--text-secondary)]">{analytics.avgProgress}% complete</span>
-                </div>
 
-                <div className="mt-6 flex flex-wrap gap-3">
-                  <Button variant="secondary" onClick={() => goTo(`/course/${course.id}`)}>View Course</Button>
-                  <Button onClick={() => goTo(`/player/${course.id}`)}>Open Player</Button>
+                  <div className="mt-6 flex items-center justify-between gap-4">
+                    <div className="h-3 flex-1 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+                      <div className="h-full bg-gradient-to-r from-orange-500 to-teal-500" style={{ width: `${course.progress || 0}%` }} />
+                    </div>
+                    <span className="text-sm text-[var(--text-secondary)]">{course.progress || 0}% complete</span>
+                  </div>
+
+                  <div className="mt-6 flex flex-wrap gap-3">
+                    <Button variant="secondary" onClick={() => goTo(`/course/${course.id}`)}>View Course</Button>
+                    <Button onClick={() => goTo(`/player/${course.id}`)}>Open Player</Button>
+                  </div>
                 </div>
               </div>
             ))
@@ -388,6 +429,23 @@ function LearnerAction({ icon: Icon, title, text, onClick }) {
         <span className="mt-0.5 block text-sm text-[var(--text-muted)]">{text}</span>
       </span>
     </button>
+  )
+}
+
+function CourseSkeleton() {
+  return (
+    <div className="theme-subcard overflow-hidden rounded-lg shadow-soft">
+      <div className="skeleton aspect-[16/7]" />
+      <div className="space-y-4 p-5">
+        <div className="skeleton h-5 w-3/4 rounded" />
+        <div className="skeleton h-4 w-1/2 rounded" />
+        <div className="skeleton h-3 w-full rounded-full" />
+        <div className="flex gap-3">
+          <div className="skeleton h-11 w-28 rounded-xl" />
+          <div className="skeleton h-11 w-28 rounded-xl" />
+        </div>
+      </div>
+    </div>
   )
 }
 

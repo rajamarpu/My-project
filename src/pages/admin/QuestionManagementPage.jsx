@@ -52,7 +52,10 @@ export default function QuestionManagementPage() {
   }
 
   useEffect(() => {
-    void loadCourses()
+    const initial = window.setTimeout(() => {
+      void loadCourses()
+    }, 0)
+    return () => window.clearTimeout(initial)
   }, [])
 
   useEffect(() => {

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { Award, BarChart3, Bell, BriefcaseBusiness, CheckCircle2, CreditCard, FileQuestion, Headphones, LifeBuoy, MessageSquare, Newspaper, Settings, ShieldCheck, UserPlus, Users } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
-import { createAdminUser, createCertificate, fetchAdminLearners, fetchCourses } from '../../api/api.js'
+import { createAdminUser, createCertificate, fetchAdminCourses, fetchAdminLearners, fetchCourses, uploadAdminCourseAsset } from '../../api/api.js'
 import { AdminNotice, AdminPageHeader, FieldError } from '../../components/admin/AdminUI.jsx'
 
 function Shell({ eyebrow, title, description, children, action }) {
@@ -1151,9 +1151,31 @@ export function AdminCreateCoursePage() {
   )
 }
 
-export function AdminAddLearnerPage() {
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result || ''))
+    reader.onerror = () => reject(new Error('Could not read the selected file.'))
+    reader.readAsDataURL(file)
+  })
+}
+
+export function AdminAddLearnerPage({ initialRole = 'intern' }) {
   const navigate = useNavigate()
-  const [form, setForm] = useState({ name: '', email: '', password: 'Password123!', role: 'learner' })
+  const [form, setForm] = useState({
+    name: '',
+    email: '',
+    password: 'Password123!',
+    role: initialRole,
+    avatarUrl: '',
+    bio: '',
+    expertise: '',
+    assignCourseId: '',
+    autoAssignCourse: true,
+  })
+  const [courses, setCourses] = useState([])
+  const [coursesLoading, setCoursesLoading] = useState(true)
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState({ type: '', message: '' })
   const [fieldErrors, setFieldErrors] = useState({})
@@ -1166,6 +1188,52 @@ export function AdminAddLearnerPage() {
     /[^A-Za-z0-9]/.test(form.password),
   ].filter(Boolean).length
   const passwordStrength = passwordScore >= 5 ? 'Strong' : passwordScore >= 3 ? 'Good' : 'Weak'
+  const isInstructor = form.role === 'instructor'
+
+  useEffect(() => {
+    let mounted = true
+    async function loadCourses() {
+      try {
+        const response = await fetchAdminCourses()
+        if (mounted) setCourses(response.data?.courses || [])
+      } catch {
+        if (mounted) setCourses([])
+      } finally {
+        if (mounted) setCoursesLoading(false)
+      }
+    }
+    void loadCourses()
+    return () => {
+      mounted = false
+    }
+  }, [])
+
+  function updateForm(key, value) {
+    setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  async function uploadInstructorImage(file) {
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setNotice({ type: 'error', message: 'Upload an image file for the instructor profile.' })
+      return
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setNotice({ type: 'error', message: 'Instructor image must be 2 MB or smaller.' })
+      return
+    }
+    try {
+      setUploadingAvatar(true)
+      const dataUrl = await readFileAsDataUrl(file)
+      const response = await uploadAdminCourseAsset({ fileName: file.name, mimeType: file.type, dataUrl })
+      updateForm('avatarUrl', response.data.asset.url)
+      setNotice({ type: 'success', message: 'Instructor image uploaded.' })
+    } catch (error) {
+      setNotice({ type: 'error', message: error?.response?.data?.message || error.message || 'Could not upload instructor image.' })
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
 
   async function submit(event) {
     event.preventDefault()
@@ -1174,6 +1242,8 @@ export function AdminAddLearnerPage() {
     if (!form.name.trim()) nextErrors.name = 'Full name is required.'
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) nextErrors.email = 'Enter a valid email address.'
     if (form.password.length < 8) nextErrors.password = 'Temporary password must be at least 8 characters.'
+    if (isInstructor && !form.avatarUrl) nextErrors.avatarUrl = 'Upload an instructor image.'
+    if (isInstructor && !form.expertise.trim()) nextErrors.expertise = 'Instructor expertise is required.'
     setFieldErrors(nextErrors)
     if (Object.keys(nextErrors).length) {
       setNotice({ type: 'error', message: 'Please fix the highlighted fields before creating the user.' })
@@ -1181,8 +1251,23 @@ export function AdminAddLearnerPage() {
     }
     try {
       setSaving(true)
-      await createAdminUser(form)
-      setNotice({ type: 'success', message: 'User created successfully.' })
+      const response = await createAdminUser({
+        ...form,
+        autoAssignCourse: isInstructor && form.autoAssignCourse && !form.assignCourseId,
+        assignCourseId: isInstructor ? form.assignCourseId : '',
+        avatarUrl: isInstructor ? form.avatarUrl : '',
+        bio: isInstructor ? form.bio : '',
+        expertise: isInstructor ? form.expertise : form.role === 'intern' ? 'Intern' : '',
+      })
+      const assignedTitle = response.data?.assignedCourse?.title
+      setNotice({
+        type: 'success',
+        message: assignedTitle
+          ? `Instructor created and assigned to ${assignedTitle}.`
+          : form.role === 'intern'
+            ? 'Intern account created successfully.'
+            : 'User created successfully.',
+      })
       navigate(form.role === 'instructor' ? '/admin/instructors' : '/admin/learners')
     } catch (error) {
       setNotice({ type: 'error', message: error?.response?.data?.message || error.message || 'Could not create user.' })
@@ -1192,7 +1277,13 @@ export function AdminAddLearnerPage() {
   }
 
   return (
-    <Shell eyebrow="Admin" title="Add intern or learner" description="Create platform access for learners, instructors, interns, or admins with clear validation.">
+    <Shell
+      eyebrow="Admin"
+      title={initialRole === 'instructor' ? 'Add instructor' : 'Add intern or instructor'}
+      description={initialRole === 'instructor'
+        ? 'Onboard a new instructor with a profile image, expertise, bio, and automatic course assignment.'
+        : 'Create intern access, onboard instructors with a profile image, and assign instructors to a course automatically.'}
+    >
       <form onSubmit={submit} className="admin-panel p-5 sm:p-8">
         <div className="grid gap-5 md:grid-cols-2">
           {[
@@ -1202,7 +1293,7 @@ export function AdminAddLearnerPage() {
           ].map(([key, label, type]) => (
             <label key={key} className="admin-label">
               {label}
-              <input type={type} value={form[key]} onChange={(event) => setForm((prev) => ({ ...prev, [key]: event.target.value }))} className="admin-input" aria-invalid={Boolean(fieldErrors[key])} />
+              <input type={type} value={form[key]} onChange={(event) => updateForm(key, event.target.value)} className="admin-input" aria-invalid={Boolean(fieldErrors[key])} />
               {key === 'password' ? (
                 <span>
                   <span className="mb-1 flex h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
@@ -1216,16 +1307,73 @@ export function AdminAddLearnerPage() {
           ))}
           <label className="admin-label">
             Role
-            <select value={form.role} onChange={(event) => setForm((prev) => ({ ...prev, role: event.target.value }))} className="admin-input">
+            <select value={form.role} onChange={(event) => updateForm('role', event.target.value)} className="admin-input">
+              <option value="intern">Intern</option>
               <option value="learner">Learner</option>
               <option value="instructor">Instructor</option>
               <option value="admin">Admin</option>
             </select>
           </label>
         </div>
+
+        {isInstructor ? (
+          <div className="mt-6 grid gap-5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4 lg:grid-cols-[180px_1fr]">
+            <div>
+              <div className="grid aspect-square place-items-center overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-elevated)]">
+                {form.avatarUrl ? (
+                  <img src={form.avatarUrl} alt="Instructor preview" className="h-full w-full object-cover" />
+                ) : (
+                  <UserPlus className="text-[var(--text-muted)]" size={44} />
+                )}
+              </div>
+              <label className="mt-3 block">
+                <span className="sr-only">Upload instructor image</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    void uploadInstructorImage(event.target.files?.[0])
+                    event.target.value = ''
+                  }}
+                  className="admin-input file:mr-3 file:rounded-lg file:border-0 file:bg-cyan-400 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-slate-950"
+                />
+              </label>
+              <FieldError>{fieldErrors.avatarUrl}</FieldError>
+              <p className="mt-2 text-xs text-[var(--text-muted)]">{uploadingAvatar ? 'Uploading image...' : 'JPG, PNG, or WebP up to 2 MB.'}</p>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <label className="admin-label">
+                Expertise
+                <input value={form.expertise} onChange={(event) => updateForm('expertise', event.target.value)} className="admin-input" placeholder="Frontend Development, AI/ML..." aria-invalid={Boolean(fieldErrors.expertise)} />
+                <FieldError>{fieldErrors.expertise}</FieldError>
+              </label>
+              <label className="admin-label">
+                Assign to course
+                <select
+                  value={form.assignCourseId}
+                  onChange={(event) => updateForm('assignCourseId', event.target.value)}
+                  className="admin-input"
+                  disabled={coursesLoading}
+                >
+                  <option value="">{coursesLoading ? 'Loading courses...' : 'Auto assign to an available course'}</option>
+                  {courses.map((course) => (
+                    <option key={course.id} value={course.id}>{course.title}</option>
+                  ))}
+                </select>
+                <span className="text-xs text-[var(--text-muted)]">Auto assign picks a course without an instructor first, otherwise the latest course.</span>
+              </label>
+              <label className="admin-label md:col-span-2">
+                Instructor bio
+                <textarea value={form.bio} onChange={(event) => updateForm('bio', event.target.value)} className="admin-input min-h-28" placeholder="Short profile shown on course cards and instructor selectors." />
+              </label>
+            </div>
+          </div>
+        ) : null}
+
         <AdminNotice type={notice.type || 'info'}>{notice.message}</AdminNotice>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Button type="submit" disabled={saving}>{saving ? 'Creating...' : 'Create User'}</Button>
+          <Button type="submit" disabled={saving || uploadingAvatar}>{saving ? 'Creating...' : form.role === 'instructor' ? 'Create Instructor' : form.role === 'intern' ? 'Create Intern' : 'Create User'}</Button>
           <Button type="button" variant="secondary" onClick={() => navigate('/admin/learners')}>Cancel</Button>
         </div>
       </form>

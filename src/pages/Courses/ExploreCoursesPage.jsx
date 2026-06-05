@@ -195,156 +195,136 @@ export default function ExploreCoursesPage() {
   }
 
   const activeFilterCount = [query.trim(), selectedCategory !== 'All', selectedLevel !== 'All', selectedPrice !== 'All', minimumRating > 0].filter(Boolean).length
+  const filterPanel = (
+    <div className="enterprise-glass-panel space-y-5 rounded-none border-0 p-5 shadow-none xl:min-h-full xl:rounded-xl xl:border xl:border-[var(--border-color)] xl:shadow-soft">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">Filters</p>
+        <button type="button" onClick={resetFilters} className="text-xs font-semibold text-[var(--accent-primary)]">Clear all</button>
+      </div>
+
+      <FilterGroup title="Categories">
+        {categories.map((category) => (
+          <FilterOption
+            key={category}
+            checked={selectedCategory === category}
+            label={category === 'All' ? 'All Categories' : category}
+            count={category === 'All' ? courses.length : categoryCounts[category]}
+            onClick={() => setSelectedCategory(category)}
+          />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title="Level">
+        {levels.map((level) => (
+          <FilterOption
+            key={level}
+            checked={selectedLevel === level}
+            label={level === 'All' ? 'All Levels' : level}
+            count={level === 'All' ? courses.length : levelCounts[level] || 0}
+            onClick={() => setSelectedLevel(level)}
+          />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title="Price">
+        {priceFilters.map((price) => (
+          <FilterOption
+            key={price}
+            checked={selectedPrice === price}
+            label={price === 'All' ? 'All Prices' : price}
+            count={price === 'All' ? courses.length : price === 'Free' ? freeCount : paidCount}
+            onClick={() => setSelectedPrice(price)}
+          />
+        ))}
+      </FilterGroup>
+
+      <FilterGroup title="Ratings">
+        {ratingFilters.map((rating) => (
+          <FilterOption
+            key={rating}
+            checked={minimumRating === rating}
+            label={`${rating}+ stars`}
+            count={courses.filter((course) => Number(course.rating || 0) >= rating).length}
+            onClick={() => setMinimumRating(minimumRating === rating ? 0 : rating)}
+            icon={<span className="text-[var(--accent-warm)]">{'★'.repeat(rating)}</span>}
+          />
+        ))}
+      </FilterGroup>
+
+      <Button className="w-full" onClick={() => setFiltersOpen(false)}>
+        <SlidersHorizontal size={16} className="mr-2" /> Apply Filters
+      </Button>
+    </div>
+  )
 
   return (
-    <motion.section className="pb-16" variants={fadeInUp} initial="hidden" animate="visible">
-      <div className="grid gap-5 xl:grid-cols-[15rem_minmax(0,1fr)]">
-        <aside className={`${filtersOpen ? 'block' : 'hidden'} xl:block`}>
-          <div className="enterprise-glass-panel sticky top-24 space-y-5 rounded-xl p-5 shadow-soft">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">Filters</p>
-              <button type="button" onClick={resetFilters} className="text-xs font-semibold text-[var(--accent-primary)]">Clear all</button>
-            </div>
-
-            <FilterGroup title="Categories">
-              {categories.map((category) => (
-                <FilterOption
-                  key={category}
-                  checked={selectedCategory === category}
-                  label={category === 'All' ? 'All Categories' : category}
-                  count={category === 'All' ? courses.length : categoryCounts[category]}
-                  onClick={() => setSelectedCategory(category)}
-                />
-              ))}
-            </FilterGroup>
-
-            <FilterGroup title="Level">
-              {levels.map((level) => (
-                <FilterOption
-                  key={level}
-                  checked={selectedLevel === level}
-                  label={level === 'All' ? 'All Levels' : level}
-                  count={level === 'All' ? courses.length : levelCounts[level] || 0}
-                  onClick={() => setSelectedLevel(level)}
-                />
-              ))}
-            </FilterGroup>
-
-            <FilterGroup title="Price">
-              {priceFilters.map((price) => (
-                <FilterOption
-                  key={price}
-                  checked={selectedPrice === price}
-                  label={price === 'All' ? 'All Prices' : price}
-                  count={price === 'All' ? courses.length : price === 'Free' ? freeCount : paidCount}
-                  onClick={() => setSelectedPrice(price)}
-                />
-              ))}
-            </FilterGroup>
-
-            <FilterGroup title="Ratings">
-              {ratingFilters.map((rating) => (
-                <FilterOption
-                  key={rating}
-                  checked={minimumRating === rating}
-                  label={`${rating}+ stars`}
-                  count={courses.filter((course) => Number(course.rating || 0) >= rating).length}
-                  onClick={() => setMinimumRating(minimumRating === rating ? 0 : rating)}
-                  icon={<span className="text-[var(--accent-warm)]">{'★'.repeat(rating)}</span>}
-                />
-              ))}
-            </FilterGroup>
-
-            <Button className="w-full" onClick={() => setFiltersOpen(false)}>
-              <SlidersHorizontal size={16} className="mr-2" /> Apply Filters
-            </Button>
+    <motion.section className="h-full min-h-0 overflow-hidden" variants={fadeInUp} initial="hidden" animate="visible">
+      <div className="grid h-full min-h-0 overflow-hidden xl:grid-cols-[17.5rem_minmax(0,1fr)]">
+        <aside className="hidden h-full min-h-0 overflow-hidden border-r border-[var(--border-color)] bg-[var(--bg-secondary)] p-3 xl:block">
+          <div className="h-full overflow-y-auto overscroll-contain pr-1">
+            {filterPanel}
           </div>
         </aside>
 
-        <div className="space-y-5">
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.45fr)_minmax(20rem,0.95fr)]">
-            <section className="enterprise-mesh-panel rounded-xl border border-[var(--border-color)] p-6 shadow-soft sm:p-8">
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_16rem] lg:items-center">
-                <div>
-                  <p className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-[var(--accent-primary)]">
-                    <Sparkles size={14} /> Explore courses
-                  </p>
-                  <h1 className="mt-4 max-w-2xl text-4xl font-bold leading-tight text-[var(--text-primary)] sm:text-5xl">
-                    Unlock skills. <span className="text-[var(--accent-primary)]">Build your future.</span>
-                  </h1>
-                  <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
-                    Discover your actual UptoSkills course catalog across categories, levels, instructors, pricing, and progress.
-                  </p>
-                  <label className="mt-6 flex min-h-12 max-w-2xl items-center gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 shadow-sm">
-                    <Search size={18} className="text-[var(--accent-primary)]" />
-                    <input
-                      value={query}
-                      onChange={(event) => setQuery(event.target.value)}
-                      className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--text-muted)]"
-                      placeholder="Search courses, instructors, or topics..."
-                    />
-                  </label>
-                </div>
-                <div className="enterprise-orbit-visual hidden h-56 place-items-center rounded-xl lg:grid">
-                  <div className="relative grid h-36 w-36 place-items-center rounded-3xl bg-[var(--bg-card)] shadow-soft">
-                    <GraduationCap size={62} className="text-[var(--accent-primary)]" />
-                    <span className="absolute -right-5 top-7 rounded-2xl bg-[var(--accent-soft)] p-3 text-[var(--accent-primary)] shadow-soft">
-                      <BookOpenCheck size={22} />
-                    </span>
-                    <span className="absolute -bottom-4 left-4 rounded-2xl bg-[var(--accent-soft)] p-3 text-[var(--accent-primary)] shadow-soft">
-                      <Sparkles size={20} />
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 grid gap-3 sm:grid-cols-4">
-                <Metric value={courses.length} label="Courses" />
-                <Metric value={`${categories.length - 1}+`} label="Categories" />
-                <Metric value={`${totalLearners}+`} label="Learners" />
-                <Metric value={averageRating} label="Average Rating" icon={<Star size={14} className="fill-[var(--accent-warm)] text-[var(--accent-warm)]" />} />
-              </div>
-            </section>
-
-            <section className="enterprise-glass-panel grid gap-4 rounded-xl p-5 shadow-soft">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-bold text-[var(--text-primary)]">Popular Areas</p>
-                  <p className="text-xs text-[var(--text-secondary)]">Explore top in-demand skills</p>
-                </div>
-                <button type="button" onClick={() => setSelectedCategory('All')} className="text-xs font-semibold text-[var(--accent-primary)]">View all</button>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {(popularAreas.length ? popularAreas : [['Courses', courses.length]]).map(([category, count], index) => {
-                  const Icon = areaIcons[index % areaIcons.length]
-                  return (
-                    <button
-                      key={category}
-                      type="button"
-                      onClick={() => setSelectedCategory(category === 'Courses' ? 'All' : category)}
-                      className="enterprise-glow-card flex min-h-20 items-center gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-3 text-left"
-                    >
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">
-                        <Icon size={20} />
-                      </span>
-                      <span>
-                        <span className="block text-sm font-bold text-[var(--text-primary)]">{category}</span>
-                        <span className="text-xs text-[var(--text-secondary)]">{count} courses</span>
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-              <div className="grid min-h-24 items-center rounded-xl bg-[var(--bg-subtle)] p-4 sm:grid-cols-[1fr_auto]">
-                <div>
-                  <p className="text-sm text-[var(--text-secondary)]">Become job-ready with</p>
-                  <p className="text-lg font-bold text-[var(--text-primary)]">skill paths</p>
-                  <p className="mt-1 text-xs text-[var(--text-secondary)]">Curated paths help you learn, build, and get hired.</p>
-                </div>
-                <Button variant="secondary" onClick={() => setSelectedLevel('BEGINNER')}>Explore Paths</Button>
-              </div>
-            </section>
+        {filtersOpen ? (
+          <div className="fixed inset-x-0 bottom-0 top-[72px] z-40 xl:hidden">
+            <button
+              type="button"
+              aria-label="Close filters"
+              className="absolute inset-0 bg-slate-950/45"
+              onClick={() => setFiltersOpen(false)}
+            />
+            <aside className="absolute bottom-0 left-0 top-0 w-[min(22rem,88vw)] overflow-y-auto overscroll-contain bg-[var(--bg-card)] shadow-2xl">
+              {filterPanel}
+            </aside>
           </div>
+        ) : null}
+
+        <div className="h-full min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-4 sm:px-5 lg:px-6">
+          <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_18rem] 2xl:grid-cols-[minmax(0,1fr)_20rem]">
+            <div className="min-w-0 space-y-5">
+          <section className="enterprise-mesh-panel rounded-xl border border-[var(--border-color)] p-5 shadow-soft sm:p-6">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:items-center">
+              <div>
+                <p className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-[var(--accent-primary)]">
+                  <Sparkles size={14} /> Explore courses
+                </p>
+                <h1 className="mt-4 max-w-3xl text-4xl font-bold leading-tight text-[var(--text-primary)] sm:text-5xl">
+                  Unlock skills. <span className="text-[var(--accent-primary)]">Build your future.</span>
+                </h1>
+                <p className="mt-4 max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">
+                  Discover your actual UptoSkills course catalog across categories, levels, instructors, pricing, and progress.
+                </p>
+                <label className="mt-6 flex min-h-12 max-w-3xl items-center gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 shadow-sm">
+                  <Search size={18} className="text-[var(--accent-primary)]" />
+                  <input
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--text-muted)]"
+                    placeholder="Search courses, instructors, or topics..."
+                  />
+                </label>
+              </div>
+              <div className="enterprise-orbit-visual hidden h-52 place-items-center rounded-xl lg:grid">
+                <div className="relative grid h-32 w-32 place-items-center rounded-3xl bg-[var(--bg-card)] shadow-soft">
+                  <GraduationCap size={56} className="text-[var(--accent-primary)]" />
+                  <span className="absolute -right-4 top-7 rounded-2xl bg-[var(--accent-soft)] p-3 text-[var(--accent-primary)] shadow-soft">
+                    <BookOpenCheck size={20} />
+                  </span>
+                  <span className="absolute -bottom-4 left-4 rounded-2xl bg-[var(--accent-soft)] p-3 text-[var(--accent-primary)] shadow-soft">
+                    <Sparkles size={18} />
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-4">
+              <Metric value={courses.length} label="Courses" />
+              <Metric value={`${categories.length - 1}+`} label="Categories" />
+              <Metric value={`${totalLearners}+`} label="Learners" />
+              <Metric value={averageRating} label="Average Rating" icon={<Star size={14} className="fill-[var(--accent-warm)] text-[var(--accent-warm)]" />} />
+            </div>
+          </section>
 
           {notice ? <p className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-100">{notice}</p> : null}
           {error ? <p className="rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-100">{error}</p> : null}
@@ -411,6 +391,60 @@ export default function ExploreCoursesPage() {
                 No courses found. Try another keyword, category, level, price, or rating.
               </div>
             )}
+          </div>
+        </div>
+
+        <aside className="hidden xl:block">
+          <section className="enterprise-glass-panel sticky top-0 grid gap-4 rounded-xl p-4 shadow-soft">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-bold text-[var(--text-primary)]">Popular Areas</p>
+                <p className="text-xs text-[var(--text-secondary)]">Explore top in-demand skills</p>
+              </div>
+              <button type="button" onClick={() => setSelectedCategory('All')} className="text-xs font-semibold text-[var(--accent-primary)]">View all</button>
+            </div>
+            <div className="grid gap-3">
+              {(popularAreas.length ? popularAreas : [['Courses', courses.length]]).map(([category, count], index) => {
+                const Icon = areaIcons[index % areaIcons.length]
+                return (
+                  <button
+                    key={category}
+                    type="button"
+                    onClick={() => setSelectedCategory(category === 'Courses' ? 'All' : category)}
+                    className="enterprise-glow-card flex min-h-16 items-center gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-3 text-left"
+                  >
+                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">
+                      <Icon size={18} />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-xs font-bold leading-snug text-[var(--text-primary)]">{category}</span>
+                      <span className="text-xs text-[var(--text-secondary)]">{count} courses</span>
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+            <div className="grid gap-3 rounded-xl bg-[var(--bg-subtle)] p-4">
+              <div>
+                <p className="text-xs text-[var(--text-secondary)]">Become job-ready with</p>
+                <p className="text-lg font-bold text-[var(--text-primary)]">skill paths</p>
+                <p className="mt-1 text-xs text-[var(--text-secondary)]">Curated paths help you learn, build, and get hired.</p>
+              </div>
+              <Button variant="secondary" onClick={() => setSelectedLevel('BEGINNER')}>Explore Paths</Button>
+            </div>
+            {[
+              ['Practice', 'Assignments unlock after enrollment.'],
+              ['Progress', 'Track lessons from the player.'],
+              ['Certificate', 'Earn a certificate after completion.'],
+              ['Mentor Support', 'Get guidance from industry experts.'],
+            ].map(([title, text]) => (
+              <div key={title} className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-3">
+                <p className="text-xs font-bold text-[var(--text-primary)]">{title}</p>
+                <p className="mt-1 text-[0.68rem] leading-4 text-[var(--text-secondary)]">{text}</p>
+              </div>
+            ))}
+          </section>
+        </aside>
           </div>
         </div>
       </div>

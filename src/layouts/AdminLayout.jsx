@@ -1,6 +1,6 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useDispatch } from 'react-redux'
-import { Activity, Award, BarChart3, Bell, BookOpenCheck, CircleHelp, ClipboardCheck, CreditCard, FolderTree, GraduationCap, LogOut, Menu, Settings, Upload, UserCircle, Users, X } from 'lucide-react'
+import { Activity, Award, BarChart3, Bell, BookOpenCheck, CircleHelp, ClipboardCheck, CreditCard, FolderTree, GraduationCap, LogOut, Menu, Settings, Upload, UserCircle, UserPlus, Users, X } from 'lucide-react'
 import { useState } from 'react'
 import { logout } from '../store/slices/authSlice.js'
 import { cn } from '../utils/classNames.js'
@@ -32,6 +32,7 @@ const adminNavSections = [
       { label: 'Users', href: '/admin/users', icon: Users },
       { label: 'Learners', href: '/admin/learners', icon: GraduationCap },
       { label: 'Instructors', href: '/admin/instructors', icon: Users },
+      { label: 'Add Instructor', href: '/admin/add-instructor', icon: UserPlus },
       { label: 'Enrollments', href: '/admin/enrollments', icon: Activity },
       { label: 'Instructor Changes', href: '/admin/instructor-changes', icon: Activity },
     ],
@@ -59,6 +60,7 @@ const adminNavSections = [
 export default function AdminLayout({ children }) {
   const dispatch = useDispatch()
   const navigate = useNavigate()
+  const location = useLocation()
   const [navOpen, setNavOpen] = useState(false)
 
   return (
@@ -83,7 +85,7 @@ export default function AdminLayout({ children }) {
 
         {navOpen ? <button type="button" aria-label="Close admin menu overlay" onClick={() => setNavOpen(false)} className="fixed inset-0 z-30 bg-slate-950/40 backdrop-blur-sm lg:hidden" /> : null}
 
-        <aside className={`${navOpen ? 'block animate-upto-fade-slide' : 'hidden'} fixed inset-x-4 top-20 z-40 max-h-[calc(100vh-6rem)] overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-4 shadow-soft backdrop-blur-xl lg:sticky lg:top-0 lg:block lg:h-screen lg:rounded-none lg:border-x-0 lg:border-y-0 lg:border-r lg:p-5 lg:shadow-none`}>
+        <aside className={`${navOpen ? 'block animate-upto-fade-slide' : 'hidden'} fixed inset-x-3 top-20 z-40 max-h-[calc(100dvh-6rem)] overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-3 shadow-soft backdrop-blur-xl sm:inset-x-4 sm:p-4 lg:sticky lg:top-0 lg:block lg:h-screen lg:max-h-none lg:rounded-none lg:border-x-0 lg:border-y-0 lg:border-r lg:p-5 lg:shadow-none`}>
           <div className="flex items-center justify-between gap-3">
             <Logo to="/admin" admin />
             <div className="hidden lg:block">
@@ -135,7 +137,7 @@ export default function AdminLayout({ children }) {
           </button>
         </aside>
 
-        <main className="min-w-0 px-4 py-5 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
+        <main key={location.pathname} className="min-w-0 animate-upto-page-enter px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
           {children}
         </main>
       </div>

@@ -32,6 +32,59 @@
   }
 }
 
+@keyframes upto-page-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes upto-dropdown {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes upto-backdrop-enter {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes upto-modal-enter {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes upto-toast-in {
+  from {
+    opacity: 0;
+    transform: translate3d(18px, -4px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
 @keyframes upto-success-pop {
   0% {
     transform: scale(0.96);
@@ -49,6 +102,27 @@
 
 .animate-upto-fade-slide {
   animation: upto-fade-slide 220ms ease-out both;
+}
+
+.animate-upto-page-enter {
+  animation: upto-page-enter 220ms ease-out both;
+}
+
+.animate-upto-dropdown {
+  transform-origin: top right;
+  animation: upto-dropdown 180ms ease-out both;
+}
+
+.animate-upto-backdrop-enter {
+  animation: upto-backdrop-enter 180ms ease-out both;
+}
+
+.animate-upto-modal-enter {
+  animation: upto-modal-enter 220ms ease-out both;
+}
+
+.animate-upto-toast-in {
+  animation: upto-toast-in 220ms ease-out both;
 }
 
 .animate-upto-success-pop {

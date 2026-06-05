@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Ban, CheckCircle2, Search, Trash2, XCircle } from 'lucide-react'
+import { Ban, CheckCircle2, Trash2, XCircle } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
-import { AdminEmptyState, AdminLoadingState, AdminNotice, AdminPageHeader } from '../../components/admin/AdminUI.jsx'
+import AdminDataTable from '../../components/admin/AdminDataTable.jsx'
+import { AdminEmptyState, AdminModal, AdminNotice, AdminPageHeader, AdminToastStack } from '../../components/admin/AdminUI.jsx'
 import {
   approveAdminUser,
+  deleteAdminCertificate,
   deleteAdminUser,
   deleteAdminCourse,
   fetchAdminActivityLogs,
@@ -90,6 +92,7 @@ const resources = {
     load: fetchAdminCertificates,
     rows: (data) => data.certificates || [],
     columns: ['learner', 'course', 'certificateNo', 'status', 'issuedAt'],
+    actions: 'certificates',
   },
   notifications: {
     eyebrow: 'Messaging',
@@ -169,12 +172,20 @@ export default function AdminDataPage({ resource }) {
   const authUser = useSelector((state) => state.auth.user)
   const config = resources[resource] || resources.users
   const [rows, setRows] = useState([])
-  const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
   const [actionKey, setActionKey] = useState('')
   const [notice, setNotice] = useState({ type: '', message: '' })
   const [error, setError] = useState('')
+  const [modal, setModal] = useState(null)
+  const [toasts, setToasts] = useState([])
   const hasActions = config.actions || ['users', 'learners', 'instructors', 'categories'].includes(resource)
+
+  function toast(type, message) {
+    const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+    const duration = { success: 3000, error: 5000, warning: 4000 }[type] || 4000
+    setToasts((current) => [...current, { id, type, message }])
+    window.setTimeout(() => setToasts((current) => current.filter((item) => item.id !== id)), duration)
+  }
 
   async function load() {
     try {
@@ -200,21 +211,24 @@ export default function AdminDataPage({ resource }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [resource, location.search])
 
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase()
-    if (!needle) return rows
-    return rows.filter((row) => JSON.stringify(row).toLowerCase().includes(needle))
-  }, [query, rows])
-
   async function togglePublish(course) {
     await updateAdminCourse(course.id, { isPublished: !course.isPublished })
+    toast('success', `${course.title} ${course.isPublished ? 'unpublished' : 'published'}.`)
     await load()
   }
 
-  async function removeCourse(course) {
-    if (!window.confirm(`Delete "${course.title}"?`)) return
-    await deleteAdminCourse(course.id)
-    await load()
+  function confirmDelete(items) {
+    const rowsToDelete = Array.isArray(items) ? items : [items]
+    setModal({
+      tone: 'danger',
+      title: `Delete ${rowsToDelete.length} selected row${rowsToDelete.length === 1 ? '' : 's'}?`,
+      message: 'This action can permanently remove records where the API supports deletion.',
+      confirmLabel: 'Delete',
+      onConfirm: async () => {
+        setModal(null)
+        await deleteRows(rowsToDelete)
+      },
+    })
   }
 
   async function approveUser(user) {
@@ -222,13 +236,29 @@ export default function AdminDataPage({ resource }) {
   }
 
   async function rejectUser(user) {
-    if (!window.confirm(`Reject "${user.name || user.email}" and disable their access?`)) return
-    await moderateUser(user, 'reject')
+    setModal({
+      tone: 'danger',
+      title: `Reject ${user.name || user.email}?`,
+      message: 'This disables access for the selected account.',
+      confirmLabel: 'Reject',
+      onConfirm: async () => {
+        setModal(null)
+        await moderateUser(user, 'reject')
+      },
+    })
   }
 
   async function suspendUser(user) {
-    if (!window.confirm(`Suspend "${user.name || user.email}" and revoke active sessions?`)) return
-    await moderateUser(user, 'suspend')
+    setModal({
+      tone: 'danger',
+      title: `Suspend ${user.name || user.email}?`,
+      message: 'This revokes active sessions for the selected account.',
+      confirmLabel: 'Suspend',
+      onConfirm: async () => {
+        setModal(null)
+        await moderateUser(user, 'suspend')
+      },
+    })
   }
 
   async function moderateUser(user, action) {
@@ -251,17 +281,66 @@ export default function AdminDataPage({ resource }) {
       const updatedUser = response.data.user
       setRows((currentRows) => currentRows.map((row) => (row.id === updatedUser.id ? { ...row, ...updatedUser } : row)))
       setNotice({ type: 'success', message: `${updatedUser.name || updatedUser.email} ${pastTense[action]} successfully.` })
+      toast('success', `${updatedUser.name || updatedUser.email} ${pastTense[action]}.`)
     } catch (err) {
       setNotice({ type: 'error', message: err?.response?.data?.message || err.message || `Could not ${action} user.` })
+      toast('error', err?.response?.data?.message || err.message || `Could not ${action} user.`)
     } finally {
       setActionKey('')
     }
   }
 
-  async function removeUser(user) {
-    if (!window.confirm(`Remove "${user.name || user.email}"?`)) return
-    await deleteAdminUser(user.id)
-    await load()
+  async function deleteRows(items) {
+    try {
+      const deletable = items.filter((item) => item?.id)
+      if (config.actions === 'courses') {
+        await Promise.all(deletable.map((item) => deleteAdminCourse(item.id)))
+        toast('success', `${deletable.length} course${deletable.length === 1 ? '' : 's'} deleted.`)
+        await load()
+        return
+      }
+      if (config.actions === 'certificates') {
+        await Promise.all(deletable.map((item) => deleteAdminCertificate(item.id)))
+        toast('success', `${deletable.length} certificate${deletable.length === 1 ? '' : 's'} deleted.`)
+        await load()
+        return
+      }
+      if (resource === 'users' || resource === 'learners' || resource === 'instructors') {
+        await Promise.all(deletable.filter((item) => Number(authUser?.id) !== Number(item.id)).map((item) => deleteAdminUser(item.id)))
+        toast('success', `${deletable.length} user row${deletable.length === 1 ? '' : 's'} deleted.`)
+        await load()
+        return
+      }
+      toast('warning', 'Delete is not available for this resource yet.')
+    } catch (err) {
+      toast('error', err?.response?.data?.message || err.message || 'Delete failed.')
+    }
+  }
+
+  function archiveRows(items) {
+    const keys = new Set(items.map((item) => item.id))
+    setRows((currentRows) => currentRows.map((row) => (keys.has(row.id) ? { ...row, archived: true } : row)))
+    toast('warning', `${items.length} row${items.length === 1 ? '' : 's'} marked archived locally.`)
+  }
+
+  function viewRow(row) {
+    setModal({
+      title: 'Row details',
+      message: '',
+      confirmLabel: 'Done',
+      onConfirm: () => setModal(null),
+      children: (
+        <pre className="max-h-80 overflow-auto rounded-lg bg-[var(--bg-subtle)] p-3 text-left text-xs text-[var(--text-secondary)]">
+          {JSON.stringify(row, null, 2)}
+        </pre>
+      ),
+    })
+  }
+
+  function editRow(row) {
+    if (resource === 'courses') navigate(`/admin/edit-course/${row.id}`)
+    else if (resource === 'categories') navigate(`/admin/edit-category/${row.id}`)
+    else toast('warning', 'Inline edit is not configured for this resource yet.')
   }
 
   return (
@@ -275,6 +354,7 @@ export default function AdminDataPage({ resource }) {
             {resource === 'courses' ? <Button onClick={() => navigate('/admin/upload-course')}>Upload Course</Button> : null}
             {resource === 'categories' ? <Button onClick={() => navigate('/admin/create-category')}>Create Category</Button> : null}
             {resource === 'certificates' ? <Button onClick={() => navigate('/admin/generate-certificate')}>Generate Certificate</Button> : null}
+            {resource === 'instructors' ? <Button onClick={() => navigate('/admin/add-instructor')}>Add Instructor</Button> : null}
             <Button variant="secondary" onClick={load} disabled={loading}>{loading ? 'Loading...' : 'Refresh'}</Button>
           </>
         )}
@@ -282,61 +362,36 @@ export default function AdminDataPage({ resource }) {
       <AdminNotice type="error">{error}</AdminNotice>
       <AdminNotice type={notice.type || 'info'}>{notice.message}</AdminNotice>
 
-      <div className="admin-panel p-4">
-        <label className="theme-subcard flex items-center gap-3 rounded-lg px-4 py-3 text-[var(--text-secondary)]">
-          <Search size={18} />
-          <input value={query} onChange={(event) => setQuery(event.target.value)} className="w-full bg-transparent text-sm text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" placeholder={`Search ${config.title.toLowerCase()}`} />
-        </label>
-      </div>
-
-      {loading ? <AdminLoadingState label={`Loading ${config.title.toLowerCase()}...`} /> : null}
-
-      {!loading && !filtered.length ? <AdminEmptyState title={`No ${config.title.toLowerCase()} found`} message="Try another search term or refresh the latest database rows." /> : null}
-
-      {!loading && filtered.length ? (
-        <div className="grid gap-3 md:hidden">
-          {filtered.map((row) => (
-            <div key={row.id} className="admin-panel p-4">
-              <div className="grid gap-3">
-                {config.columns.map((column) => (
-                  <div key={column} className="flex items-start justify-between gap-4 border-b border-[var(--border-color)] pb-2 last:border-0 last:pb-0">
-                    <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">{column}</span>
-                    <span className="max-w-[60%] text-right text-sm font-medium text-[var(--text-primary)]">{String(valueFor(row, column))}</span>
-                  </div>
-                ))}
-              </div>
-              {hasActions ? <div className="mt-4">{renderActions(row)}</div> : null}
-            </div>
-          ))}
-        </div>
-      ) : null}
-
-      {!loading && filtered.length ? (
-      <div className="admin-table-card hidden md:block">
-        <div className="admin-scrollbar overflow-x-auto">
-          <table className="min-w-full divide-y divide-[var(--border-color)] text-sm">
-            <thead className="bg-[var(--bg-subtle)]">
-              <tr>
-                {config.columns.map((column) => (
-                  <th key={column} className="px-4 py-3 text-left font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">{column}</th>
-                ))}
-                {hasActions ? <th className="px-4 py-3 text-right font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">Actions</th> : null}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[var(--border-color)]">
-              {filtered.map((row) => (
-                <tr key={row.id} className="transition hover:bg-[var(--bg-subtle)]">
-                  {config.columns.map((column) => (
-                    <td key={column} className="max-w-xs px-4 py-3 text-[var(--text-primary)]">{String(valueFor(row, column))}</td>
-                  ))}
-                  {hasActions ? <td className="px-4 py-3">{renderActions(row)}</td> : null}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      ) : null}
+      <AdminDataTable
+        title={config.title}
+        rows={rows}
+        columns={config.columns}
+        valueFor={valueFor}
+        loading={loading}
+        error={error}
+        onRetry={load}
+        emptyState={<AdminEmptyState title={`No ${config.title} Yet`} message={resource === 'courses' ? 'Ready to create your first course?' : 'Try refreshing or clearing filters to see the latest rows.'} />}
+        renderActions={hasActions ? renderActions : null}
+        onDeleteRows={confirmDelete}
+        onArchiveRows={archiveRows}
+        onViewRow={viewRow}
+        onEditRow={editRow}
+        onDeleteRow={confirmDelete}
+        onArchiveRow={(row) => archiveRows([row])}
+        toast={toast}
+      />
+      <AdminModal
+        open={Boolean(modal)}
+        title={modal?.title}
+        message={modal?.message}
+        confirmLabel={modal?.confirmLabel}
+        tone={modal?.tone}
+        onConfirm={modal?.onConfirm}
+        onClose={() => setModal(null)}
+      >
+        {modal?.children}
+      </AdminModal>
+      <AdminToastStack toasts={toasts} onDismiss={(id) => setToasts((current) => current.filter((item) => item.id !== id))} />
     </section>
   )
 
@@ -346,7 +401,17 @@ export default function AdminDataPage({ resource }) {
         <div className="flex flex-wrap justify-end gap-2">
           <Button variant="secondary" onClick={() => navigate(`/admin/edit-course/${row.id}`)}>Edit</Button>
           <Button variant="secondary" onClick={() => togglePublish(row)}>{row.isPublished ? 'Unpublish' : 'Publish'}</Button>
-          <button type="button" onClick={() => removeCourse(row)} className="grid h-10 w-10 place-items-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-500/10 dark:text-red-200" aria-label="Delete course">
+          <button type="button" onClick={() => confirmDelete(row)} className="grid h-10 w-10 place-items-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-500/10 dark:text-red-200" aria-label="Delete course">
+            <Trash2 size={17} />
+          </button>
+        </div>
+      )
+    }
+
+    if (config.actions === 'certificates') {
+      return (
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={() => confirmDelete(row)} className="grid h-10 w-10 place-items-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-500/10 dark:text-red-200" aria-label="Delete certificate">
             <Trash2 size={17} />
           </button>
         </div>
@@ -359,7 +424,7 @@ export default function AdminDataPage({ resource }) {
           <ModerationButton label="Approve" icon={<CheckCircle2 size={16} />} disabled={actionKey !== '' || (row.approvalStatus === 'APPROVED' && row.isActive)} loading={actionKey === `approve:${row.id}`} onClick={() => approveUser(row)} />
           <ModerationButton label="Suspend" icon={<Ban size={16} />} disabled={actionKey !== '' || row.approvalStatus === 'SUSPENDED' || Number(authUser?.id) === Number(row.id)} loading={actionKey === `suspend:${row.id}`} onClick={() => suspendUser(row)} />
           <ModerationButton label="Reject" icon={<XCircle size={16} />} disabled={actionKey !== '' || row.approvalStatus === 'REJECTED' || Number(authUser?.id) === Number(row.id)} loading={actionKey === `reject:${row.id}`} onClick={() => rejectUser(row)} />
-          <button type="button" onClick={() => removeUser(row)} className="grid h-10 w-10 place-items-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-500/10 dark:text-red-200" aria-label="Remove user">
+          <button type="button" onClick={() => confirmDelete(row)} className="grid h-10 w-10 place-items-center rounded-lg border border-red-500/30 text-red-600 transition hover:bg-red-500/10 dark:text-red-200" aria-label="Remove user">
             <Trash2 size={17} />
           </button>
         </div>
