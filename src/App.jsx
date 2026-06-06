@@ -118,6 +118,28 @@ function ProtectedRoute({ allowedRoles, redirectTo = '/login' }) {
   return <Outlet />
 }
 
+function AdminLoginRedirect() {
+  useEffect(() => {
+    if (import.meta.env.DEV && window.location.port !== '5174') {
+      window.location.assign(`${window.location.protocol}//${window.location.hostname}:5174/admin-login`)
+    }
+  }, [])
+
+  if (import.meta.env.DEV && window.location.port !== '5174') {
+    return (
+      <div className="grid min-h-screen place-items-center bg-[var(--bg-primary)] px-6 text-center text-[var(--text-primary)]">
+        <div className="theme-card rounded-lg p-6">
+          <div className="skeleton mx-auto h-10 w-10 rounded-full" />
+          <p className="mt-4 font-semibold">Opening admin portal...</p>
+          <p className="mt-2 text-sm text-[var(--text-secondary)]">Admin runs on http://localhost:5174 in development.</p>
+        </div>
+      </div>
+    )
+  }
+
+  return <Navigate to="/login" replace />
+}
+
 function AnimatedRoutes() {
   const location = useLocation()
   const isAdminHost = import.meta.env.MODE === 'admin'
@@ -176,7 +198,7 @@ function AnimatedRoutes() {
         <Route path="/" element={<MainLayout><LandingPage /></MainLayout>} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
-        <Route path="/admin-login" element={<Navigate to="/login" replace />} />
+        <Route path="/admin-login" element={<AdminLoginRedirect />} />
         <Route path="/register" element={<AuthPage />} />
         <Route path="/forgot-password" element={<AuthPage />} />
         <Route path="/reset-password" element={<AuthPage />} />

@@ -9,7 +9,7 @@ export default function AuthShell({ isAdminPortal = false, mode = 'login', eyebr
   const isDenseAuth = mode === 'register' || mode === 'reset'
 
   return (
-    <main className={cn('auth-viewport', isAdminPortal && 'auth-admin-viewport', isDenseAuth && 'auth-viewport-dense')}>
+    <main className={cn('auth-viewport auth-v2', isAdminPortal && 'auth-admin-viewport', isDenseAuth && 'auth-viewport-dense')}>
       <div className="auth-viewport-bg" />
       <div className="auth-top-strip" />
 

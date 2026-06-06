@@ -344,7 +344,7 @@ export default function AdminDataPage({ resource }) {
   }
 
   return (
-    <section className="space-y-6 pb-16">
+    <section className="admin-data-page space-y-5 pb-10">
       <AdminPageHeader
         eyebrow={config.eyebrow}
         title={config.title}

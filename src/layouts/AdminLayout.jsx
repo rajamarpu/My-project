@@ -137,7 +137,7 @@ export default function AdminLayout({ children }) {
           </button>
         </aside>
 
-        <main key={location.pathname} className="min-w-0 animate-upto-page-enter px-3 py-4 sm:px-5 sm:py-6 lg:px-8 lg:py-8">
+        <main key={location.pathname} className="admin-main min-w-0 animate-upto-page-enter px-3 py-4 sm:px-5 sm:py-6 lg:px-5 lg:py-5 xl:px-6">
           {children}
         </main>
       </div>

@@ -229,13 +229,20 @@ export default function AuthPage() {
 
         {needsPassword ? <PasswordStrength score={score} compact={isRegister || mode === 'reset'} /> : null}
 
-        {mode === 'login' ? (
+        {mode === 'login' && !isAdminPortal ? (
           <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--text-secondary)]">
             <label className="inline-flex items-center gap-2 font-medium">
               <input checked={rememberMe} onChange={(e) => setRememberMe(e.target.checked)} type="checkbox" className="h-4 w-4 rounded border-[var(--border-color)] bg-[var(--bg-secondary)] accent-[var(--accent-primary)]" />
               Remember me
             </label>
             <Link to="/forgot-password" className="font-semibold text-[var(--accent-primary)] transition hover:text-[var(--accent-bold)]">Forgot password?</Link>
+          </div>
+        ) : null}
+
+        {mode === 'login' && isAdminPortal ? (
+          <div className="auth-admin-login-note">
+            <ShieldCheck size={16} />
+            <span>Use your approved admin credentials. Admin sessions are validated before the dashboard opens.</span>
           </div>
         ) : null}
 

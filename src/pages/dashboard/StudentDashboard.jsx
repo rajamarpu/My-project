@@ -1,19 +1,39 @@
-import { useState, useEffect } from 'react'
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts'
-import Button from '../../components/common/Button/Button.jsx'
-import { motion } from 'framer-motion'
-import { fadeInUp } from '../../utils/animationVariants.js'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { AlertCircle, Award, BookOpenCheck, Clock3, Compass, Flame, GraduationCap, LineChart as LineChartIcon, PlayCircle, RefreshCw, ShieldCheck, Sparkles } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowRight,
+  Award,
+  BookOpenCheck,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  Compass,
+  GraduationCap,
+  Layers3,
+  LineChart as LineChartIcon,
+  PlayCircle,
+  RefreshCw,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  Trophy,
+} from 'lucide-react'
+import { motion } from 'framer-motion'
+import Button from '../../components/common/Button/Button.jsx'
+import { fadeInUp } from '../../utils/animationVariants.js'
 import { fetchLearnerDashboard, fetchUserAnalytics } from '../../api/api'
 import { resolveCourseThumbnail } from '../../utils/courseThumbnail'
 
-const learnerPermissions = [
-  'Browse upskilling and technical courses',
-  'Enroll in learning paths and save favorites',
-  'Access community discussions and certificates',
-  'Track weekly progress and daily streaks',
+const emptyWeekly = [
+  { day: 'Mon', hours: 0 },
+  { day: 'Tue', hours: 0 },
+  { day: 'Wed', hours: 0 },
+  { day: 'Thu', hours: 0 },
+  { day: 'Fri', hours: 0 },
+  { day: 'Sat', hours: 0 },
+  { day: 'Sun', hours: 0 },
 ]
 
 const emptyAnalytics = {
@@ -24,31 +44,39 @@ const emptyAnalytics = {
   completions: 0,
   quiz: 0,
   certificates: 0,
-  weekly: [
-    { day: 'Mon', hours: 0 },
-    { day: 'Tue', hours: 0 },
-    { day: 'Wed', hours: 0 },
-    { day: 'Thu', hours: 0 },
-    { day: 'Fri', hours: 0 },
-    { day: 'Sat', hours: 0 },
-    { day: 'Sun', hours: 0 },
-  ],
+  weekly: emptyWeekly,
   recent: [],
+}
+
+const learnerCapabilities = [
+  ['Discover', 'Explore curated course tracks by category, skill level, and mentor.'],
+  ['Practice', 'Attempt questions and assignments connected to your enrolled courses.'],
+  ['Progress', 'Track completion, weekly hours, certificates, and streak momentum.'],
+  ['Community', 'Join discussions, ask doubts, and learn with peers.'],
+]
+
+function normalizeNumber(value, fallback = 0) {
+  const nextValue = Number(value)
+  return Number.isFinite(nextValue) ? nextValue : fallback
 }
 
 function normalizeAnalytics(payload, courseCount) {
   const data = payload?.analytics || payload || {}
   return {
-    totalCourses: data.totalCourses ?? courseCount,
-    avgProgress: data.avgProgress ?? data.completion ?? emptyAnalytics.avgProgress,
-    streak: data.streak ?? emptyAnalytics.streak,
-    hoursStudied: Math.round(data.hoursStudied ?? emptyAnalytics.hoursStudied),
-    completions: data.completions ?? data.certificates ?? emptyAnalytics.completions,
-    quiz: data.quiz ?? emptyAnalytics.quiz,
-    certificates: data.certificates ?? emptyAnalytics.certificates,
-    weekly: data.weekly ?? emptyAnalytics.weekly,
-    recent: data.recent ?? emptyAnalytics.recent,
+    totalCourses: normalizeNumber(data.totalCourses, courseCount),
+    avgProgress: Math.round(normalizeNumber(data.avgProgress ?? data.completion)),
+    streak: normalizeNumber(data.streak),
+    hoursStudied: Math.round(normalizeNumber(data.hoursStudied)),
+    completions: normalizeNumber(data.completions ?? data.certificates),
+    quiz: normalizeNumber(data.quiz),
+    certificates: normalizeNumber(data.certificates),
+    weekly: Array.isArray(data.weekly) && data.weekly.length ? data.weekly : emptyWeekly,
+    recent: Array.isArray(data.recent) ? data.recent : [],
   }
+}
+
+function getInstructor(course) {
+  return course?.createdBy?.name || course?.instructor?.full_name || course?.instructor?.name || course?.instructor || 'Instructor'
 }
 
 export default function StudentDashboard() {
@@ -60,37 +88,6 @@ export default function StudentDashboard() {
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
 
-  function goTo(path, fallbackMessage = '') {
-    if (!path) {
-      if (fallbackMessage) setNotice(fallbackMessage)
-      return
-    }
-    setNotice('')
-    navigate(path)
-  }
-
-  function resumeLearning() {
-    const activeCourses = [...courses].sort((a, b) => {
-      const dateA = new Date(a.enrollment?.enrolledAt || a.updatedAt || a.createdAt || 0).getTime()
-      const dateB = new Date(b.enrollment?.enrolledAt || b.updatedAt || b.createdAt || 0).getTime()
-      return dateB - dateA
-    })
-    const nextCourse = activeCourses[0]
-    if (!nextCourse?.id) {
-      goTo('/explore', 'No active enrolled course found. Pick a course to start learning.')
-      return
-    }
-    goTo(`/player/${nextCourse.id}`)
-  }
-
-  function viewEnrolledCourses() {
-    setNotice('')
-    const enrolledCoursesSection = document.getElementById('enrolled-courses')
-    if (enrolledCoursesSection) {
-      enrolledCoursesSection.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }
-  }
-
   async function loadDashboardData() {
     try {
       setLoading(true)
@@ -100,18 +97,21 @@ export default function StudentDashboard() {
         fetchLearnerDashboard().catch(() => ({ data: { dashboard: { enrollments: [] } } })),
       ])
       const enrollments = coursesRes.data?.dashboard?.enrollments || []
-        const courseList = enrollments.map((enrollment) => ({
-        ...enrollment.course,
-        enrollmentId: enrollment.id,
-        enrollment,
-        isEnrolled: true,
-        progress: enrollment.completionPct || 0,
-      })).filter((course) => course?.id)
+      const courseList = enrollments
+        .map((enrollment) => ({
+          ...enrollment.course,
+          enrollmentId: enrollment.id,
+          enrollment,
+          isEnrolled: true,
+          progress: Math.round(normalizeNumber(enrollment.completionPct)),
+        }))
+        .filter((course) => course?.id)
+
       setCourses(courseList)
       setAnalytics(normalizeAnalytics(analyticsRes.data, courseList.length))
-    } catch (error) {
-      console.error('Failed to load dashboard data:', error)
-      setError(error?.response?.data?.message || error.message || 'Could not load learner dashboard.')
+    } catch (dashboardError) {
+      console.error('Failed to load dashboard data:', dashboardError)
+      setError(dashboardError?.response?.data?.message || dashboardError.message || 'Could not load learner dashboard.')
       setCourses([])
       setAnalytics(normalizeAnalytics(emptyAnalytics, 0))
     } finally {
@@ -123,331 +123,372 @@ export default function StudentDashboard() {
     void Promise.resolve().then(loadDashboardData)
   }, [])
 
-  const metricActions = [
-    {
-      icon: BookOpenCheck,
-      label: 'Enrolled',
-      value: analytics.totalCourses,
-      detail: 'active learning paths',
-      onClick: viewEnrolledCourses,
-      actionLabel: 'View enrolled courses',
-    },
-    {
-      icon: LineChartIcon,
-      label: 'Avg Progress',
-      value: `${analytics.avgProgress}%`,
-      detail: 'across tracked courses',
-    },
-    {
-      icon: Flame,
-      label: 'Streak',
-      value: `${analytics.streak} days`,
-      detail: 'learning consistency',
-    },
-    {
-      icon: Clock3,
-      label: 'Hours',
-      value: analytics.hoursStudied,
-      detail: 'studied so far',
-    },
-    {
-      icon: Award,
-      label: 'Certificates',
-      value: analytics.certificates,
-      detail: 'earned credentials',
-      onClick: () => goTo('/certificates'),
-      actionLabel: 'Open certificates',
-    },
+  const activeCourse = useMemo(() => {
+    return [...courses].sort((a, b) => {
+      const dateA = new Date(a.enrollment?.enrolledAt || a.updatedAt || a.createdAt || 0).getTime()
+      const dateB = new Date(b.enrollment?.enrolledAt || b.updatedAt || b.createdAt || 0).getTime()
+      return dateB - dateA
+    })[0]
+  }, [courses])
+
+  const averageProgress = courses.length
+    ? Math.round(courses.reduce((sum, course) => sum + normalizeNumber(course.progress), 0) / courses.length)
+    : analytics.avgProgress
+
+  const roadmapItems = [
+    { label: 'Pick a course', done: courses.length > 0 },
+    { label: 'Complete first lesson', done: averageProgress > 0 },
+    { label: 'Pass a practice set', done: analytics.quiz > 0 },
+    { label: 'Earn certificate', done: analytics.certificates > 0 },
   ]
 
+  function goTo(path, fallbackMessage = '') {
+    if (!path) {
+      if (fallbackMessage) setNotice(fallbackMessage)
+      return
+    }
+    setNotice('')
+    navigate(path)
+  }
+
+  function resumeLearning() {
+    if (!activeCourse?.id) {
+      goTo('/explore', 'No active course found. Choose a course to start learning.')
+      return
+    }
+    goTo(`/player/${activeCourse.id}`)
+  }
+
   return (
-    <section className="space-y-8 pb-16">
-      <div className="upto-premium-panel overflow-hidden rounded-xl p-5 sm:p-8">
-        <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr] xl:items-end">
+    <section className="learner-dashboard-v2 mx-auto w-full max-w-[1440px] space-y-6 pb-14">
+      <motion.div
+        variants={fadeInUp}
+        initial="hidden"
+        animate="visible"
+        className="learner-hero-v2 enterprise-mesh-panel rounded-xl border border-[var(--border-color)] p-5 shadow-soft sm:p-6 lg:p-8"
+      >
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
           <div>
-            <p className="theme-eyebrow text-xs font-semibold uppercase tracking-[0.3em] sm:text-sm">Learner dashboard</p>
-            <h1 className="mt-3 text-3xl font-semibold text-[var(--text-primary)] sm:text-4xl">Welcome back, {auth.user?.name || auth.user?.fullName || 'learner'}.</h1>
-            <p className="mt-4 max-w-3xl text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
-              Continue your upskilling journey, unlock achievements, and track daily goals with an AI-powered roadmap.
+            <p className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-[var(--accent-primary)]">
+              <Sparkles size={14} /> Learner workspace
             </p>
-          </div>
-          <div className="grid gap-4">
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                ['Today', `${analytics.hoursStudied}h`],
-                ['Streak', `${analytics.streak}d`],
-                ['Progress', `${analytics.avgProgress}%`],
-              ].map(([label, value]) => (
-                <div key={label} className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-3 text-center shadow-soft">
-                  <p className="text-lg font-semibold text-[var(--text-primary)]">{loading ? <span className="skeleton mx-auto inline-block h-6 w-10 rounded" /> : value}</p>
-                  <p className="mt-1 text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">{label}</p>
-                </div>
-              ))}
+            <h1 className="mt-4 max-w-4xl text-3xl font-bold leading-tight text-[var(--text-primary)] sm:text-4xl lg:text-5xl">
+              Welcome back, {auth.user?.name || auth.user?.fullName || 'learner'}.
+            </h1>
+            <p className="mt-4 max-w-3xl text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
+              Your courses, progress, practice, and certificates are organized into one focused learning cockpit.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Button onClick={resumeLearning}>
+                <PlayCircle size={17} /> Resume learning
+              </Button>
+              <Button variant="secondary" onClick={() => goTo('/explore')}>
+                <Compass size={17} /> Explore courses
+              </Button>
+              <Button variant="secondary" onClick={() => goTo('/questions')}>
+                <Target size={17} /> Practice
+              </Button>
             </div>
-            <div className="flex flex-wrap justify-start gap-3 xl:justify-end">
-              <Button onClick={() => goTo('/explore')}>Explore Courses</Button>
-              <Button variant="secondary" onClick={() => goTo('/certificates')}>Certificates</Button>
+          </div>
+
+          <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 shadow-soft">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">Current focus</p>
+                <p className="mt-2 line-clamp-2 text-lg font-bold text-[var(--text-primary)]">
+                  {loading ? 'Loading course...' : activeCourse?.title || 'Start your first course'}
+                </p>
+              </div>
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">
+                <GraduationCap size={24} />
+              </span>
+            </div>
+            <div className="mt-5 h-3 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+              <div className="h-full rounded-full" style={{ width: `${Math.min(100, averageProgress)}%`, background: 'var(--brand-gradient)' }} />
+            </div>
+            <div className="mt-3 flex items-center justify-between text-xs font-semibold text-[var(--text-secondary)]">
+              <span>{averageProgress}% average progress</span>
+              <span>{analytics.streak} day streak</span>
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {error ? (
-        <div className="rounded-lg border border-red-400/30 bg-red-500/10 p-5 text-red-700 dark:text-red-100">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="mt-0.5 shrink-0" size={20} />
-              <div>
-                <p className="font-semibold">Unable to load learner dashboard</p>
-                <p className="mt-1 text-sm opacity-85">{error}</p>
-              </div>
-            </div>
-            <Button variant="secondary" onClick={loadDashboardData}><RefreshCw size={16} /> Retry</Button>
-          </div>
-        </div>
+        <StatusMessage tone="danger" icon={AlertCircle} title="Unable to load learner dashboard" text={error}>
+          <Button variant="secondary" onClick={loadDashboardData}><RefreshCw size={16} /> Retry</Button>
+        </StatusMessage>
       ) : null}
 
       {notice ? (
-        <div className="rounded-lg border border-cyan-400/30 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-700 dark:text-cyan-100">
-          {notice}
-        </div>
+        <StatusMessage tone="info" icon={Sparkles} title="Learning note" text={notice} />
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
-        {metricActions.map((metric) => (
-          <LearnerMetric key={metric.label} {...metric} loading={loading} />
-        ))}
+      <div className="learner-metrics-v2 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <MetricCard icon={BookOpenCheck} label="Active courses" value={analytics.totalCourses} detail="enrolled paths" loading={loading} />
+        <MetricCard icon={LineChartIcon} label="Avg progress" value={`${averageProgress}%`} detail="across courses" loading={loading} />
+        <MetricCard icon={Clock3} label="Study hours" value={analytics.hoursStudied} detail="tracked total" loading={loading} />
+        <MetricCard icon={Award} label="Certificates" value={analytics.certificates} detail="earned credentials" loading={loading} onClick={() => goTo('/certificates')} />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <motion.div variants={fadeInUp} initial="hidden" animate="visible" className="glass-card p-5 shadow-soft sm:p-6">
-          <div className="flex items-center justify-between gap-3">
+      <div className="learner-insights-v2 grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(25rem,0.9fr)] xl:items-start">
+        <section className="learner-activity-card glass-card self-start rounded-xl p-5 shadow-soft sm:p-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Learner permissions</p>
-              <h2 className="mt-3 text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">What you can do</h2>
-            </div>
-            <Button variant="secondary" onClick={() => goTo('/user')}>
-              View profile
-            </Button>
-          </div>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {learnerPermissions.map((permission) => (
-              <div
-                key={permission}
-                className="theme-subcard flex items-start gap-3 rounded-lg p-4 text-sm text-[var(--text-secondary)]"
-              >
-                <ShieldCheck className="mt-0.5 shrink-0 text-cyan-600 dark:text-cyan-300" size={17} />
-                <span>{permission}</span>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
-        <div className="glass-card p-5 shadow-soft sm:p-6">
-          <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Quick actions</p>
-          <h2 className="mt-3 text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">Next best steps</h2>
-          <div className="mt-6 grid gap-3">
-            <LearnerAction icon={Compass} title="Find a course" text="Browse current catalog and pick your next skill." onClick={() => goTo('/explore')} />
-            <LearnerAction icon={PlayCircle} title="Resume learning" text="Open your most recent course player." onClick={resumeLearning} />
-            <LearnerAction icon={Sparkles} title="Join community" text="Ask questions and learn with peers." onClick={() => goTo('/community')} />
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="glass-card p-5 sm:p-6">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Learning progress</p>
-              <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">Time spent this week</h2>
+              <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">Learning activity</p>
+              <h2 className="mt-2 text-xl font-bold text-[var(--text-primary)]">This week overview</h2>
             </div>
             <Button variant="secondary" onClick={() => goTo('/reports')}>View report</Button>
           </div>
-          <div className="mt-8 h-72">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={analytics.weekly}
-                margin={{ top: 0, right: 0, left: -20, bottom: 0 }}
-              >
-                <XAxis dataKey="day" axisLine={false} tickLine={false} stroke="var(--text-muted)" />
-                <YAxis axisLine={false} tickLine={false} stroke="var(--text-muted)" />
-                <Tooltip
-                  contentStyle={{
-                    background: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-color)',
-                    color: 'var(--text-primary)',
-                  }}
-                  labelStyle={{ color: 'var(--text-primary)' }}
-                  itemStyle={{ color: 'var(--text-primary)' }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="hours"
-                  stroke="#38bdf8"
-                  strokeWidth={4}
-                  dot={{ r: 4, fill: '#67e8f9' }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
 
-        <div className="glass-card p-5 sm:p-6">
-          <h2 className="text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">Skill growth</h2>
-          <p className="mt-3 text-[var(--text-muted)]">
-            Radar view of your current competency across premium learning pillars.
-          </p>
-          <div className="mt-8 flex justify-center">
-            <ResponsiveContainer width="100%" height={320}>
-              <RadarChart
-                data={[
-                  { subject: 'Creativity', A: analytics.avgProgress },
-                  { subject: 'Coding', A: analytics.avgProgress },
-                  { subject: 'Projects', A: analytics.completions ? Math.min(100, analytics.completions * 20) : 0 },
-                  { subject: 'Quiz', A: analytics.quiz },
-                  { subject: 'Consistency', A: Math.min(100, analytics.streak * 10) },
-                  { subject: 'Practice', A: Math.min(100, analytics.hoursStudied * 5) },
-                ]}
-              >
-                <PolarGrid stroke="var(--border-color)" />
-                <PolarAngleAxis dataKey="subject" stroke="var(--text-secondary)" />
-                <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} />
-                <Radar name="You" dataKey="A" stroke="#38bdf8" fill="#38bdf8" fillOpacity={0.4} />
-              </RadarChart>
-            </ResponsiveContainer>
+          <div className="learner-activity-body mt-6 grid gap-4 lg:grid-cols-[minmax(16rem,0.8fr)_minmax(0,1.2fr)]">
+            <div className="theme-subcard rounded-lg p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">Total study time</p>
+              <p className="mt-3 text-4xl font-black text-[var(--text-primary)]">{analytics.hoursStudied}h</p>
+              <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+                {analytics.hoursStudied > 0 ? 'Recorded across your enrolled courses.' : 'No tracked study time yet. Open a lesson to start logging progress.'}
+              </p>
+              <Button className="mt-5 w-full" onClick={resumeLearning}>
+                <PlayCircle size={17} /> Continue now
+              </Button>
+            </div>
+
+            <div className="grid gap-3">
+              {analytics.weekly.map((item) => {
+                const maxHours = Math.max(1, ...analytics.weekly.map((entry) => normalizeNumber(entry.hours)))
+                const hours = normalizeNumber(item.hours)
+                return (
+                  <div key={item.day} className="grid grid-cols-[2.5rem_minmax(0,1fr)_3rem] items-center gap-3 text-sm">
+                    <span className="font-bold text-[var(--text-secondary)]">{item.day}</span>
+                    <span className="h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+                      <span className="block h-full rounded-full" style={{ width: `${Math.max(4, (hours / maxHours) * 100)}%`, background: hours ? 'var(--brand-gradient)' : 'var(--border-color)' }} />
+                    </span>
+                    <span className="text-right text-xs font-bold text-[var(--text-muted)]">{hours}h</span>
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        </div>
+        </section>
+
+        <section className="learner-health-card glass-card self-start rounded-xl p-5 shadow-soft sm:p-6">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">Learning health</p>
+              <h2 className="mt-2 text-xl font-bold text-[var(--text-primary)]">Progress snapshot</h2>
+            </div>
+            <span className="grid h-11 w-11 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">
+              <Trophy size={20} />
+            </span>
+          </div>
+          <div className="learner-health-grid mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-1">
+            <ProgressSnapshot label="Course progress" value={averageProgress} detail={`${courses.length} enrolled course${courses.length === 1 ? '' : 's'}`} />
+            <ProgressSnapshot label="Practice readiness" value={Math.min(100, analytics.quiz)} detail={`${analytics.quiz} assessment signal${analytics.quiz === 1 ? '' : 's'}`} />
+            <ProgressSnapshot label="Certificate path" value={Math.min(100, analytics.certificates * 25)} detail={`${analytics.certificates} certificate${analytics.certificates === 1 ? '' : 's'} earned`} />
+            <MiniHealthStat label="Streak" value={`${analytics.streak} days`} />
+            <MiniHealthStat label="Completion" value={`${analytics.completions}`} />
+          </div>
+        </section>
       </div>
 
-      <div id="enrolled-courses" className="glass-card scroll-mt-24 p-5 sm:p-6">
+      <section id="enrolled-courses" className="learner-active-courses-v2 glass-card scroll-mt-24 rounded-xl p-5 shadow-soft sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Continue learning</p>
-            <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">Your active courses</h2>
+            <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">Continue learning</p>
+            <h2 className="mt-2 text-xl font-bold text-[var(--text-primary)]">Active courses</h2>
           </div>
-          <Button variant="secondary" onClick={() => goTo('/explore')}>Explore New Courses</Button>
+          <Button variant="secondary" onClick={() => goTo('/explore')}>Find more</Button>
         </div>
 
-        <div className="mt-8 grid gap-5 lg:grid-cols-2">
+        <div className={`mt-6 grid gap-4 ${courses.length > 4 ? 'max-h-[36rem] overflow-y-auto pr-1' : ''}`}>
           {loading ? (
             <>
-              <CourseSkeleton />
-              <CourseSkeleton />
+              <CourseRowSkeleton />
+              <CourseRowSkeleton />
             </>
-          ) : courses.length === 0 ? (
-            <div className="col-span-2 rounded-lg border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] p-8 text-center">
-              <GraduationCap className="mx-auto text-[var(--text-muted)]" size={32} />
-              <p className="mt-3 font-semibold text-[var(--text-primary)]">No active courses yet</p>
-              <p className="mt-1 text-sm text-[var(--text-secondary)]">Explore courses to begin your learning path.</p>
-              <Button className="mt-5" onClick={() => goTo('/explore')}>Explore Courses</Button>
-            </div>
-          ) : (
-            courses.slice(0, 4).map((course) => (
-              <div
-                key={course.id}
-                className="theme-subcard theme-subcard-hover overflow-hidden rounded-lg shadow-soft"
-              >
-                <div className="aspect-[16/7] bg-slate-950">
-                  <img src={resolveCourseThumbnail(course)} alt={course.title} className="h-full w-full object-cover" />
-                </div>
-                <div className="p-5">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <p className="line-clamp-2 text-base font-semibold text-[var(--text-primary)]">{course.title}</p>
-                      <p className="mt-2 truncate text-sm text-[var(--text-muted)]">{course.createdBy?.name || course.instructor?.full_name || course.instructor?.name || course.instructor || 'Instructor'}</p>
-                    </div>
-                    <span className="shrink-0 rounded-full bg-emerald-400/15 px-3 py-1 text-sm text-emerald-700 dark:text-emerald-200">
-                      {course.progress || 0}%
-                    </span>
-                  </div>
-
-                  <div className="mt-6 flex items-center justify-between gap-4">
-                    <div className="h-3 flex-1 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
-                      <div className="h-full bg-gradient-to-r from-orange-500 to-teal-500" style={{ width: `${course.progress || 0}%` }} />
-                    </div>
-                    <span className="text-sm text-[var(--text-secondary)]">{course.progress || 0}% complete</span>
-                  </div>
-
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <Button variant="secondary" onClick={() => goTo(`/course/${course.id}`)}>View Course</Button>
-                    <Button onClick={() => goTo(`/player/${course.id}`)}>Open Player</Button>
-                  </div>
-                </div>
-              </div>
+          ) : courses.length ? (
+            courses.slice(0, 5).map((course) => (
+              <CourseRow key={course.id} course={course} onOpen={() => goTo(`/player/${course.id}`)} onDetails={() => goTo(`/course/${course.id}`)} />
             ))
+          ) : (
+            <EmptyState onExplore={() => goTo('/explore')} />
           )}
         </div>
-      </div>
+      </section>
+
+      <aside className="learner-support-grid-v2 grid gap-6 lg:grid-cols-2">
+          <section className="glass-card rounded-xl p-5 shadow-soft sm:p-6">
+            <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">Roadmap</p>
+            <h2 className="mt-2 text-xl font-bold text-[var(--text-primary)]">Next milestones</h2>
+            <div className="mt-5 grid gap-3">
+              {roadmapItems.map((item, index) => (
+                <div key={item.label} className="flex items-center gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-3">
+                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${item.done ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-200' : 'bg-[var(--bg-card)] text-[var(--text-muted)]'}`}>
+                    {item.done ? <CheckCircle2 size={17} /> : index + 1}
+                  </span>
+                  <span className="text-sm font-semibold text-[var(--text-primary)]">{item.label}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="glass-card rounded-xl p-5 shadow-soft sm:p-6">
+            <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">Quick actions</p>
+            <div className="mt-5 grid gap-3">
+              <QuickAction icon={Compass} title="Explore catalog" text="Find your next skill path." onClick={() => goTo('/explore')} />
+              <QuickAction icon={CalendarDays} title="Live sessions" text="Join upcoming learner events." onClick={() => goTo('/live-sessions')} />
+              <QuickAction icon={ShieldCheck} title="Profile" text="Manage account and settings." onClick={() => goTo('/profile')} />
+            </div>
+          </section>
+      </aside>
+
+      <section className="learner-capabilities-v2 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {learnerCapabilities.map(([title, text]) => (
+          <div key={title} className="theme-card rounded-lg p-5">
+            <span className="theme-icon-badge grid h-10 w-10 place-items-center rounded-lg">
+              <Layers3 size={18} />
+            </span>
+            <p className="mt-4 font-bold text-[var(--text-primary)]">{title}</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{text}</p>
+          </div>
+        ))}
+      </section>
     </section>
   )
 }
 
-function LearnerMetric({ icon: Icon, label, value, detail, loading, onClick, actionLabel }) {
-  const canNavigate = typeof onClick === 'function'
-  const content = (
-    <>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">{label}</p>
-        <span className="theme-icon-badge grid h-10 w-10 place-items-center rounded-lg">
-          <Icon size={18} />
-        </span>
-      </div>
-      <p className="mt-4 text-2xl font-semibold text-[var(--text-primary)]">{loading ? <span className="skeleton inline-block h-8 w-16" /> : value}</p>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">{detail}</p>
-    </>
-  )
-
-  if (canNavigate) {
-    return (
-      <button
-        type="button"
-        onClick={onClick}
-        aria-label={actionLabel || `Open ${label}`}
-        title={actionLabel || `Open ${label}`}
-        className="theme-card theme-subcard-hover w-full rounded-lg p-5 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-primary)]/60"
-      >
-        {content}
-      </button>
-    )
-  }
+function StatusMessage({ tone, icon: Icon, title, text, children }) {
+  const toneClass = tone === 'danger'
+    ? 'border-red-400/30 bg-red-500/10 text-red-700 dark:text-red-100'
+    : 'border-cyan-400/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-100'
 
   return (
-    <div className="theme-card rounded-lg p-5">
-      {content}
+    <div className={`rounded-lg border p-4 ${toneClass}`}>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <Icon className="mt-0.5 shrink-0" size={20} />
+          <div>
+            <p className="font-bold">{title}</p>
+            <p className="mt-1 text-sm opacity-85">{text}</p>
+          </div>
+        </div>
+        {children}
+      </div>
     </div>
   )
 }
 
-function LearnerAction({ icon: Icon, title, text, onClick }) {
+function MetricCard({ icon: Icon, label, value, detail, loading, onClick }) {
+  const className = 'theme-card theme-subcard-hover w-full rounded-lg p-5 text-left'
+  const content = (
+    <>
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">{label}</p>
+        <span className="theme-icon-badge grid h-10 w-10 place-items-center rounded-lg"><Icon size={18} /></span>
+      </div>
+      <p className="mt-5 text-2xl font-bold text-[var(--text-primary)]">{loading ? <span className="skeleton inline-block h-8 w-16" /> : value}</p>
+      <p className="mt-1 text-sm text-[var(--text-secondary)]">{detail}</p>
+    </>
+  )
+
+  return onClick ? <button type="button" onClick={onClick} className={className}>{content}</button> : <div className="theme-card rounded-lg p-5">{content}</div>
+}
+
+function ProgressSnapshot({ label, value, detail }) {
+  const safeValue = Math.max(0, Math.min(100, normalizeNumber(value)))
+
+  return (
+    <div className="theme-subcard rounded-lg p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-[var(--text-primary)]">{label}</p>
+          <p className="mt-1 text-xs text-[var(--text-secondary)]">{detail}</p>
+        </div>
+        <span className="text-lg font-black text-[var(--accent-primary)]">{safeValue}%</span>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--bg-card)]">
+        <div className="h-full rounded-full" style={{ width: `${safeValue}%`, background: 'var(--brand-gradient)' }} />
+      </div>
+    </div>
+  )
+}
+
+function MiniHealthStat({ label, value }) {
+  return (
+    <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
+      <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">{label}</p>
+      <p className="mt-2 text-xl font-black text-[var(--text-primary)]">{value}</p>
+    </div>
+  )
+}
+
+function CourseRow({ course, onOpen, onDetails }) {
+  const progress = Math.min(100, normalizeNumber(course.progress))
+
+  return (
+    <article className="theme-subcard theme-subcard-hover grid gap-4 rounded-lg p-3 sm:grid-cols-[9rem_minmax(0,1fr)_auto] sm:items-center">
+      <div className="aspect-[16/10] overflow-hidden rounded-lg bg-slate-950">
+        <img src={resolveCourseThumbnail(course)} alt={course.title} className="h-full w-full object-cover" />
+      </div>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.1em] text-[var(--accent-primary)]">
+            {course.level || 'Beginner'}
+          </span>
+          <span className="text-xs font-semibold text-[var(--text-muted)]">{getInstructor(course)}</span>
+        </div>
+        <h3 className="mt-2 line-clamp-2 text-base font-bold text-[var(--text-primary)]">{course.title}</h3>
+        <div className="mt-4 flex items-center gap-3">
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--bg-card)]">
+            <div className="h-full rounded-full" style={{ width: `${progress}%`, background: 'var(--brand-gradient)' }} />
+          </div>
+          <span className="w-12 text-right text-xs font-bold text-[var(--text-secondary)]">{progress}%</span>
+        </div>
+      </div>
+      <div className="flex gap-2 sm:flex-col">
+        <Button onClick={onOpen}>Open</Button>
+        <Button variant="secondary" onClick={onDetails}>Details</Button>
+      </div>
+    </article>
+  )
+}
+
+function QuickAction({ icon: Icon, title, text, onClick }) {
   return (
     <button type="button" onClick={onClick} className="theme-subcard theme-subcard-hover flex items-center gap-3 rounded-lg p-4 text-left">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-cyan-400/15 text-cyan-700 dark:text-cyan-200">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">
         <Icon size={18} />
       </span>
-      <span>
-        <span className="block font-semibold text-[var(--text-primary)]">{title}</span>
-        <span className="mt-0.5 block text-sm text-[var(--text-muted)]">{text}</span>
+      <span className="min-w-0">
+        <span className="block font-bold text-[var(--text-primary)]">{title}</span>
+        <span className="mt-0.5 block text-sm text-[var(--text-secondary)]">{text}</span>
       </span>
+      <ArrowRight className="ml-auto shrink-0 text-[var(--text-muted)]" size={16} />
     </button>
   )
 }
 
-function CourseSkeleton() {
+function EmptyState({ onExplore }) {
   return (
-    <div className="theme-subcard overflow-hidden rounded-lg shadow-soft">
-      <div className="skeleton aspect-[16/7]" />
-      <div className="space-y-4 p-5">
-        <div className="skeleton h-5 w-3/4 rounded" />
-        <div className="skeleton h-4 w-1/2 rounded" />
-        <div className="skeleton h-3 w-full rounded-full" />
-        <div className="flex gap-3">
-          <div className="skeleton h-11 w-28 rounded-xl" />
-          <div className="skeleton h-11 w-28 rounded-xl" />
-        </div>
-      </div>
+    <div className="rounded-lg border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] p-8 text-center">
+      <GraduationCap className="mx-auto text-[var(--text-muted)]" size={34} />
+      <p className="mt-3 font-bold text-[var(--text-primary)]">No active courses yet</p>
+      <p className="mt-1 text-sm text-[var(--text-secondary)]">Choose a course and your learning plan will appear here.</p>
+      <Button className="mt-5" onClick={onExplore}>Explore courses</Button>
     </div>
   )
 }
 
-
-
+function CourseRowSkeleton() {
+  return (
+    <div className="theme-subcard grid gap-4 rounded-lg p-3 sm:grid-cols-[9rem_minmax(0,1fr)_8rem] sm:items-center">
+      <div className="skeleton aspect-[16/10] rounded-lg" />
+      <div className="space-y-3">
+        <div className="skeleton h-4 w-32 rounded" />
+        <div className="skeleton h-5 w-3/4 rounded" />
+        <div className="skeleton h-2 w-full rounded-full" />
+      </div>
+      <div className="skeleton h-11 rounded-lg" />
+    </div>
+  )
+}

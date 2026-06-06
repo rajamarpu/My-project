@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { BarChart3, BookOpenCheck, BrainCircuit, BriefcaseBusiness, CheckCircle2, GraduationCap, LockKeyhole, ShieldCheck, Sparkles, Star, Trophy, TrendingUp } from 'lucide-react'
+import { BarChart3, BookOpenCheck, BrainCircuit, BriefcaseBusiness, CheckCircle2, GraduationCap, LockKeyhole, ShieldCheck, Sparkles, Star, Trophy } from 'lucide-react'
 import Logo from '../Navbar/Logo.jsx'
 
 export default function AuthBrandPanel({ isAdminPortal = false }) {
@@ -16,12 +16,10 @@ export default function AuthBrandPanel({ isAdminPortal = false }) {
       ]
 
   const learnerFeatureCards = [
-    ['Learn', 'Structured technical and career courses built for steady progress.', BookOpenCheck, 'text-orange-600 bg-orange-50'],
-    ['Practice', 'Assignments, assessments, and notes keep every concept active.', BrainCircuit, 'text-blue-600 bg-blue-50'],
-    ['Grow', 'Certificates and progress tracking help learners see momentum.', TrendingUp, 'text-emerald-600 bg-emerald-50'],
-    ['AI mentors', 'Learn with adaptive teacher personalities.', Sparkles, 'text-purple-600 bg-purple-50'],
-    ['Guided progress', 'Continue lessons, assessments, and certificates.', ShieldCheck, 'text-blue-600 bg-blue-50'],
-    ['Career-ready', 'Build practical skills with structured paths.', BriefcaseBusiness, 'text-rose-600 bg-rose-50'],
+    ['Structured paths', 'Technical courses organized around steady progress.', BookOpenCheck, 'text-orange-600 bg-orange-50'],
+    ['AI mentor modes', 'Switch virtual teacher styles during the learning flow.', Sparkles, 'text-purple-600 bg-purple-50'],
+    ['Practice loop', 'Assessments, notes, and tasks keep every concept active.', BrainCircuit, 'text-blue-600 bg-blue-50'],
+    ['Career proof', 'Certificates and progress tracking show real momentum.', BriefcaseBusiness, 'text-emerald-600 bg-emerald-50'],
   ]
 
   return (
@@ -49,6 +47,21 @@ export default function AuthBrandPanel({ isAdminPortal = false }) {
               ? 'Manage learners, courses, assessments, payments, approvals, reports, and platform operations from one secure command center.'
               : 'Resume lessons, compare mentor modes, track progress, and move from course discovery to certification without losing momentum.'}
           </p>
+          {!isAdminPortal ? (
+            <div className="auth-learning-flow" aria-label="Learner flow">
+              {[
+                ['01', 'Choose course'],
+                ['02', 'Pick AI mentor'],
+                ['03', 'Practice skills'],
+                ['04', 'Earn certificate'],
+              ].map(([step, label]) => (
+                <span key={step}>
+                  <strong>{step}</strong>
+                  {label}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         {isAdminPortal ? (

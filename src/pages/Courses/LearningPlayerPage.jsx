@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux'
 import { motion } from 'framer-motion'
 import { fadeInUp } from '../../utils/animationVariants.js'
 import Button from '../../components/common/Button/Button.jsx'
+import ChatInterface from '../../components/ui/Dashboard/ChatInterface.jsx'
 import { fetchCourseById, fetchCourseInstructors, fetchUserProgress, switchCourseInstructor, updateUserProgress } from '../../api/api.js'
 import { getCourseAssignments, getCourseLessons, getCourseModules, getLessonKind, getLessonOutcomes, getLessonResources, lessonMeta } from '../../utils/courseContent.js'
 
@@ -71,6 +72,7 @@ export default function LearningPlayerPage() {
   const activeKind = getLessonKind(activeLesson)
   const activeOutcomes = getLessonOutcomes(activeLesson)
   const activeVideoUrl = resolveActiveLessonVideoUrl(activeLesson, activeInstructor)
+  const certificateReady = progressPct >= 100 && lessons.length > 0
 
   useEffect(() => {
     if (!course?.id || !activeLesson?.id) return
@@ -152,36 +154,36 @@ export default function LearningPlayerPage() {
   }
 
   return (
-    <motion.section className="space-y-10 pb-16" variants={fadeInUp} initial="hidden" animate="visible">
-      <div className="glass-card p-6 shadow-glow lg:p-8 light:bg-white/90">
+    <motion.section className="mx-auto w-full max-w-[1600px] space-y-6 pb-16" variants={fadeInUp} initial="hidden" animate="visible">
+      <div className="enterprise-mesh-panel rounded-xl border border-[var(--border-color)] p-5 shadow-soft lg:p-6">
         <div className="grid gap-8 lg:grid-cols-[1.5fr_0.9fr] lg:items-start">
           <div className="space-y-5">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-cyan-700 dark:text-cyan-300">Learning</p>
-                <h1 className="mt-2 text-3xl font-semibold text-slate-950 dark:text-slate-100">{course.title}</h1>
-                <p className="mt-2 text-slate-600 dark:text-slate-400">
-                  Progress is stored in PostgreSQL and reloaded on every visit.
+                <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--accent-primary)]">Learning player</p>
+                <h1 className="mt-2 text-3xl font-bold text-[var(--text-primary)]">{course.title}</h1>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+                  Watch lessons, save notes, track progress, and discuss with other learners in one focused workspace.
                 </p>
               </div>
 
-              <div className="hidden rounded-lg border border-[var(--border-color)] bg-black/[0.03] p-4 dark:bg-white/5 lg:block">
-                <p className="text-sm uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Progress</p>
-                <p className="mt-2 text-2xl font-semibold text-slate-950 dark:text-slate-100">{progressPct}%</p>
-                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{completedCount}/{lessons.length || 1} lessons completed</p>
+              <div className="hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-4 shadow-soft lg:block">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">Progress</p>
+                <p className="mt-2 text-2xl font-bold text-[var(--text-primary)]">{progressPct}%</p>
+                <p className="mt-2 text-sm text-[var(--text-secondary)]">{completedCount}/{lessons.length || 1} lessons completed</p>
               </div>
             </div>
 
-            <div className="rounded-lg border border-[var(--border-color)] bg-white/85 p-6 dark:bg-slate-900/80">
+            <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 shadow-soft sm:p-5">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-300">{activeMeta.moduleTitle || 'Current lesson'}</p>
-                  <h2 className="mt-3 text-2xl font-semibold text-slate-950 dark:text-slate-100">{activeLesson?.title || 'No lesson selected'}</h2>
-                  <p className="mt-2 text-sm font-semibold text-slate-500 dark:text-slate-400">{lessonKindLabel(activeKind)} {activeLesson?.durationMin ? `| ${activeLesson.durationMin} min` : ''}</p>
+                  <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--accent-primary)]">{activeMeta.moduleTitle || 'Current lesson'}</p>
+                  <h2 className="mt-3 text-2xl font-bold text-[var(--text-primary)]">{activeLesson?.title || 'No lesson selected'}</h2>
+                  <p className="mt-2 text-sm font-semibold text-[var(--text-muted)]">{lessonKindLabel(activeKind)} {activeLesson?.durationMin ? `| ${activeLesson.durationMin} min` : ''}</p>
                 </div>
-                <label className="rounded-lg border border-[var(--border-color)] bg-black/[0.03] px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-500 dark:bg-white/5 dark:text-slate-300">
+                <label className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3 py-2 text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-secondary)]">
                   Speed
-                  <select className="ml-2 bg-transparent text-sm text-slate-950 outline-none dark:text-slate-100" value={playbackSpeed} onChange={(event) => setPlaybackSpeed(event.target.value)}>
+                  <select className="ml-2 bg-transparent text-sm text-[var(--text-primary)] outline-none" value={playbackSpeed} onChange={(event) => setPlaybackSpeed(event.target.value)}>
                     {['0.75', '1', '1.25', '1.5', '2'].map((speed) => <option key={speed} value={speed}>{speed}x</option>)}
                   </select>
                 </label>
@@ -265,10 +267,10 @@ export default function LearningPlayerPage() {
                   View assignments{assignments.length ? ` (${assignments.length})` : ''}
                 </Button>
               </div>
-              <label className="mt-5 block rounded-lg border border-[var(--border-color)] bg-black/[0.025] p-4 dark:bg-white/5">
-                <span className="text-sm font-semibold text-slate-950 dark:text-slate-100">My lesson notes</span>
+              <label className="mt-5 block rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+                <span className="text-sm font-bold text-[var(--text-primary)]">My lesson notes</span>
                 <textarea
-                  className="mt-3 min-h-28 w-full rounded-lg border border-[var(--border-color)] bg-white/80 p-3 text-sm text-slate-900 outline-none dark:bg-slate-950/70 dark:text-slate-100"
+                  className="mt-3 min-h-28 w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] p-3 text-sm text-[var(--text-primary)] outline-none"
                   value={lessonNotes}
                   onChange={(event) => setLessonNotes(event.target.value)}
                   placeholder="Take private notes while watching this lesson."
@@ -277,14 +279,14 @@ export default function LearningPlayerPage() {
             </div>
           </div>
 
-          <aside className="space-y-6 rounded-lg border border-[var(--border-color)] bg-white/80 p-6 shadow-soft dark:bg-slate-950/75">
-            <div className="rounded-lg border border-[var(--border-color)] bg-black/[0.03] p-5 dark:bg-white/5">
-              <p className="text-sm uppercase tracking-[0.25em] text-cyan-700 dark:text-cyan-300">Active instructor</p>
+          <aside className="space-y-5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 shadow-soft sm:p-5">
+            <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--accent-primary)]">Active instructor</p>
               <div className="mt-4 flex items-center gap-3">
                 <img src={activeInstructor?.avatarUrl || course.thumbnailUrl || '/favicon.svg'} alt={activeInstructor?.name || 'Instructor'} className="h-12 w-12 rounded-xl border border-[var(--border-color)] object-cover" />
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-slate-950 dark:text-slate-100">{activeInstructor?.name || 'Instructor not selected'}</p>
-                  <p className="truncate text-sm text-slate-600 dark:text-slate-400">{activeInstructor?.expertise || course.category}</p>
+                  <p className="truncate font-bold text-[var(--text-primary)]">{activeInstructor?.name || 'Instructor not selected'}</p>
+                  <p className="truncate text-sm text-[var(--text-secondary)]">{activeInstructor?.expertise || course.category}</p>
                 </div>
               </div>
               <Button variant="secondary" className="mt-4 w-full" onClick={toggleInstructorPanel}>
@@ -365,7 +367,18 @@ export default function LearningPlayerPage() {
               ) : null}
             </div>
 
-            <p className="text-sm uppercase tracking-[0.3em] text-cyan-700 dark:text-cyan-300">Lesson playlist</p>
+            <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">Certificate unlock</p>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--bg-card)]">
+                <div className="h-full rounded-full" style={{ width: `${progressPct}%`, background: 'var(--brand-gradient)' }} />
+              </div>
+              <p className="mt-3 text-sm font-semibold text-[var(--text-primary)]">
+                {certificateReady ? 'Eligible after assessment review' : `${Math.max(0, 100 - progressPct)}% more progress needed`}
+              </p>
+              <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">Complete lessons and pass course assessments to unlock certificate generation.</p>
+            </div>
+
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--accent-primary)]">Lesson playlist</p>
             <div className="mt-5 space-y-4">
               {modules.length ? modules.map((module) => (
                 <div key={module.title} className="rounded-lg border border-[var(--border-color)] bg-black/[0.025] p-3 dark:bg-white/5">
@@ -437,7 +450,45 @@ export default function LearningPlayerPage() {
           </aside>
         </div>
       </div>
+
+      <div className="learning-player-support-grid grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem] xl:items-start">
+        <section className="learning-player-resources-card glass-card rounded-xl p-5 shadow-soft">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--accent-primary)]">Resources and next steps</p>
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            <PlayerAction title="Assessment" text={`${assignments.length} assignment${assignments.length === 1 ? '' : 's'} available`} onClick={() => navigate(`/course/${course.id}/assessments`)} />
+            <PlayerAction title="Course details" text="Review curriculum and instructor" onClick={() => navigate(`/course/${course.id}`)} />
+            <PlayerAction title="Certificates" text={certificateReady ? 'Check eligibility status' : 'Unlock after completion'} onClick={() => navigate('/certificates')} />
+          </div>
+          <div className="mt-5 grid gap-4 rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+            <div>
+              <p className="text-sm font-bold text-[var(--text-primary)]">Course progress summary</p>
+              <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">
+                {completedCount}/{lessons.length || 1} lessons completed. {certificateReady ? 'You are ready for the certificate path.' : `${Math.max(0, 100 - progressPct)}% more progress needed for certificate eligibility.`}
+              </p>
+            </div>
+            <div className="min-w-[10rem]">
+              <div className="flex items-center justify-between text-xs font-bold text-[var(--text-secondary)]">
+                <span>Progress</span>
+                <span>{progressPct}%</span>
+              </div>
+              <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-[var(--bg-card)]">
+                <div className="h-full rounded-full" style={{ width: `${progressPct}%`, background: 'var(--brand-gradient)' }} />
+              </div>
+            </div>
+          </div>
+        </section>
+        <ChatInterface courseId={course.id} roomId={`course:${course.id}`} />
+      </div>
     </motion.section>
+  )
+}
+
+function PlayerAction({ title, text, onClick }) {
+  return (
+    <button type="button" onClick={onClick} className="theme-subcard theme-subcard-hover rounded-lg p-4 text-left">
+      <span className="block font-bold text-[var(--text-primary)]">{title}</span>
+      <span className="mt-2 block text-sm leading-6 text-[var(--text-secondary)]">{text}</span>
+    </button>
   )
 }
 
