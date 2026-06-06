@@ -60,4 +60,40 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res, next) => {
   }
 })
 
+router.delete('/:id', requireAuth, requireRole('admin'), async (req, res, next) => {
+  try {
+    const certificate = await prisma.certificate.findUnique({
+      where: { id: req.params.id },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        course: { select: { id: true, title: true } },
+      },
+    })
+    if (!certificate) return res.status(404).json({ success: false, message: 'Certificate not found.' })
+
+    await prisma.certificate.delete({ where: { id: req.params.id } })
+    await prisma.activityLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'certificate.deleted',
+        entityType: 'certificate',
+        entityId: certificate.id,
+        metadata: {
+          certificateNo: certificate.certificateNo,
+          learnerId: certificate.userId,
+          learnerEmail: certificate.user?.email,
+          courseId: certificate.courseId,
+          courseTitle: certificate.course?.title,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      },
+    })
+
+    res.json({ success: true })
+  } catch (error) {
+    next(error)
+  }
+})
+
 export default router

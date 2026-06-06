@@ -187,7 +187,8 @@ export default function AdminDashboard() {
           <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Operational shortcuts</h2>
           <div className="mt-5 grid gap-3">
             <AdminQuickAction icon={BookOpenCheck} label="Create Course" description="Add a new catalog course" onClick={() => navigate('/admin/upload-course')} />
-            <AdminQuickAction icon={UserPlus} label="Add Intern" description="Create learner or instructor access" onClick={() => navigate('/admin/add-learner')} tone="secondary" />
+            <AdminQuickAction icon={UserPlus} label="Add Intern" description="Create intern or learner access" onClick={() => navigate('/admin/add-learner')} tone="secondary" />
+            <AdminQuickAction icon={UserPlus} label="Add Instructor" description="Upload profile image and assign a course" onClick={() => navigate('/admin/add-instructor')} tone="secondary" />
             <AdminQuickAction icon={ClipboardList} label="Approvals" description="Review users and publishing state" onClick={() => navigate('/admin/users')} tone="secondary" />
             <AdminQuickAction icon={FileBarChart2} label="Reports" description="Open activity and analytics rows" onClick={() => navigate('/admin/reports')} tone="secondary" />
           </div>

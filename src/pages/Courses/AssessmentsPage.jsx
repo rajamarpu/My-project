@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
-import { CheckCircle2, ClipboardList, Eye, FileText, Timer, XCircle } from 'lucide-react'
+import { CheckCircle2, ClipboardList, Eye, FileText, LockKeyhole, RotateCcw, Timer, XCircle } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
 import { fetchCourseById, fetchMyAssessmentSubmissions, submitStructuredAssessment } from '../../api/api.js'
 import { getCourseAssignments } from '../../utils/courseContent.js'
 
 export default function AssessmentsPage() {
   const { courseId } = useParams()
+  const navigate = useNavigate()
   const role = useSelector((state) => state.auth.role)
   const isInstructor = role === 'instructor' || role === 'admin'
   const [course, setCourse] = useState(null)
   const [submissions, setSubmissions] = useState([])
+  const [retakeGrants, setRetakeGrants] = useState([])
   const [localItems, setLocalItems] = useState([])
   const [title, setTitle] = useState('')
   const [prompt, setPrompt] = useState('')
@@ -26,12 +28,16 @@ export default function AssessmentsPage() {
     try {
       setLoading(true)
       setError('')
-      const [courseResponse, submissionsResponse] = await Promise.all([
-        fetchCourseById(courseId),
-        fetchMyAssessmentSubmissions({ courseId }),
-      ])
+      const courseResponse = await fetchCourseById(courseId)
       setCourse(courseResponse.data.course)
+      if (!courseResponse.data.course?.isEnrolled && !isInstructor) {
+        setSubmissions([])
+        setRetakeGrants([])
+        return
+      }
+      const submissionsResponse = await fetchMyAssessmentSubmissions({ courseId })
       setSubmissions(submissionsResponse.data.submissions || [])
+      setRetakeGrants(submissionsResponse.data.retakeGrants || [])
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Could not load assignments.')
     } finally {
@@ -72,6 +78,14 @@ export default function AssessmentsPage() {
     return grouped
   }, [submissions])
 
+  const retakeGrantsByAssignment = useMemo(() => {
+    const grouped = {}
+    retakeGrants.forEach((grant) => {
+      grouped[grant.assignmentId] = grant
+    })
+    return grouped
+  }, [retakeGrants])
+
   const addAssessment = (event) => {
     event.preventDefault()
     if (!title.trim() || !prompt.trim()) return
@@ -84,6 +98,14 @@ export default function AssessmentsPage() {
   const submitAnswer = async (event, itemId) => {
     event.preventDefault()
     const item = items.find((entry) => entry.id === itemId)
+    const attemptCount = (submissionsByAssignment[itemId] || []).length
+    const maxAttempts = maxAttemptsForItem(item, retakeGrantsByAssignment[itemId])
+    if (item?.persisted && attemptCount >= maxAttempts) {
+      setMessage(maxAttempts === 1
+        ? 'You have already submitted this assignment. Admin must enable another attempt before you can retake it.'
+        : 'You have used all allowed attempts for this assignment.')
+      return
+    }
     if (!hasAnswer(item, answers)) return
 
     if (!item.persisted) {
@@ -116,6 +138,24 @@ export default function AssessmentsPage() {
     return <div className="glass-card p-8 text-[var(--text-secondary)]">Loading assignments...</div>
   }
 
+  if (!course?.isEnrolled && !isInstructor) {
+    return (
+      <section className="space-y-6 pb-16">
+        <div className="glass-card p-8 shadow-glow">
+          <p className="text-sm uppercase tracking-[0.28em] text-cyan-700 dark:text-cyan-300">Assignments locked</p>
+          <h1 className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">{course?.title || 'Course'} assignments</h1>
+          <p className="mt-3 max-w-2xl text-[var(--text-secondary)]">
+            Assignments are available only after enrollment. You can still view the course details and enroll from the course page.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button type="button" onClick={() => navigate(`/course/${courseId}`)}>View Course</Button>
+            <Button type="button" variant="secondary" onClick={() => navigate('/courses')}>Browse Courses</Button>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section className="space-y-8 pb-16">
       <div className="glass-card p-8 shadow-glow">
@@ -143,20 +183,30 @@ export default function AssessmentsPage() {
       <div className="grid gap-4">
         {items.length ? items.map((item) => {
           const history = submissionsByAssignment[item.id] || []
+          const retakeGrant = retakeGrantsByAssignment[item.id]
+          const maxAttempts = maxAttemptsForItem(item, retakeGrant)
+          const attemptsUsed = history.length
+          const canAttempt = !item.persisted || attemptsUsed < maxAttempts
+          const reopened = Boolean(retakeGrant?.extraAttempts)
           return (
             <article key={item.id} className="glass-card p-5 shadow-soft">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <p className="inline-flex items-center gap-2 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-amber-700 dark:text-amber-200">
-                    <ClipboardList size={14} />
-                    Assignment
-                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <StatusBadge icon={canAttempt ? ClipboardList : LockKeyhole} label={canAttempt ? 'Open assignment' : 'Closed'} tone={canAttempt ? 'open' : 'closed'} />
+                    {reopened ? <StatusBadge icon={RotateCcw} label="Retake opened" tone="reopened" /> : null}
+                  </div>
                   <h2 className="mt-3 text-xl font-semibold text-slate-950 dark:text-white">{item.title}</h2>
                   <p className="mt-2 whitespace-pre-line text-slate-600 dark:text-slate-300">{item.prompt}</p>
                 </div>
-                <span className="rounded-full border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3 py-1 text-xs font-semibold text-[var(--text-secondary)]">
-                  {item.durationMin ? `${item.durationMin} min` : item.status}
-                </span>
+                <div className="flex flex-wrap gap-2">
+                  <span className="rounded-full border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3 py-1 text-xs font-semibold text-[var(--text-secondary)]">
+                    {item.durationMin ? `${item.durationMin} min` : item.status}
+                  </span>
+                  <span className="rounded-full border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3 py-1 text-xs font-semibold text-[var(--text-secondary)]">
+                    Attempts {Math.min(attemptsUsed, maxAttempts)}/{maxAttempts}
+                  </span>
+                </div>
               </div>
 
               {item.questionsText ? (
@@ -185,32 +235,42 @@ export default function AssessmentsPage() {
                 </div>
               ) : null}
 
-              <form onSubmit={(event) => submitAnswer(event, item.id)} className="mt-5 space-y-4">
-                {item.questions?.length ? (
-                  <div className="grid gap-4">
-                    {item.questions.map((question, questionIndex) => (
-                      <AssessmentQuestion
-                        key={question.id || questionIndex}
-                        itemId={item.id}
-                        question={question}
-                        questionIndex={questionIndex}
-                        answers={answers}
-                        setAnswers={setAnswers}
-                      />
-                    ))}
+              {canAttempt ? (
+                <form onSubmit={(event) => submitAnswer(event, item.id)} className="mt-5 space-y-4">
+                  {item.questions?.length ? (
+                    <div className="grid gap-4">
+                      {item.questions.map((question, questionIndex) => (
+                        <AssessmentQuestion
+                          key={question.id || questionIndex}
+                          itemId={item.id}
+                          question={question}
+                          questionIndex={questionIndex}
+                          answers={answers}
+                          setAnswers={setAnswers}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <textarea
+                      value={answers[item.id] || ''}
+                      onChange={(event) => setAnswers((current) => ({ ...current, [item.id]: event.target.value }))}
+                      className="admin-input min-h-36"
+                      placeholder="Write your assignment response"
+                    />
+                  )}
+                  <Button type="submit" disabled={!hasAnswer(item, answers) || submittingId === item.id}>
+                    {submittingId === item.id ? 'Submitting...' : 'Submit Assignment'}
+                  </Button>
+                </form>
+              ) : (
+                <div className="mt-5 flex flex-col gap-3 rounded-lg border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-800 dark:text-amber-100 sm:flex-row sm:items-start">
+                  <LockKeyhole className="shrink-0" size={18} />
+                  <div>
+                    <p className="font-semibold">This assignment is closed for you.</p>
+                    <p className="mt-1 text-amber-700 dark:text-amber-100/80">Ask an admin to reopen a retake from your submission record if you need another attempt.</p>
                   </div>
-                ) : (
-                  <textarea
-                    value={answers[item.id] || ''}
-                    onChange={(event) => setAnswers((current) => ({ ...current, [item.id]: event.target.value }))}
-                    className="admin-input min-h-36"
-                    placeholder="Write your assignment response"
-                  />
-                )}
-                <Button type="submit" disabled={!hasAnswer(item, answers) || submittingId === item.id}>
-                  {submittingId === item.id ? 'Submitting...' : 'Submit Assignment'}
-                </Button>
-              </form>
+                </div>
+              )}
             </article>
           )
         }) : (
@@ -220,6 +280,20 @@ export default function AssessmentsPage() {
         )}
       </div>
     </section>
+  )
+}
+
+function StatusBadge({ icon: Icon, label, tone }) {
+  const styles = {
+    open: 'border-emerald-400/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-100',
+    closed: 'border-amber-400/30 bg-amber-500/10 text-amber-700 dark:text-amber-100',
+    reopened: 'border-cyan-400/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-100',
+  }[tone]
+  return (
+    <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.12em] ${styles}`}>
+      {Icon ? <Icon size={14} /> : null}
+      {label}
+    </span>
   )
 }
 
@@ -358,6 +432,11 @@ function clearItemAnswers(current, item) {
     delete next[answerKey(item.id, question)]
   })
   return next
+}
+
+function maxAttemptsForItem(_item, retakeGrant) {
+  const extraAttempts = Number.parseInt(retakeGrant?.extraAttempts, 10)
+  return 1 + (Number.isInteger(extraAttempts) && extraAttempts > 0 ? extraAttempts : 0)
 }
 
 function AssessmentQuestion({ itemId, question, questionIndex, answers, setAnswers }) {

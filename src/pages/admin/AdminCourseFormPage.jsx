@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import Button from '../../components/common/Button/Button.jsx'
-import { createCourseRequest, fetchAdminCourses, updateAdminCourse, uploadAdminCourseAsset } from '../../api/api.js'
+import { createCourseRequest, fetchAdminCourses, fetchAdminInstructors, fetchAiContentOptions, generateAiLessonVideo, updateAdminCourse, uploadAdminCourseAsset } from '../../api/api.js'
 import { AdminLoadingState, AdminNotice, AdminPageHeader, FieldError } from '../../components/admin/AdminUI.jsx'
 import { formatRupeesFromPaise } from '../../utils/money.js'
 
@@ -28,6 +28,13 @@ const ASSESSMENT_QUESTION_TYPES = [
 ]
 const OPTION_BASED_TYPES = ['MCQ_SINGLE', 'MCQ_MULTIPLE']
 const MAX_ASSESSMENT_OPTIONS = 5
+const LESSON_KIND_OPTIONS = [
+  { value: 'UPLOADED_VIDEO', label: 'Uploaded Video' },
+  { value: 'AI_AVATAR_VIDEO', label: 'AI Narrated Video' },
+  { value: 'EXTERNAL_URL', label: 'External Course URL' },
+  { value: 'PDF_RESOURCE', label: 'PDF Resource' },
+  { value: 'DOWNLOADABLE_MATERIAL', label: 'Downloadable Material' },
+]
 
 function makeId(prefix) {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
@@ -56,6 +63,34 @@ function createAssessmentDraft() {
   return { title: '', prompt: '', durationMin: 0, questionsText: '', questions: [createAssessmentQuestion()], resources: [] }
 }
 
+function createLessonDraft(moduleTitle = 'Module 1') {
+  return {
+    moduleTitle,
+    title: '',
+    description: '',
+    type: 'VIDEO',
+    lessonKind: 'UPLOADED_VIDEO',
+    durationMin: 8,
+    videoUrl: '',
+    courseUrl: '',
+    thumbnailUrl: '',
+    resources: [],
+    learningOutcomes: '',
+    captionsUrl: '',
+    sourceVideoDurationSeconds: 0,
+    preview: false,
+    aiScript: '',
+    aiAvatarId: '',
+    aiVoiceId: '',
+    aiSlideUrl: '',
+    aiImageUrl: '',
+    aiVoiceSampleUrl: '',
+    aiPdfUrl: '',
+    aiInstructorVideos: [],
+    aiGenerationStatus: '',
+  }
+}
+
 const initialForm = {
   title: '',
   description: '',
@@ -65,9 +100,7 @@ const initialForm = {
   thumbnailUrl: '',
   videoPreviewUrl: '',
   isPublished: true,
-  lessons: [
-    { title: '', description: '', type: 'ARTICLE', durationMin: 0, videoUrl: '', resources: [] },
-  ],
+  lessons: [createLessonDraft()],
   assessments: [
     createAssessmentDraft(),
   ],
@@ -83,6 +116,9 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
   const [success, setSuccess] = useState('')
   const [fieldErrors, setFieldErrors] = useState({})
   const [uploadingKey, setUploadingKey] = useState('')
+  const [aiOptions, setAiOptions] = useState({ avatars: [], voices: [] })
+  const [adminInstructors, setAdminInstructors] = useState([])
+  const [generatingLessonIndex, setGeneratingLessonIndex] = useState(null)
 
   useEffect(() => {
     if (mode !== 'edit' || !courseId) return
@@ -113,12 +149,29 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
     void loadCourse()
   }, [courseId, mode])
 
+  useEffect(() => {
+    async function loadAiOptions() {
+      try {
+        const [optionsResponse, instructorsResponse] = await Promise.all([
+          fetchAiContentOptions(),
+          fetchAdminInstructors().catch(() => ({ data: { instructors: [] } })),
+        ])
+        setAiOptions({ avatars: optionsResponse.data.avatars || [], voices: optionsResponse.data.voices || [] })
+        setAdminInstructors(instructorsResponse.data.instructors || [])
+      } catch {
+        setAiOptions({ avatars: [], voices: [] })
+        setAdminInstructors([])
+      }
+    }
+    void loadAiOptions()
+  }, [])
+
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
   const updateLesson = (index, key, value) => {
     setForm((prev) => ({
       ...prev,
       lessons: prev.lessons.map((lesson, lessonIndex) => (
-        lessonIndex === index ? { ...lesson, [key]: value } : lesson
+        lessonIndex === index ? normalizeLessonUpdate(lesson, key, value) : lesson
       )),
     }))
   }
@@ -126,7 +179,7 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
   const addLesson = () => {
     setForm((prev) => ({
       ...prev,
-      lessons: [...prev.lessons, { title: '', description: '', type: 'ARTICLE', durationMin: 0, videoUrl: '', resources: [] }],
+      lessons: [...prev.lessons, createLessonDraft(prev.lessons.at(-1)?.moduleTitle || `Module ${new Set(prev.lessons.map((lesson) => lesson.moduleTitle)).size + 1}`)],
     }))
   }
 
@@ -135,6 +188,97 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
       ...prev,
       lessons: prev.lessons.length > 1 ? prev.lessons.filter((_, lessonIndex) => lessonIndex !== index) : prev.lessons,
     }))
+  }
+
+  const moveLesson = (index, direction) => {
+    setForm((prev) => {
+      const nextIndex = index + direction
+      if (nextIndex < 0 || nextIndex >= prev.lessons.length) return prev
+      const lessons = [...prev.lessons]
+      const [lesson] = lessons.splice(index, 1)
+      lessons.splice(nextIndex, 0, lesson)
+      return { ...prev, lessons }
+    })
+  }
+
+  async function generateAiLesson(index) {
+    const lesson = form.lessons[index]
+    const fallbackAvatarId = lesson.aiAvatarId || aiOptions.avatars[0]?.id || 'custom-consented-avatar'
+    const fallbackVoiceId = lesson.aiVoiceId || aiOptions.voices[0]?.id || 'en-in-clear-male'
+    const targetInstructors = adminInstructors.length ? adminInstructors : []
+    if (!lesson?.title || !lesson.videoUrl || !lesson.aiScript || !fallbackAvatarId || !fallbackVoiceId) {
+      setError('AI narration lessons require a title, uploaded/source video, subtitle/script text, and an authorized voice model.')
+      return
+    }
+    try {
+      setGeneratingLessonIndex(index)
+      setError('')
+      const basePayload = {
+        title: lesson.title,
+        script: lesson.aiScript,
+        avatarId: fallbackAvatarId,
+        voiceId: fallbackVoiceId,
+        slideUrl: lesson.aiSlideUrl,
+        voiceSampleUrl: lesson.aiVoiceSampleUrl,
+        pdfUrl: lesson.aiPdfUrl,
+        captionsUrl: lesson.captionsUrl,
+        captions: true,
+        branding: true,
+        sourceVideoUrl: lesson.videoUrl,
+        targetDurationSeconds: Number(lesson.sourceVideoDurationSeconds || lesson.durationMin * 60 || 0),
+      }
+      const generationTargets = targetInstructors.length
+        ? targetInstructors.map((instructor) => ({
+            instructorId: String(instructor.id),
+            instructorName: instructor.name || 'Instructor',
+            imageUrl: instructor.avatarUrl || '',
+          }))
+        : [{
+            instructorId: 'lesson-default',
+            instructorName: 'Generated narrator',
+            imageUrl: '',
+          }]
+      const responses = await Promise.all(generationTargets.map((target) => generateAiLessonVideo({ ...basePayload, ...target })))
+      const generatedLessons = responses.map((response, targetIndex) => {
+        const generated = response.data.generation.lesson
+        const target = generationTargets[targetIndex]
+        return {
+          instructorId: target.instructorId,
+          instructorName: target.instructorName,
+          videoUrl: generated.videoUrl,
+          imageUrl: target.imageUrl,
+          durationMin: generated.durationMin,
+          generationId: generated.metadata?.generationId || response.data.generation.id,
+          voiceId: generated.metadata?.voice?.id || fallbackVoiceId,
+          avatarId: generated.metadata?.avatar?.id || fallbackAvatarId,
+        }
+      })
+      const primaryGenerated = responses[0].data.generation.lesson
+      setForm((prev) => ({
+        ...prev,
+        lessons: prev.lessons.map((item, lessonIndex) => (
+          lessonIndex === index
+            ? {
+                ...item,
+                type: 'VIDEO',
+                lessonKind: 'AI_AVATAR_VIDEO',
+                description: item.description || primaryGenerated.description,
+                durationMin: primaryGenerated.durationMin,
+                videoUrl: generatedLessons[0]?.videoUrl || item.videoUrl,
+                resources: [...(item.resources || []), ...(primaryGenerated.resources || [])],
+                aiInstructorVideos: generatedLessons,
+                aiGenerationStatus: `${generatedLessons.length} narrated lesson video${generatedLessons.length === 1 ? '' : 's'} generated automatically.`,
+                aiAvatarId: primaryGenerated.metadata.avatar.id,
+                aiVoiceId: primaryGenerated.metadata.voice.id,
+              }
+            : item
+        )),
+      }))
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Could not prepare AI video generation.')
+    } finally {
+      setGeneratingLessonIndex(null)
+    }
   }
 
   const updateAssessment = (index, key, value) => {
@@ -298,6 +442,7 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
     try {
       setUploadingKey(key)
       setError('')
+      const sourceVideoDurationSeconds = file.type.startsWith('video/') ? await getVideoDurationSeconds(file).catch(() => 0) : 0
       const dataUrl = await readFileAsDataUrl(file)
       const response = await uploadAdminCourseAsset({ fileName: file.name, mimeType: file.type, dataUrl })
       const asset = response.data.asset
@@ -311,7 +456,10 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
               ...lesson,
               resources,
               type: file.type.startsWith('video/') ? 'VIDEO' : lesson.type,
+              lessonKind: file.type.startsWith('video/') ? 'UPLOADED_VIDEO' : lesson.lessonKind,
               videoUrl: file.type.startsWith('video/') ? asset.url : lesson.videoUrl,
+              durationMin: sourceVideoDurationSeconds ? Math.max(1, Math.ceil(sourceVideoDurationSeconds / 60)) : lesson.durationMin,
+              sourceVideoDurationSeconds: sourceVideoDurationSeconds || lesson.sourceVideoDurationSeconds || 0,
             }
           }),
         }))
@@ -327,6 +475,39 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
       }
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Could not upload the selected file.')
+    } finally {
+      setUploadingKey('')
+    }
+  }
+
+  async function uploadAiLessonAsset(file, index, key) {
+    if (!file) return
+    if (file.size > MAX_COURSE_FILE_SIZE) {
+      setError('AI lesson files must be 60 MB or smaller.')
+      return
+    }
+
+    const keyName = `ai:${key}:${index}`
+    try {
+      setUploadingKey(keyName)
+      setError('')
+      const dataUrl = await readFileAsDataUrl(file)
+      const response = await uploadAdminCourseAsset({ fileName: file.name, mimeType: file.type, dataUrl })
+      const asset = response.data.asset
+      setForm((prev) => ({
+        ...prev,
+        lessons: prev.lessons.map((lesson, lessonIndex) => (
+          lessonIndex === index
+            ? {
+                ...lesson,
+                [key]: asset.url,
+                resources: key === 'aiPdfUrl' ? [...(lesson.resources || []), asset] : lesson.resources,
+              }
+            : lesson
+        )),
+      }))
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Could not upload the selected AI lesson file.')
     } finally {
       setUploadingKey('')
     }
@@ -389,16 +570,45 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
     const lessons = form.lessons
       .map((lesson) => ({
         ...lesson,
+        type: lessonKindToDbType(lesson.lessonKind),
         title: lesson.title.trim(),
         description: lesson.description.trim(),
         videoUrl: lesson.videoUrl.trim(),
         durationMin: Number(lesson.durationMin || 0),
-        quizJson: { resources: lesson.resources || [] },
+        quizJson: {
+          resources: lesson.resources || [],
+          moduleTitle: String(lesson.moduleTitle || 'Module 1').trim(),
+          lessonKind: lesson.lessonKind || 'UPLOADED_VIDEO',
+          thumbnailUrl: String(lesson.thumbnailUrl || '').trim(),
+          courseUrl: String(lesson.courseUrl || '').trim(),
+          learningOutcomes: splitLines(lesson.learningOutcomes),
+          captionsUrl: String(lesson.captionsUrl || '').trim(),
+          sourceVideoDurationSeconds: Number(lesson.sourceVideoDurationSeconds || 0),
+          preview: Boolean(lesson.preview),
+          aiVideo: lesson.lessonKind === 'AI_AVATAR_VIDEO' ? {
+            script: String(lesson.aiScript || '').trim(),
+            avatarId: String(lesson.aiAvatarId || '').trim(),
+            voiceId: String(lesson.aiVoiceId || '').trim(),
+            slideUrl: String(lesson.aiSlideUrl || '').trim(),
+            imageUrl: String(lesson.aiImageUrl || '').trim(),
+            voiceSampleUrl: String(lesson.aiVoiceSampleUrl || '').trim(),
+            pdfUrl: String(lesson.aiPdfUrl || '').trim(),
+            instructorVideos: lesson.aiInstructorVideos || [],
+            generationStatus: String(lesson.aiGenerationStatus || '').trim(),
+            compliance: 'Creates a narrated lesson video page from the uploaded video and provided subtitles/script. Connect a licensed voice provider for final custom voice audio.',
+          } : null,
+        },
       }))
       .filter((lesson) => lesson.title || lesson.description || lesson.videoUrl || lesson.resources?.length)
     lessons.forEach((lesson, index) => {
       if (!lesson.title) nextErrors[`lesson-${index}-title`] = 'Lesson title is required when adding lesson content.'
       if (lesson.durationMin < 0) nextErrors[`lesson-${index}-duration`] = 'Duration cannot be negative.'
+      if (lesson.quizJson.lessonKind === 'EXTERNAL_URL' && !lesson.quizJson.courseUrl) {
+        nextErrors[`lesson-${index}-url`] = 'External course URL is required.'
+      }
+      if (lesson.quizJson.lessonKind === 'AI_AVATAR_VIDEO' && (!lesson.videoUrl || !lesson.quizJson.aiVideo.script || !(lesson.quizJson.aiVideo.instructorVideos || []).length)) {
+        nextErrors[`lesson-${index}-ai`] = 'Upload the lesson video and generate narrated AI videos before saving this lesson.'
+      }
     })
     const assessments = form.assessments
       .map((assessment) => ({
@@ -449,6 +659,7 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
     try {
       setSaving(true)
       const assessmentLessons = assessments.map((assessment) => ({
+        id: assessment.id,
         title: assessment.title,
         description: assessment.prompt,
         type: 'QUIZ',
@@ -514,7 +725,9 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
             {form.thumbnailUrl ? (
               <div className="lg:col-span-2">
                 <p className="mb-2 text-sm text-[var(--text-secondary)]">Thumbnail preview</p>
-                <img src={form.thumbnailUrl} alt="Course thumbnail preview" className="h-48 w-full rounded-lg border border-[var(--border-color)] object-cover" />
+                <div className="flex min-h-48 w-full items-center justify-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] p-3">
+                  <img src={form.thumbnailUrl} alt="Course thumbnail preview" className="max-h-[70vh] w-full rounded-md object-contain" />
+                </div>
               </div>
             ) : null}
             <label className="admin-label lg:col-span-2">
@@ -534,10 +747,18 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
                 {form.lessons.map((lesson, index) => (
                   <div key={index} className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
                     <div className="flex flex-wrap items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-[var(--text-primary)]">Lesson {index + 1}</p>
-                      <Button type="button" variant="secondary" onClick={() => removeLesson(index)} disabled={form.lessons.length === 1}>Remove</Button>
+                      <div>
+                        <p className="text-sm font-semibold text-[var(--text-primary)]">Lesson {index + 1}</p>
+                        <p className="mt-1 text-xs text-[var(--text-muted)]">{lesson.moduleTitle || 'Module 1'} | {LESSON_KIND_OPTIONS.find((item) => item.value === lesson.lessonKind)?.label || 'Lesson'}</p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button type="button" variant="secondary" onClick={() => moveLesson(index, -1)} disabled={index === 0}>Move Up</Button>
+                        <Button type="button" variant="secondary" onClick={() => moveLesson(index, 1)} disabled={index === form.lessons.length - 1}>Move Down</Button>
+                        <Button type="button" variant="secondary" onClick={() => removeLesson(index)} disabled={form.lessons.length === 1}>Remove</Button>
+                      </div>
                     </div>
                     <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                      <Field label="Module" value={lesson.moduleTitle || ''} onChange={(value) => updateLesson(index, 'moduleTitle', value)} />
                       <Field
                         label="Lesson title"
                         value={lesson.title}
@@ -546,9 +767,8 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
                       />
                       <label className="admin-label">
                         Lesson type
-                        <select value={lesson.type} onChange={(event) => updateLesson(index, 'type', event.target.value)} className="admin-input">
-                          <option value="ARTICLE">Article</option>
-                          <option value="VIDEO">Video</option>
+                        <select value={lesson.lessonKind || 'UPLOADED_VIDEO'} onChange={(event) => updateLesson(index, 'lessonKind', event.target.value)} className="admin-input">
+                          {LESSON_KIND_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
                         </select>
                       </label>
                       <Field
@@ -558,7 +778,17 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
                         error={fieldErrors[`lesson-${index}-duration`]}
                         onChange={(value) => updateLesson(index, 'durationMin', value)}
                       />
-                      <Field label="Video URL" value={lesson.videoUrl} onChange={(value) => updateLesson(index, 'videoUrl', value)} />
+                      {lesson.lessonKind === 'EXTERNAL_URL' ? (
+                        <Field label="External course URL" value={lesson.courseUrl || ''} error={fieldErrors[`lesson-${index}-url`]} onChange={(value) => updateLesson(index, 'courseUrl', value)} />
+                      ) : (
+                        <Field label="Video URL / hosted file URL" value={lesson.videoUrl} onChange={(value) => updateLesson(index, 'videoUrl', value)} />
+                      )}
+                      <Field label="Thumbnail URL" value={lesson.thumbnailUrl || ''} onChange={(value) => updateLesson(index, 'thumbnailUrl', value)} />
+                      <Field label="Captions URL (VTT/SRT)" value={lesson.captionsUrl || ''} onChange={(value) => updateLesson(index, 'captionsUrl', value)} />
+                      <label className="flex min-h-12 items-center gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] px-4 text-sm font-semibold text-[var(--text-secondary)]">
+                        <input type="checkbox" checked={Boolean(lesson.preview)} onChange={(event) => updateLesson(index, 'preview', event.target.checked)} className="h-4 w-4 accent-cyan-400" />
+                        Allow free preview
+                      </label>
                       <label className="admin-label lg:col-span-2">
                         Upload lesson file
                         <input
@@ -576,14 +806,126 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
                         </span>
                       </label>
                       <ResourceList resources={lesson.resources || []} onRemove={(resourceIndex) => removeResource({ section: 'lesson', index, resourceIndex })} />
+                      {lesson.lessonKind === 'AI_AVATAR_VIDEO' ? (
+                        <div className="lg:col-span-2 rounded-lg border border-blue-400/25 bg-blue-500/10 p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="text-sm font-semibold text-[var(--text-primary)]">AI narrated video generation</p>
+                              <p className="mt-1 text-xs text-[var(--text-muted)]">Uses the uploaded lesson video and provided subtitles/script. Replica voice audio requires a licensed voice provider connected to this flow.</p>
+                            </div>
+                            <Button type="button" onClick={() => generateAiLesson(index)} disabled={generatingLessonIndex === index}>
+                              {generatingLessonIndex === index ? 'Generating...' : 'Generate AI Videos'}
+                            </Button>
+                          </div>
+                          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                            <label className="admin-label">
+                              Voice generation profile
+                              <select value={lesson.aiAvatarId || ''} onChange={(event) => updateLesson(index, 'aiAvatarId', event.target.value)} className="admin-input">
+                                <option value="">Use default licensed profile</option>
+                                {aiOptions.avatars.map((avatar) => <option key={avatar.id} value={avatar.id}>{avatar.name} - {avatar.license}</option>)}
+                              </select>
+                            </label>
+                            <label className="admin-label">
+                              Authorized voice model
+                              <select value={lesson.aiVoiceId || ''} onChange={(event) => updateLesson(index, 'aiVoiceId', event.target.value)} className="admin-input">
+                                <option value="">Use default voice model</option>
+                                {aiOptions.voices.map((voice) => <option key={voice.id} value={voice.id}>{voice.name} - {voice.language}</option>)}
+                              </select>
+                            </label>
+                            <label className="admin-label">
+                              Optional reference image
+                              <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(event) => {
+                                  void uploadAiLessonAsset(event.target.files?.[0], index, 'aiImageUrl')
+                                  event.target.value = ''
+                                }}
+                                className="admin-input file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-400 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-950 file:transition hover:file:bg-cyan-300"
+                              />
+                              <span className="text-xs text-[var(--text-muted)]">
+                                {lesson.aiImageUrl ? 'Reference image uploaded.' : 'Optional. Avatar rendering is disabled for now.'}
+                                {uploadingKey === `ai:aiImageUrl:${index}` ? ' Uploading...' : ''}
+                              </span>
+                            </label>
+                            <label className="admin-label">
+                              Voice reference sample
+                              <input
+                                type="file"
+                                accept="audio/*"
+                                onChange={(event) => {
+                                  void uploadAiLessonAsset(event.target.files?.[0], index, 'aiVoiceSampleUrl')
+                                  event.target.value = ''
+                                }}
+                                className="admin-input file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-400 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-950 file:transition hover:file:bg-cyan-300"
+                              />
+                              <span className="text-xs text-[var(--text-muted)]">
+                                Voice reference for provider rendering. Use only authorized samples; this app stores it but does not clone voices locally.
+                                {uploadingKey === `ai:aiVoiceSampleUrl:${index}` ? ' Uploading...' : ''}
+                              </span>
+                            </label>
+                            <label className="admin-label">
+                              Lesson PDF
+                              <input
+                                type="file"
+                                accept="application/pdf"
+                                onChange={(event) => {
+                                  void uploadAiLessonAsset(event.target.files?.[0], index, 'aiPdfUrl')
+                                  event.target.value = ''
+                                }}
+                                className="admin-input file:mr-4 file:rounded-lg file:border-0 file:bg-cyan-400 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-slate-950 file:transition hover:file:bg-cyan-300"
+                              />
+                              <span className="text-xs text-[var(--text-muted)]">
+                                Optional PDF shown in the generated lesson page.
+                                {uploadingKey === `ai:aiPdfUrl:${index}` ? ' Uploading...' : ''}
+                              </span>
+                            </label>
+                            <Field label="Slide deck / presentation URL" value={lesson.aiSlideUrl || ''} onChange={(value) => updateLesson(index, 'aiSlideUrl', value)} />
+                            {lesson.aiInstructorVideos?.length ? (
+                              <div className="lg:col-span-2 rounded-lg border border-blue-400/25 bg-white/70 p-3 text-sm text-blue-700 dark:bg-slate-950/30 dark:text-blue-100">
+                                Generated narrated video for {lesson.aiInstructorVideos.length} instructor{lesson.aiInstructorVideos.length === 1 ? '' : 's'}:
+                                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                  {lesson.aiInstructorVideos.map((item) => (
+                                    <span key={`${item.instructorId}-${item.videoUrl}`} className="truncate rounded-md bg-blue-500/10 px-2 py-1">
+                                      {item.instructorName}: {item.videoUrl}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            ) : lesson.videoUrl ? (
+                              <div className="rounded-lg border border-blue-400/25 bg-white/70 p-3 text-sm text-blue-700 dark:bg-slate-950/30 dark:text-blue-100">
+                                Generated lesson link: <span className="font-semibold">{lesson.videoUrl}</span>
+                              </div>
+                            ) : null}
+                            {lesson.aiGenerationStatus ? (
+                              <div className="rounded-lg border border-emerald-400/25 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-100">{lesson.aiGenerationStatus}</div>
+                            ) : null}
+                            <label className="admin-label lg:col-span-2">
+                              Lesson script
+                              <textarea value={lesson.aiScript || ''} onChange={(event) => updateLesson(index, 'aiScript', event.target.value)} rows={6} className="admin-input" placeholder="Paste subtitles or narration script for the generated voice." />
+                              <FieldError>{fieldErrors[`lesson-${index}-ai`]}</FieldError>
+                            </label>
+                          </div>
+                        </div>
+                      ) : null}
                       <label className="admin-label lg:col-span-2">
-                        Lesson content
+                        Learning outcomes
+                        <textarea
+                          value={lesson.learningOutcomes || ''}
+                          onChange={(event) => updateLesson(index, 'learningOutcomes', event.target.value)}
+                          rows={3}
+                          className="admin-input"
+                          placeholder="One outcome per line. Example: Build a reusable React component."
+                        />
+                      </label>
+                      <label className="admin-label lg:col-span-2">
+                        Lesson description
                         <textarea
                           value={lesson.description}
                           onChange={(event) => updateLesson(index, 'description', event.target.value)}
                           rows={6}
                           className="admin-input"
-                          placeholder="Paste your lesson content, notes, instructions, resources, or quiz prompt here."
+                          placeholder="Describe what the learner will watch, practice, or download in this lesson."
                         />
                       </label>
                     </div>
@@ -838,18 +1180,82 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
 
 function normalizeLessons(lessons = []) {
   const normalized = lessons.filter((lesson) => lesson.quizJson?.kind !== 'assessment').map((lesson) => ({
+    id: lesson.id,
+    moduleTitle: lesson.quizJson?.moduleTitle || 'Module 1',
     title: lesson.title || '',
     description: lesson.description || '',
-    type: lesson.type || 'ARTICLE',
+    type: lesson.type || 'VIDEO',
+    lessonKind: lesson.quizJson?.lessonKind || (lesson.type === 'VIDEO' ? 'UPLOADED_VIDEO' : 'DOWNLOADABLE_MATERIAL'),
     durationMin: lesson.durationMin || 0,
     videoUrl: lesson.videoUrl || '',
+    courseUrl: lesson.quizJson?.courseUrl || '',
+    thumbnailUrl: lesson.quizJson?.thumbnailUrl || '',
     resources: lesson.quizJson?.resources || [],
+    learningOutcomes: Array.isArray(lesson.quizJson?.learningOutcomes) ? lesson.quizJson.learningOutcomes.join('\n') : '',
+    captionsUrl: lesson.quizJson?.captionsUrl || '',
+    sourceVideoDurationSeconds: Number(lesson.quizJson?.sourceVideoDurationSeconds || lesson.quizJson?.aiVideo?.targetDurationSeconds || 0),
+    preview: Boolean(lesson.quizJson?.preview),
+    aiScript: lesson.quizJson?.aiVideo?.script || '',
+    aiAvatarId: lesson.quizJson?.aiVideo?.avatarId || '',
+    aiVoiceId: lesson.quizJson?.aiVideo?.voiceId || '',
+    aiSlideUrl: lesson.quizJson?.aiVideo?.slideUrl || '',
+    aiImageUrl: lesson.quizJson?.aiVideo?.imageUrl || '',
+    aiVoiceSampleUrl: lesson.quizJson?.aiVideo?.voiceSampleUrl || '',
+    aiPdfUrl: lesson.quizJson?.aiVideo?.pdfUrl || '',
+    aiInstructorVideos: Array.isArray(lesson.quizJson?.aiVideo?.instructorVideos) ? lesson.quizJson.aiVideo.instructorVideos : [],
+    aiGenerationStatus: normalizeAiGenerationStatus(lesson.quizJson?.aiVideo?.generationStatus || ''),
   }))
   return normalized.length ? normalized : initialForm.lessons
 }
 
+function lessonKindToDbType(kind) {
+  return ['UPLOADED_VIDEO', 'AI_AVATAR_VIDEO'].includes(kind) ? 'VIDEO' : 'ARTICLE'
+}
+
+function normalizeLessonUpdate(lesson, key, value) {
+  if (key === 'lessonKind') {
+    return {
+      ...lesson,
+      lessonKind: value,
+      type: lessonKindToDbType(value),
+      durationMin: ['UPLOADED_VIDEO', 'AI_AVATAR_VIDEO'].includes(value) && !lesson.durationMin ? 8 : lesson.durationMin,
+    }
+  }
+  return { ...lesson, [key]: value }
+}
+
+function splitLines(value) {
+  return String(value || '').split('\n').map((item) => item.trim()).filter(Boolean)
+}
+
+function getVideoDurationSeconds(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const video = document.createElement('video')
+    video.preload = 'metadata'
+    video.onloadedmetadata = () => {
+      const duration = Number.isFinite(video.duration) ? video.duration : 0
+      URL.revokeObjectURL(url)
+      resolve(Math.round(duration))
+    }
+    video.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Could not read video duration.'))
+    }
+    video.src = url
+  })
+}
+
+function normalizeAiGenerationStatus(status) {
+  if (status === 'Connect a licensed avatar/video provider to render final MP4.') {
+    return 'AI video draft prepared. Upload the rendered MP4 or paste the final video URL when it is ready.'
+  }
+  return status
+}
+
 function normalizeAssessments(lessons = []) {
   const normalized = lessons.filter((lesson) => lesson.quizJson?.kind === 'assessment').map((lesson) => ({
+    id: lesson.id,
     title: lesson.title || '',
     prompt: lesson.quizJson?.prompt || lesson.description || '',
     durationMin: lesson.durationMin || 0,

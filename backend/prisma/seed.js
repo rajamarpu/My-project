@@ -123,132 +123,219 @@ const instructors = [
   },
 ]
 
+function courseThumbnail({ title, subtitle, level, category, accent = '#22d3ee', secondary = '#facc15' }) {
+  const safe = (value) => String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+
+  const lines = safe(title).split(' ')
+  const firstLine = lines.slice(0, Math.ceil(lines.length / 2)).join(' ')
+  const secondLine = lines.slice(Math.ceil(lines.length / 2)).join(' ')
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-label="${safe(title)}">
+      <defs>
+        <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#071426"/>
+          <stop offset="0.55" stop-color="#0d2440"/>
+          <stop offset="1" stop-color="#030712"/>
+        </linearGradient>
+        <radialGradient id="glow" cx="78%" cy="28%" r="55%">
+          <stop offset="0" stop-color="${accent}" stop-opacity="0.45"/>
+          <stop offset="1" stop-color="${accent}" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#020617" flood-opacity="0.55"/>
+        </filter>
+      </defs>
+      <rect width="1200" height="675" rx="42" fill="url(#bg)"/>
+      <rect width="1200" height="675" rx="42" fill="url(#glow)"/>
+      <rect x="42" y="38" width="190" height="38" rx="12" fill="${secondary}" opacity="0.95"/>
+      <text x="64" y="64" fill="#111827" font-family="Inter, Arial, sans-serif" font-size="20" font-weight="900">COMPLETE COURSE</text>
+      <text x="64" y="196" fill="#e5e7eb" font-family="Inter, Arial, sans-serif" font-size="78" font-weight="900">${firstLine}</text>
+      <text x="64" y="284" fill="${secondary}" font-family="Inter, Arial, sans-serif" font-size="78" font-weight="900">${secondLine || safe(subtitle)}</text>
+      <text x="68" y="336" fill="#67e8f9" font-family="Inter, Arial, sans-serif" font-size="27" font-weight="800">${safe(subtitle || category)}</text>
+      <g filter="url(#shadow)">
+        <rect x="678" y="92" width="430" height="334" rx="34" fill="rgba(15,23,42,0.72)" stroke="rgba(125,211,252,0.35)" stroke-width="3"/>
+        <rect x="720" y="140" width="250" height="22" rx="11" fill="#e5e7eb" opacity="0.88"/>
+        <rect x="720" y="198" width="328" height="22" rx="11" fill="${accent}" opacity="0.85"/>
+        <rect x="720" y="256" width="198" height="22" rx="11" fill="${secondary}" opacity="0.95"/>
+        <circle cx="1018" cy="282" r="84" fill="none" stroke="${accent}" stroke-width="18" opacity="0.85"/>
+        <path d="M744 356h294M744 392h214" stroke="#94a3b8" stroke-width="18" stroke-linecap="round" opacity="0.62"/>
+      </g>
+      <rect x="74" y="444" width="220" height="58" rx="29" fill="#111827" stroke="rgba(148,163,184,0.55)"/>
+      <text x="116" y="482" fill="#dbeafe" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="900">${safe(level)}</text>
+      <rect x="805" y="452" width="230" height="58" rx="29" fill="rgba(15,23,42,0.9)" stroke="rgba(148,163,184,0.5)"/>
+      <text x="850" y="490" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="26" font-weight="900">Published</text>
+      <text x="72" y="594" fill="#94a3b8" font-family="Inter, Arial, sans-serif" font-size="24" font-weight="800">${safe(category)}</text>
+    </svg>
+  `
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
+}
+
 const courses = [
   {
-    title: 'Cloud DevOps with Docker & Kubernetes',
-    slug: 'cloud-devops-docker-kubernetes',
-    category: 'Cloud Computing',
-    level: 'ADVANCED',
-    description: 'Build containers, deploy services, and ship with modern cloud operations.',
-    thumbnailUrl: '/celebrities/shah-rukh-khan.jpg',
-    createdByEmail: 'shahrukhkhan@gmail.com',
-    lessons: [
-      { title: 'Containers and Docker images', description: 'Build and ship portable services.', type: 'ARTICLE', durationMin: 18, sortOrder: 0 },
-      { title: 'Kubernetes deployments', description: 'Run services across clusters and manage rollouts.', type: 'ARTICLE', durationMin: 32, sortOrder: 1 },
-      { title: 'CI/CD release workflow', description: 'Connect source control to production delivery.', type: 'QUIZ', durationMin: 24, sortOrder: 2, quizJson: { questions: 4 } },
-    ],
-  },
-  {
-    title: 'TypeScript Frontend Engineering',
-    slug: 'typescript-frontend-engineering',
-    category: 'Web Development',
-    level: 'INTERMEDIATE',
-    description: 'Design stable React interfaces with typed state and reusable component architecture.',
-    thumbnailUrl: '/celebrities/deepika-padukone.jpg',
-    createdByEmail: 'deepikapadukone@gmail.com',
-    lessons: [
-      { title: 'TypeScript essentials', description: 'Learn types, interfaces, and inference.', type: 'ARTICLE', durationMin: 20, sortOrder: 0 },
-      { title: 'Typed component design', description: 'Build predictable React props and state.', type: 'ARTICLE', durationMin: 28, sortOrder: 1 },
-      { title: 'Frontend architecture patterns', description: 'Organize scalable frontends.', type: 'QUIZ', durationMin: 30, sortOrder: 2, quizJson: { questions: 5 } },
-    ],
-  },
-  {
-    title: 'Python for Cricket Data Analytics',
-    slug: 'python-cricket-data-analytics',
-    category: 'Programming',
+    title: 'DATA SCIENCE',
+    slug: 'data-science',
+    category: 'AI/ML',
     level: 'BEGINNER',
-    description: 'Use Python to explore sports datasets and build useful analytics dashboards.',
-    thumbnailUrl: '/celebrities/virat-kohli.jpg',
-    createdByEmail: 'viratkohli@gmail.com',
-    lessons: [
-      { title: 'Python basics for analytics', description: 'Variables, loops, and functions.', type: 'ARTICLE', durationMin: 22, sortOrder: 0 },
-      { title: 'Data cleaning and sorting', description: 'Shape raw data into useful datasets.', type: 'ARTICLE', durationMin: 28, sortOrder: 1 },
-      { title: 'Visualize match trends', description: 'Create simple charts from cricket stats.', type: 'QUIZ', durationMin: 26, sortOrder: 2, quizJson: { questions: 4 } },
-    ],
-  },
-  {
-    title: 'Java Microservices for Sports Platforms',
-    slug: 'java-microservices-sports-platforms',
-    category: 'Programming',
-    level: 'INTERMEDIATE',
-    description: 'Build resilient backend services for high-traffic product experiences.',
-    thumbnailUrl: '/celebrities/ms-dhoni.jpg',
-    createdByEmail: 'msdhoni@gmail.com',
-    lessons: [
-      { title: 'Service boundaries', description: 'Split a system into reliable services.', type: 'ARTICLE', durationMin: 24, sortOrder: 0 },
-      { title: 'REST APIs and contracts', description: 'Create predictable API behavior.', type: 'ARTICLE', durationMin: 30, sortOrder: 1 },
-      { title: 'Deploy and monitor', description: 'Ship, observe, and iterate safely.', type: 'QUIZ', durationMin: 34, sortOrder: 2, quizJson: { questions: 5 } },
-    ],
-  },
-  {
-    title: 'JavaScript Fullstack Apps',
-    slug: 'javascript-fullstack-apps',
-    category: 'Web Development',
-    level: 'INTERMEDIATE',
-    description: 'Create fullstack apps with modern JavaScript, APIs, and product workflows.',
-    thumbnailUrl: '/celebrities/rohit-sharma.jpg',
-    createdByEmail: 'rohitsharma@gmail.com',
-    lessons: [
-      { title: 'Modern JavaScript foundations', description: 'Syntax, modules, and async patterns.', type: 'ARTICLE', durationMin: 18, sortOrder: 0 },
-      { title: 'Fullstack app flow', description: 'Move data between frontend and backend.', type: 'ARTICLE', durationMin: 30, sortOrder: 1 },
-      { title: 'Deployment checklist', description: 'Ship apps with fewer surprises.', type: 'QUIZ', durationMin: 24, sortOrder: 2, quizJson: { questions: 4 } },
-    ],
-  },
-  {
-    title: 'React Interfaces for Fan Engagement',
-    slug: 'react-interfaces-fan-engagement',
-    category: 'Web Development',
-    level: 'BEGINNER',
-    description: 'Build responsive React dashboards, panels, and learner experiences.',
-    thumbnailUrl: '/celebrities/sachin-tendulkar.jpg',
+    description: 'SQL, fundamentals, debugging, and mastery learning for data-driven decisions.',
+    thumbnailUrl: courseThumbnail({ title: 'DATA SCIENCE', subtitle: 'TURNING DATA INTO INSIGHTS', category: 'AI/ML', level: 'BEGINNER', accent: '#2563eb', secondary: '#facc15' }),
     createdByEmail: 'sachintendulkar@gmail.com',
     lessons: [
-      { title: 'React components', description: 'Compose reliable interface building blocks.', type: 'ARTICLE', durationMin: 16, sortOrder: 0 },
-      { title: 'State and props', description: 'Connect UI to dynamic data.', type: 'ARTICLE', durationMin: 24, sortOrder: 1 },
-      { title: 'Performance basics', description: 'Keep the UI fast and predictable.', type: 'QUIZ', durationMin: 20, sortOrder: 2, quizJson: { questions: 4 } },
+      { title: 'Data foundations', description: 'Understand datasets, fields, and analytical questions.', type: 'ARTICLE', durationMin: 20, sortOrder: 0 },
     ],
   },
   {
-    title: 'React Motion and UI Polish',
-    slug: 'react-motion-ui-polish',
-    category: 'Web Development',
-    level: 'INTERMEDIATE',
-    description: 'Build polished React interfaces with motion, layout rhythm, and accessible interaction states.',
-    thumbnailUrl: '/celebrities/allu-arjun.jpg',
-    createdByEmail: 'alluarjun@gmail.com',
-    lessons: [
-      { title: 'Motion principles for interfaces', description: 'Use animation to clarify state and flow.', type: 'ARTICLE', durationMin: 18, sortOrder: 0 },
-      { title: 'Responsive UI rhythm', description: 'Tune spacing, hierarchy, and component behavior.', type: 'ARTICLE', durationMin: 26, sortOrder: 1 },
-      { title: 'Accessible interaction states', description: 'Design focus, hover, loading, and empty states.', type: 'QUIZ', durationMin: 22, sortOrder: 2, quizJson: { questions: 4 } },
-    ],
-  },
-  {
-    title: 'C Programming Foundations',
-    slug: 'c-programming-foundations',
-    category: 'Programming',
+    title: 'DBMS',
+    slug: 'dbms',
+    category: 'DATABASE SYSTEMS',
     level: 'BEGINNER',
-    description: 'Learn the core building blocks of programming with a step-by-step foundation.',
-    thumbnailUrl: '/celebrities/alia-bhatt.jpg',
-    createdByEmail: 'aliabhatt@gmail.com',
-    lessons: [
-      { title: 'First C program', description: 'Write, compile, and run your first example.', type: 'ARTICLE', durationMin: 18, sortOrder: 0 },
-      { title: 'Functions and loops', description: 'Control flow and reusable logic.', type: 'ARTICLE', durationMin: 26, sortOrder: 1 },
-      { title: 'Arrays and pointers', description: 'Understand the memory model.', type: 'QUIZ', durationMin: 32, sortOrder: 2, quizJson: { questions: 5 } },
-    ],
+    description: 'SQL fundamentals, database models, normalization, relationships, and query practice.',
+    thumbnailUrl: courseThumbnail({ title: 'DBMS', subtitle: 'DATABASE MANAGEMENT SYSTEM', category: 'DATABASE SYSTEMS', level: 'BEGINNER', accent: '#2563eb', secondary: '#facc15' }),
+    createdByEmail: 'sachintendulkar@gmail.com',
+    lessons: [],
   },
   {
-    title: 'SQL and PostgreSQL Mastery',
-    slug: 'sql-and-postgresql-mastery',
-    category: 'Database',
+    title: 'C++ Programming',
+    slug: 'c-plus-plus-programming',
+    category: 'PROGRAMMING',
+    level: 'ADVANCED',
+    description: 'Cloud delivery, storytelling, leadership, and presentation through advanced C++ practice.',
+    thumbnailUrl: courseThumbnail({ title: 'C++ Programming', subtitle: 'FROM BASICS TO ADVANCED', category: 'PROGRAMMING', level: 'ADVANCED', accent: '#2563eb', secondary: '#facc15' }),
+    createdByEmail: 'shahrukhkhan@gmail.com',
+    lessons: [],
+  },
+  {
+    title: 'C PROGRAMMING',
+    slug: 'c-programming',
+    category: 'PROGRAMMING',
+    level: 'BEGINNER',
+    description: 'Learn C syntax, functions, loops, arrays, pointers, and problem solving from the basics.',
+    thumbnailUrl: courseThumbnail({ title: 'C PROGRAMMING', subtitle: 'FROM BASICS TO ADVANCED', category: 'PROGRAMMING', level: 'BEGINNER', accent: '#2563eb', secondary: '#facc15' }),
+    createdByEmail: 'aliabhatt@gmail.com',
+    lessons: [],
+  },
+  {
+    title: 'MongoDB',
+    slug: 'mongodb',
+    category: 'DATABASE SYSTEMS',
+    level: 'ADVANCED',
+    description: 'Analytics, goal setting, Python, and performance mindset for document database workflows.',
+    thumbnailUrl: courseThumbnail({ title: 'MongoDB', subtitle: 'DOCUMENT DATABASES', category: 'DATABASE SYSTEMS', level: 'ADVANCED', accent: '#22c55e', secondary: '#d9f99d' }),
+    createdByEmail: 'viratkohli@gmail.com',
+    lessons: [],
+  },
+  {
+    title: 'POSTGRE SQL',
+    slug: 'postgre-sql',
+    category: 'DATABASE SYSTEMS',
     level: 'INTERMEDIATE',
-    description: 'Design relational schemas, indexes, queries, and production-ready SQL workflows.',
-    thumbnailUrl: '/celebrities/ranveer-singh.jpg',
-    createdByEmail: 'ranveersingh@gmail.com',
-    lessons: [
-      { title: 'Tables and relationships', description: 'Model data correctly from day one.', type: 'ARTICLE', durationMin: 24, sortOrder: 0 },
-      { title: 'Joins and aggregations', description: 'Answer real product questions with SQL.', type: 'ARTICLE', durationMin: 30, sortOrder: 1 },
-      { title: 'Indexes and constraints', description: 'Keep data fast, safe, and consistent.', type: 'QUIZ', durationMin: 28, sortOrder: 2, quizJson: { questions: 5 } },
-    ],
+    description: 'Analytics, goal setting, Python, and performance mindset for PostgreSQL query skills.',
+    thumbnailUrl: courseThumbnail({ title: 'POSTGRE SQL', subtitle: 'RELATIONAL DATABASES', category: 'DATABASE SYSTEMS', level: 'INTERMEDIATE', accent: '#38bdf8', secondary: '#bfdbfe' }),
+    createdByEmail: 'viratkohli@gmail.com',
+    lessons: [],
+  },
+  {
+    title: 'BACK END DEVELOPMENT',
+    slug: 'back-end-development',
+    category: 'WEB DEVELOPMENT',
+    level: 'INTERMEDIATE',
+    description: 'Architecture, microservices, operations, reliability, and API development fundamentals.',
+    thumbnailUrl: courseThumbnail({ title: 'BACK END DEVELOPMENT', subtitle: 'BUILD SERVER SCALE', category: 'WEB DEVELOPMENT', level: 'INTERMEDIATE', accent: '#0ea5e9', secondary: '#67e8f9' }),
+    createdByEmail: 'msdhoni@gmail.com',
+    lessons: [],
+  },
+  {
+    title: 'FRONT END',
+    slug: 'front-end',
+    category: 'WEB DEVELOPMENT',
+    level: 'BEGINNER',
+    description: 'Cloud delivery, storytelling, leadership, and presentation for frontend product interfaces.',
+    thumbnailUrl: courseThumbnail({ title: 'FRONT END', subtitle: 'DEVELOPMENT', category: 'WEB DEVELOPMENT', level: 'BEGINNER', accent: '#7c3aed', secondary: '#fb923c' }),
+    createdByEmail: 'shahrukhkhan@gmail.com',
+    lessons: [],
+  },
+  {
+    title: 'FULL STACK',
+    slug: 'full-stack',
+    category: 'WEB DEVELOPMENT',
+    level: 'ADVANCED',
+    description: 'React, UI systems, animation, and UX polish for complete full-stack applications.',
+    thumbnailUrl: courseThumbnail({ title: 'FULL STACK', subtitle: 'DEVELOPMENT', category: 'WEB DEVELOPMENT', level: 'ADVANCED', accent: '#7c3aed', secondary: '#22d3ee' }),
+    createdByEmail: 'alluarjun@gmail.com',
+    lessons: [],
+  },
+  {
+    title: 'AWS CLOUD',
+    slug: 'aws-cloud',
+    category: 'CLOUD SERVICES',
+    level: 'INTERMEDIATE',
+    description: 'Plan, deploy, and manage cloud workloads on AWS with practical service patterns.',
+    thumbnailUrl: courseThumbnail({ title: 'AWS CLOUD', subtitle: 'CLOUD SERVICES', category: 'CLOUD SERVICES', level: 'INTERMEDIATE', accent: '#f59e0b', secondary: '#facc15' }),
+    createdByEmail: 'rohitsharma@gmail.com',
+    lessons: [],
+  },
+  {
+    title: 'CLOUD COMPUTING',
+    slug: 'cloud-computing',
+    category: 'CLOUD SERVICES',
+    level: 'ADVANCED',
+    description: 'Understand cloud platforms, distributed infrastructure, deployment, and scaling foundations.',
+    thumbnailUrl: courseThumbnail({ title: 'CLOUD COMPUTING', subtitle: 'CLOUD SERVICES', category: 'CLOUD SERVICES', level: 'ADVANCED', accent: '#38bdf8', secondary: '#93c5fd' }),
+    createdByEmail: 'shahrukhkhan@gmail.com',
+    lessons: [],
+  },
+  {
+    title: 'MACHINE LEARNING',
+    slug: 'machine-learning',
+    category: 'AI/ML',
+    level: 'INTERMEDIATE',
+    description: 'Learn model concepts, training workflows, evaluation, and practical AI/ML use cases.',
+    thumbnailUrl: courseThumbnail({ title: 'MACHINE LEARNING', subtitle: 'AI/ML', category: 'AI/ML', level: 'INTERMEDIATE', accent: '#2563eb', secondary: '#facc15' }),
+    createdByEmail: 'viratkohli@gmail.com',
+    lessons: [],
+  },
+  {
+    title: 'ARTIFICIAL INTELLIGENCE',
+    slug: 'artificial-intelligence',
+    category: 'AI/ML',
+    level: 'INTERMEDIATE',
+    description: 'Explore intelligent systems, prompts, agents, model behavior, and applied AI workflows.',
+    thumbnailUrl: courseThumbnail({ title: 'ARTIFICIAL INTELLIGENCE', subtitle: 'AI/ML', category: 'AI/ML', level: 'INTERMEDIATE', accent: '#2563eb', secondary: '#facc15' }),
+    createdByEmail: 'shahrukhkhan@gmail.com',
+    lessons: [],
+  },
+  {
+    title: 'SQL-STRUCTURED QUERY LANGUAGE',
+    slug: 'sql-structured-query-language',
+    category: 'DATABASE SYSTEMS',
+    level: 'BEGINNER',
+    description: 'Practice structured query language basics, filters, joins, grouping, and relational thinking.',
+    thumbnailUrl: courseThumbnail({ title: 'SQL', subtitle: 'STRUCTURED QUERY LANGUAGE', category: 'DATABASE SYSTEMS', level: 'BEGINNER', accent: '#38bdf8', secondary: '#bfdbfe' }),
+    createdByEmail: 'sachintendulkar@gmail.com',
+    lessons: [],
+  },
+  {
+    title: 'INTRODUCTION TO JAVA',
+    slug: 'introduction-to-java',
+    category: 'PROGRAMMING',
+    level: 'INTERMEDIATE',
+    description: 'Build a Java foundation with syntax, classes, methods, control flow, and object-oriented design.',
+    thumbnailUrl: courseThumbnail({ title: 'JAVA', subtitle: 'INTRODUCTION TO JAVA', category: 'PROGRAMMING', level: 'INTERMEDIATE', accent: '#ef4444', secondary: '#f97316' }),
+    createdByEmail: 'msdhoni@gmail.com',
+    lessons: [],
+  },
+  {
+    title: 'PYTHON PROGRAMMING',
+    slug: 'python-programming',
+    category: 'PROGRAMMING',
+    level: 'BEGINNER',
+    description: 'Learn Python syntax, functions, files, data structures, and beginner-friendly problem solving.',
+    thumbnailUrl: courseThumbnail({ title: 'PYTHON PROGRAMMING', subtitle: 'PROGRAMMING', category: 'PROGRAMMING', level: 'BEGINNER', accent: '#2563eb', secondary: '#facc15' }),
+    createdByEmail: 'viratkohli@gmail.com',
+    lessons: [],
   },
 ]
 
@@ -281,6 +368,7 @@ async function main() {
         { email: { startsWith: 'codex-' } },
         { email: { endsWith: '@social.uptoskills.local' } },
         { role: 'ADMIN', email: { not: adminEmail } },
+        { role: 'INSTRUCTOR', email: { notIn: instructors.map((instructor) => instructor.email) } },
       ],
     },
   })

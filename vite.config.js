@@ -5,6 +5,11 @@ import { dirname, resolve } from 'node:path'
 
 const rootDir = dirname(fileURLToPath(import.meta.url))
 
+function devPort(mode) {
+  if (mode === 'admin') return 5174
+  return 5173
+}
+
 export default defineConfig(({ mode }) => ({
   root: rootDir,
   plugins: [react()],
@@ -15,11 +20,11 @@ export default defineConfig(({ mode }) => ({
   },
     server: {
       host: 'localhost',
-      port: mode === 'admin' ? 5174 : 5173,
+      port: devPort(mode),
       strictPort: true,
       hmr: {
         host: 'localhost',
-        port: mode === 'admin' ? 5174 : 5173,
+        port: devPort(mode),
       },
       proxy: {
         '/api': {

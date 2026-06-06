@@ -3,17 +3,17 @@ import { cn } from '../../../utils/classNames.js'
 
 export default function Sidebar({ items = [] }) {
   return (
-    <nav className="space-y-2">
+    <nav className="grid gap-1" aria-label="Section navigation">
       {items.map((item) => (
         <NavLink
           key={item.href}
           to={item.href}
           className={({ isActive }) =>
             cn(
-              'flex items-center gap-3 rounded-xl px-4 py-3 text-sm font-medium transition',
+              'flex min-h-11 items-center gap-3 rounded-lg px-4 text-sm font-semibold transition',
               isActive
-                ? 'bg-cyan-400/15 text-cyan-100 ring-1 ring-cyan-300/25'
-                : 'text-[var(--text-secondary)] hover:bg-white/[0.06] hover:text-[var(--text-primary)]',
+                ? 'bg-[var(--accent-soft)] text-[var(--accent-primary)] ring-1 ring-[var(--accent-primary)]/20'
+                : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]',
             )
           }
         >

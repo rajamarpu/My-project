@@ -107,7 +107,7 @@ export default function CourseDetailPage() {
   }
 
   if (loading) {
-    return <div className="rounded-3xl border border-white/10 bg-slate-950/70 p-8 text-slate-300">Loading course...</div>
+    return <div className="rounded-3xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-8 text-[var(--text-secondary)]">Loading course...</div>
   }
 
   if (error && !course) {
@@ -118,6 +118,7 @@ export default function CourseDetailPage() {
   const selectedInstructor = instructors.find((item) => String(item.id) === String(selectedInstructorId))
   const displayInstructor = selectedInstructor || instructor
   const cover = resolveCourseThumbnail(course)
+  const isSubjectArtwork = String(cover).startsWith('data:image/svg+xml')
 
   const toggleInstructorPanel = async () => {
     if (!auth.user) {
@@ -137,35 +138,59 @@ export default function CourseDetailPage() {
 
   return (
     <section className="space-y-10 pb-16">
-      <div className="upto-hero-panel overflow-hidden rounded-3xl p-8">
-        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-end">
-          <div className="space-y-6">
-            <p className="text-sm uppercase tracking-[0.3em] text-cyan-300 light:text-cyan-700">Course detail</p>
-            <h1 className="text-4xl font-semibold text-slate-100 light:text-slate-900">{course.title}</h1>
-            <p className="max-w-2xl text-slate-300 light:text-slate-600">{course.description}</p>
+      <div className="upto-hero-panel overflow-hidden rounded-3xl p-6 sm:p-8">
+        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
+          <div className="space-y-5">
+            <p className="text-sm uppercase tracking-[0.3em] text-[var(--accent-primary)]">Course detail</p>
+            <h1 className="text-4xl font-semibold text-[var(--text-primary)]">{course.title}</h1>
+            <p className="max-w-2xl text-[var(--text-secondary)]">{course.description}</p>
 
-            <div className="flex flex-wrap items-center gap-4">
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-sm text-slate-100 light:bg-black/5 light:text-slate-900">
+            <div className="flex flex-wrap items-center gap-3 pt-1">
+              <span className="inline-flex items-center gap-2 rounded-full bg-[var(--bg-subtle)] px-4 py-2 text-sm text-[var(--text-primary)]">
                 <Star size={16} className="text-amber-300" /> {course.rating ?? '0.0'}
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-sm text-slate-100 light:bg-black/5 light:text-slate-900">
-                <Clock size={16} className="text-cyan-300 light:text-cyan-700" /> {durationText}
+              <span className="inline-flex items-center gap-2 rounded-full bg-[var(--bg-subtle)] px-4 py-2 text-sm text-[var(--text-primary)]">
+                <Clock size={16} className="text-[var(--accent-primary)]" /> {durationText}
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-sm text-slate-100 light:bg-black/5 light:text-slate-900">
-                <BarChart3 size={16} className="text-teal-300 light:text-teal-700" /> {course.level}
+              <span className="inline-flex items-center gap-2 rounded-full bg-[var(--bg-subtle)] px-4 py-2 text-sm text-[var(--text-primary)]">
+                <BarChart3 size={16} className="text-[var(--accent-primary)]" /> {course.level}
               </span>
-              <span className="inline-flex items-center gap-2 rounded-full bg-white/5 px-4 py-2 text-sm text-slate-100 light:bg-black/5 light:text-slate-900">
-                <Users size={16} className="text-green-300 light:text-emerald-700" /> {enrollmentCount} learners
+              <span className="inline-flex items-center gap-2 rounded-full bg-[var(--bg-subtle)] px-4 py-2 text-sm text-[var(--text-primary)]">
+                <Users size={16} className="text-[var(--success)]" /> {enrollmentCount} learners
               </span>
               <span className="inline-flex items-center gap-2 rounded-full bg-orange-400/10 px-4 py-2 text-sm font-semibold text-orange-700 dark:text-orange-200">
                 Cost to enroll: {priceLabel}
               </span>
             </div>
+
+            <div className="grid gap-3 pt-2 sm:grid-cols-3">
+              <div className="rounded-2xl border border-[var(--border-color)] bg-white/78 p-4 shadow-sm dark:bg-slate-950/42">
+                <p className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
+                  <BarChart3 size={16} className="text-[var(--accent-primary)]" />
+                  Practical Skills
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Analytics, visualization, and decision-ready data workflows.</p>
+              </div>
+              <div className="rounded-2xl border border-[var(--border-color)] bg-white/78 p-4 shadow-sm dark:bg-slate-950/42">
+                <p className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
+                  <ClipboardList size={16} className="text-[var(--accent-primary)]" />
+                  Assignments
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{isEnrolled ? `${assignments.length} unlocked for this course.` : 'Available after enrollment.'}</p>
+              </div>
+              <div className="rounded-2xl border border-[var(--border-color)] bg-white/78 p-4 shadow-sm dark:bg-slate-950/42">
+                <p className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
+                  <Users size={16} className="text-[var(--accent-primary)]" />
+                  Guided Learning
+                </p>
+                <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Learn with {displayInstructor.name || 'your selected instructor'}.</p>
+              </div>
+            </div>
           </div>
 
           <div className="space-y-4 rounded-[2rem] border border-[var(--border-color)] bg-white/92 p-6 shadow-soft dark:bg-slate-950/70">
             <div className="aspect-[16/9] overflow-hidden rounded-3xl bg-slate-900 relative">
-              <img src={cover} alt={course.title} className="h-full w-full object-cover" />
+              <img src={cover} alt={course.title} className={`h-full w-full ${isSubjectArtwork ? 'object-contain' : 'object-cover'}`} />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
               <div className="absolute bottom-4 left-4 flex items-center gap-3">
                 <img
@@ -203,7 +228,7 @@ export default function CourseDetailPage() {
 
       <div className="grid gap-6 lg:grid-cols-[0.7fr_0.3fr]">
         <div className="space-y-6 rounded-[2rem] border border-[var(--border-color)] bg-white/92 p-8 shadow-soft dark:bg-slate-950/72">
-          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-400 light:text-slate-600">
+          <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--text-secondary)]">
             {['Overview', 'Lessons', 'Resources'].map((tab) => (
               <button
                 key={tab}
@@ -212,7 +237,7 @@ export default function CourseDetailPage() {
                 className={`rounded-full px-4 py-2 transition ${
                   activeTab === tab.toLowerCase()
                     ? 'bg-cyan-500 text-white shadow-glow'
-                    : 'bg-white/5 text-slate-300 hover:bg-white/10 light:bg-black/5 light:text-slate-700 light:hover:bg-black/10'
+                    : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent-primary)]'
                 }`}
               >
                 {tab}
@@ -220,24 +245,101 @@ export default function CourseDetailPage() {
             ))}
             <button
               type="button"
-              onClick={() => navigate(`/course/${course.id}/assessments`)}
+              onClick={() => {
+                if (isEnrolled || auth.role === 'admin') navigate(`/course/${course.id}/assessments`)
+                else void handleEnroll()
+              }}
               className="inline-flex items-center gap-2 rounded-full bg-[var(--bg-subtle)] px-4 py-2 text-[var(--text-secondary)] transition hover:bg-[var(--accent-soft)] hover:text-[var(--accent-primary)]"
             >
               <ClipboardList size={16} />
-              Assignments {assignments.length ? `(${assignments.length})` : ''}
+              {isEnrolled || auth.role === 'admin' ? `Assignments ${assignments.length ? `(${assignments.length})` : ''}` : 'Enroll to view assignments'}
             </button>
           </div>
 
           {activeTab === 'overview' && (
-            <div className="space-y-5 text-[var(--text-secondary)]">
-              <h2 className="text-2xl font-semibold text-[var(--text-primary)]">What you will learn</h2>
-              <p>{course.description}</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="theme-subcard rounded-3xl p-5">
-                  Real course rows, lessons, and instructor metadata are loaded from PostgreSQL.
+            <div className="space-y-6 text-[var(--text-secondary)]">
+              <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
+                <div>
+                  <h2 className="text-2xl font-semibold text-[var(--text-primary)]">What you will learn</h2>
+                  <p className="mt-3 leading-7">{course.description}</p>
                 </div>
-                <div className="theme-subcard rounded-3xl p-5">
-                  Progress is saved to the database through the protected enrollment and progress APIs.
+                <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-5">
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">Your learning setup</p>
+                  <div className="mt-4 grid gap-3 text-sm">
+                    <span className="flex items-center justify-between gap-3">
+                      <span>Lessons</span>
+                      <strong className="text-[var(--text-primary)]">{lessons.length}</strong>
+                    </span>
+                    <span className="flex items-center justify-between gap-3">
+                      <span>Assignments</span>
+                      <strong className="text-[var(--text-primary)]">{assignments.length}</strong>
+                    </span>
+                    <span className="flex items-center justify-between gap-3">
+                      <span>Instructor</span>
+                      <strong className="truncate text-[var(--text-primary)]">{displayInstructor.name || 'Instructor'}</strong>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {[
+                  [BarChart3, 'Skill outcome', course.category || 'Career-ready skills'],
+                  [Clock, 'Course pace', durationText],
+                  [ClipboardList, 'Practice mode', assignments.length ? `${assignments.length} assignments` : 'Practice checkpoints'],
+                  [Users, 'Learning style', `Guided by ${displayInstructor.name || 'mentor'}`],
+                ].map(([Icon, title, text]) => (
+                  <div key={title} className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 shadow-sm">
+                    <Icon size={18} className="text-[var(--accent-primary)]" />
+                    <p className="mt-3 text-sm font-semibold text-[var(--text-primary)]">{title}</p>
+                    <p className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">{text}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
+                <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="font-semibold text-[var(--text-primary)]">Learning path preview</h3>
+                    <button type="button" onClick={() => setActiveTab('lessons')} className="text-sm font-semibold text-[var(--accent-primary)]">
+                      View all
+                    </button>
+                  </div>
+                  <div className="mt-4 grid gap-3">
+                    {(lessons.length ? lessons.slice(0, 4) : [
+                      { id: 'intro', title: 'Course introduction', type: 'Overview' },
+                      { id: 'practice', title: 'Guided practice checkpoint', type: 'Practice' },
+                      { id: 'project', title: 'Apply the concept in a project', type: 'Project' },
+                    ]).map((lesson, index) => (
+                      <div key={lesson.id || lesson.title} className="flex items-start gap-3 rounded-xl bg-[var(--bg-subtle)] p-3">
+                        <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-sm font-semibold text-[var(--accent-primary)]">
+                          {index + 1}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block font-semibold text-[var(--text-primary)]">{lesson.title}</span>
+                          <span className="mt-1 block text-sm text-[var(--text-secondary)]">
+                            {lesson.durationMin ? `${lesson.durationMin} min` : lesson.type || 'Lesson'}
+                          </span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5">
+                  <h3 className="font-semibold text-[var(--text-primary)]">Recommended next step</h3>
+                  <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+                    {isEnrolled
+                      ? 'Continue from the player and complete the next lesson checkpoint.'
+                      : 'Enroll to unlock the player, assignments, and mentor-guided progress.'}
+                  </p>
+                  <div className="mt-4 rounded-xl bg-[var(--bg-subtle)] p-4">
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">{course.level || 'Beginner'} path</p>
+                    <p className="mt-1 text-sm text-[var(--text-secondary)]">{course.category || 'Skill development'} · {priceLabel}</p>
+                  </div>
+                  <Button className="mt-4 w-full" onClick={() => (isEnrolled ? navigate(`/player/${course.id}`) : handleEnroll())} disabled={enrollmentBusy}>
+                    {isEnrolled ? 'Continue Learning' : 'Enroll and Start'}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -284,7 +386,7 @@ export default function CourseDetailPage() {
 
         <aside className="space-y-6 rounded-[2rem] border border-[var(--border-color)] bg-white/92 p-8 shadow-soft dark:bg-slate-950/72">
           <div>
-            <p className="text-sm uppercase tracking-[0.3em] text-cyan-300 light:text-cyan-700">Course summary</p>
+            <p className="text-sm uppercase tracking-[0.3em] text-[var(--accent-primary)]">Course summary</p>
             <ul className="mt-5 space-y-3 text-[var(--text-secondary)]">
               <li>Category: {course.category}</li>
               <li>Level: {course.level}</li>
@@ -296,12 +398,12 @@ export default function CourseDetailPage() {
 
           <div className="overflow-hidden rounded-3xl border border-[var(--border-color)] bg-white/92 dark:bg-slate-900/72">
             <div className="p-5">
-              <p className="text-sm uppercase tracking-[0.2em] text-slate-400 light:text-slate-500">Choose celebrity instructor</p>
+              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Choose celebrity instructor</p>
               <div className="mt-4 flex items-center gap-4">
                 <img src={displayInstructor.avatarUrl || cover} alt={displayInstructor.name} className="h-16 w-16 rounded-2xl object-cover" />
                 <div className="min-w-0">
-                  <p className="font-semibold text-slate-100 light:text-slate-900">{displayInstructor.name || 'Instructor'}</p>
-                  <p className="line-clamp-2 text-sm text-slate-400 light:text-slate-600">{displayInstructor.bio || displayInstructor.expertise || 'Pick any celebrity instructor before you start.'}</p>
+                  <p className="font-semibold text-[var(--text-primary)]">{displayInstructor.name || 'Instructor'}</p>
+                  <p className="line-clamp-2 text-sm text-[var(--text-secondary)]">{displayInstructor.bio || displayInstructor.expertise || 'Pick any celebrity instructor before you start.'}</p>
                 </div>
               </div>
               <Button variant="secondary" className="mt-4 w-full" onClick={toggleInstructorPanel}>
@@ -309,60 +411,44 @@ export default function CourseDetailPage() {
               </Button>
             </div>
             {switchPanelOpen ? (
-              <div className="border-t border-[var(--border-color)]">
-                <div className="p-5 pb-3">
-                  <p className="text-sm font-semibold text-slate-950 dark:text-slate-100">Pick any celebrity for this course</p>
-                  <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                    This choice sets your active instructor when you start learning. You can still switch again later from the player.
-                  </p>
-                </div>
-                {instructors.length ? (
-                  <div className="max-h-[28rem] space-y-3 overflow-y-auto px-5 pb-4">
-                    {instructors.map((item) => {
-                      const active = String(item.id) === String(selectedInstructorId)
-                      const current = instructor?.id === item.id
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          onClick={() => {
-                            setSelectedInstructorId(String(item.id))
-                            setNotice(`${item.name} selected. Start learning to continue with this instructor.`)
-                          }}
-                          className={[
-                            'flex w-full gap-3 rounded-lg border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-cyan-400/50',
-                            active
-                              ? 'border-cyan-500 bg-cyan-500/10 shadow-soft'
-                              : 'border-[var(--border-color)] bg-white/80 hover:border-cyan-500/50 hover:bg-cyan-500/5 dark:bg-slate-950/55',
-                          ].join(' ')}
-                        >
-                          <img src={item.avatarUrl || '/favicon.svg'} alt={item.name} className="h-16 w-16 shrink-0 rounded-lg border border-[var(--border-color)] object-cover" />
-                          <span className="min-w-0 flex-1">
-                            <span className="flex flex-wrap items-center gap-2">
-                              <span className="font-semibold text-slate-950 dark:text-slate-100">{item.name}</span>
-                              {current ? <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[0.68rem] font-semibold text-emerald-700 dark:text-emerald-200">Default</span> : null}
-                              {active && !current ? <span className="rounded-full bg-cyan-500/10 px-2 py-1 text-[0.68rem] font-semibold text-cyan-700 dark:text-cyan-200">Selected</span> : null}
-                            </span>
-                            <span className="mt-1 block text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-cyan-700 dark:text-cyan-300">{item.matchReason || item.expertise || course.category}</span>
-                            <span className="mt-2 line-clamp-2 block text-sm leading-5 text-slate-600 dark:text-slate-400">{item.bio || item.expertise}</span>
-                          </span>
-                        </button>
-                      )
-                    })}
+              <div className="border-t border-[var(--border-color)] bg-white/95 p-5 dark:bg-slate-950/75">
+                <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
+                  Select instructor
+                  <select
+                    value={selectedInstructorId}
+                    onChange={(event) => {
+                      const nextId = event.target.value
+                      const nextInstructor = instructors.find((item) => String(item.id) === String(nextId))
+                      setSelectedInstructorId(nextId)
+                      if (nextInstructor) setNotice(`${nextInstructor.name} selected. Start learning to continue with this instructor.`)
+                    }}
+                    className="mt-2 min-h-11 w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] px-3 text-sm font-semibold text-[var(--text-primary)] outline-none"
+                  >
+                    {instructors.length ? instructors.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.name}{instructor?.id === item.id ? ' (Default)' : ''}
+                      </option>
+                    )) : (
+                      <option value="">No instructors available</option>
+                    )}
+                  </select>
+                </label>
+
+                {selectedInstructor ? (
+                  <div className="mt-4 flex items-start gap-3 rounded-lg border border-[var(--border-color)] bg-black/[0.03] p-3 dark:bg-white/5">
+                    <img src={selectedInstructor.avatarUrl || '/favicon.svg'} alt={selectedInstructor.name} className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold text-[var(--text-primary)]">{selectedInstructor.name}</p>
+                      <p className="mt-1 line-clamp-2 text-sm leading-5 text-[var(--text-secondary)]">
+                        {selectedInstructor.matchReason || selectedInstructor.expertise || selectedInstructor.bio || course.category}
+                      </p>
+                    </div>
                   </div>
-                ) : (
-                  <div className="px-5 pb-4 text-sm text-slate-600 dark:text-slate-400">No celebrity instructors are available right now.</div>
-                )}
-                <div className="border-t border-[var(--border-color)] bg-white/95 p-5 dark:bg-slate-950/75">
-                  {selectedInstructor ? (
-                    <p className="mb-3 rounded-lg border border-[var(--border-color)] bg-black/[0.03] p-3 text-sm text-slate-700 dark:bg-white/5 dark:text-slate-300">
-                      Selected: <span className="font-semibold text-slate-950 dark:text-slate-100">{selectedInstructor.name}</span>
-                    </p>
-                  ) : null}
-                  <Button onClick={() => handleEnroll({ openPlayer: true })} disabled={!selectedInstructorId || enrollmentBusy} className="w-full">
-                    {isEnrolled ? `Continue with ${selectedInstructor?.name || 'Selected Instructor'}` : priceCents > 0 ? `Pay ${priceLabel} to Enroll` : `Enroll with ${selectedInstructor?.name || 'Selected Instructor'}`}
-                  </Button>
-                </div>
+                ) : null}
+
+                <Button onClick={() => handleEnroll({ openPlayer: true })} disabled={!selectedInstructorId || enrollmentBusy} className="mt-4 w-full">
+                  {isEnrolled ? `Continue with ${selectedInstructor?.name || 'Selected Instructor'}` : priceCents > 0 ? `Pay ${priceLabel} to Enroll` : `Enroll with ${selectedInstructor?.name || 'Selected Instructor'}`}
+                </Button>
               </div>
             ) : null}
           </div>

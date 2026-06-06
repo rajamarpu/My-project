@@ -42,6 +42,7 @@ export function sanitizeQuestionPayload(payload = {}) {
 export function validateQuestionPayload(question) {
   const errors = {}
   if (!questionTypes.has(question.type)) errors.type = 'Select a valid question type.'
+  if (!question.courseId) errors.courseId = 'Select the course this question belongs to.'
   if (!question.text) errors.text = 'Question text cannot be empty.'
   if (question.marks < 1) errors.marks = 'Marks must be at least 1.'
 

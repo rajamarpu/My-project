@@ -159,6 +159,7 @@ function AnimatedRoutes() {
             <Route path="/admin/upload-course" element={<AdminLayout><AdminCourseFormPage /></AdminLayout>} />
             <Route path="/admin/edit-course/:courseId" element={<AdminLayout><AdminCourseFormPage mode="edit" /></AdminLayout>} />
             <Route path="/admin/add-learner" element={<AdminLayout><AdminAddLearnerPage /></AdminLayout>} />
+            <Route path="/admin/add-instructor" element={<AdminLayout><AdminAddLearnerPage initialRole="instructor" /></AdminLayout>} />
             <Route path="/admin/manage-courses" element={<AdminLayout><AdminDataPage resource="courses" /></AdminLayout>} />
             <Route path="/admin/manage-learners" element={<AdminLayout><AdminDataPage resource="learners" /></AdminLayout>} />
             <Route path="/admin/generate-certificate" element={<AdminLayout><AdminGenerateCertificatePage /></AdminLayout>} />

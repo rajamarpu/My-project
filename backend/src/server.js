@@ -84,7 +84,15 @@ app.use(cors({
   credentials: true,
 }))
 app.use(express.json({ limit: '75mb' }))
-app.use('/uploads', express.static(uploadsDir))
+app.use('/uploads', express.static(uploadsDir, {
+  setHeaders(res, filePath) {
+    if (!filePath.endsWith('.html')) return
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; media-src 'self' data: blob:; frame-ancestors 'self' http://localhost:4000 http://localhost:5173",
+    )
+  },
+}))
 app.use(requestLogger)
 app.use('/api/auth', rateLimit({
   windowMs: rateLimitWindowMs,

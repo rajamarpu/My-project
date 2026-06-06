@@ -133,10 +133,23 @@ async function findAssignment(courseId, assignmentId) {
   return course.lessons.find((lesson) => lesson.id === assignmentId && lesson.quizJson?.kind === 'assessment') || null
 }
 
+async function isEnrolledForAssessment(req, courseId) {
+  if (req.user.role === 'admin') return true
+  const enrollment = await prisma.enrollment.findUnique({
+    where: { userId_courseId: { userId: req.user.id, courseId } },
+    select: { id: true },
+  })
+  return Boolean(enrollment)
+}
+
 router.post('/submit', requireRole('learner', 'admin'), async (req, res, next) => {
   try {
     const courseId = String(req.body.courseId || '')
     const assignmentId = String(req.body.assignmentId || '')
+    const enrolled = await isEnrolledForAssessment(req, courseId)
+    if (!enrolled) {
+      return res.status(403).json({ success: false, message: 'Enroll in this course before viewing or submitting assignments.' })
+    }
     const assignment = await findAssignment(courseId, assignmentId)
     if (!assignment) return res.status(404).json({ success: false, message: 'Assessment was not found for this course.' })
 
@@ -156,9 +169,23 @@ router.post('/submit', requireRole('learner', 'admin'), async (req, res, next) =
     }
 
     const evaluation = buildEvaluation(questions, answers)
-    const attemptNumber = await prisma.assessmentSubmission.count({
+    const previousAttempts = await prisma.assessmentSubmission.count({
       where: { studentId: req.user.id, courseId, assignmentId },
-    }) + 1
+    })
+    const retakeGrant = await prisma.assessmentRetakeGrant.findUnique({
+      where: { studentId_courseId_assignmentId: { studentId: req.user.id, courseId, assignmentId } },
+      select: { extraAttempts: true },
+    })
+    const allowedAttempts = 1 + Math.max(0, Number(retakeGrant?.extraAttempts || 0))
+    if (previousAttempts >= allowedAttempts) {
+      return res.status(409).json({
+        success: false,
+        message: allowedAttempts === 1
+          ? 'You have already submitted this assignment. Retake is not enabled by admin.'
+          : `You have used all ${allowedAttempts} attempts opened by admin for this assignment.`,
+      })
+    }
+    const attemptNumber = previousAttempts + 1
 
     const submission = await prisma.assessmentSubmission.create({
       data: {
@@ -193,6 +220,12 @@ router.post('/submit', requireRole('learner', 'admin'), async (req, res, next) =
 
 router.get('/submissions', requireRole('learner', 'admin'), async (req, res, next) => {
   try {
+    if (req.query.courseId) {
+      const enrolled = await isEnrolledForAssessment(req, String(req.query.courseId))
+      if (!enrolled) {
+        return res.status(403).json({ success: false, message: 'Enroll in this course before viewing assignment submissions.' })
+      }
+    }
     const where = {
       studentId: req.user.id,
       ...(req.query.courseId ? { courseId: String(req.query.courseId) } : {}),
@@ -203,7 +236,14 @@ router.get('/submissions', requireRole('learner', 'admin'), async (req, res, nex
       include: { course: { select: { id: true, title: true } } },
       orderBy: { submittedAt: 'desc' },
     })
-    res.json({ success: true, submissions })
+    const retakeGrants = await prisma.assessmentRetakeGrant.findMany({
+      where: {
+        studentId: req.user.id,
+        ...(req.query.courseId ? { courseId: String(req.query.courseId) } : {}),
+        ...(req.query.assignmentId ? { assignmentId: String(req.query.assignmentId) } : {}),
+      },
+    })
+    res.json({ success: true, submissions, retakeGrants })
   } catch (error) {
     next(error)
   }
@@ -259,6 +299,68 @@ router.get('/admin/submissions', requireRole('admin'), async (req, res, next) =>
       take: 200,
     })
     res.json({ success: true, submissions })
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.post('/admin/retakes', requireRole('admin'), async (req, res, next) => {
+  try {
+    const studentId = Number.parseInt(req.body.studentId, 10)
+    const courseId = String(req.body.courseId || '')
+    const assignmentId = String(req.body.assignmentId || '')
+    if (!Number.isInteger(studentId) || !courseId || !assignmentId) {
+      return res.status(400).json({ success: false, message: 'studentId, courseId, and assignmentId are required.' })
+    }
+
+    const assignment = await findAssignment(courseId, assignmentId)
+    if (!assignment) return res.status(404).json({ success: false, message: 'Assessment was not found for this course.' })
+
+    const student = await prisma.user.findUnique({ where: { id: studentId }, select: { id: true, name: true, email: true } })
+    if (!student) return res.status(404).json({ success: false, message: 'Student not found.' })
+
+    const previousAttempts = await prisma.assessmentSubmission.count({ where: { studentId, courseId, assignmentId } })
+    if (!previousAttempts) {
+      return res.status(400).json({ success: false, message: 'This student has not attempted the assignment yet.' })
+    }
+
+    const retakeGrant = await prisma.assessmentRetakeGrant.upsert({
+      where: { studentId_courseId_assignmentId: { studentId, courseId, assignmentId } },
+      update: {
+        extraAttempts: { increment: 1 },
+        createdById: req.user.id,
+      },
+      create: {
+        studentId,
+        courseId,
+        assignmentId,
+        extraAttempts: 1,
+        createdById: req.user.id,
+      },
+    })
+
+    await prisma.activityLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'assessment_retake_opened',
+        entityType: 'assessment',
+        entityId: assignmentId,
+        metadata: {
+          studentId,
+          courseId,
+          assignmentId,
+          assignmentName: assignment.title,
+          allowedAttempts: 1 + retakeGrant.extraAttempts,
+        },
+      },
+    })
+
+    res.json({
+      success: true,
+      retakeGrant,
+      allowedAttempts: 1 + retakeGrant.extraAttempts,
+      message: `Retake opened for ${student.name || student.email}.`,
+    })
   } catch (error) {
     next(error)
   }

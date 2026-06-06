@@ -44,7 +44,7 @@ async function findCategoryForCourse(category) {
   })
 }
 
-async function getOptionalUserId(req) {
+async function getOptionalUserContext(req) {
   const header = req.headers.authorization || ''
   const token = header.startsWith('Bearer ') ? header.slice(7) : ''
   if (!token) return null
@@ -55,18 +55,21 @@ async function getOptionalUserId(req) {
       select: { revokedAt: true, expiresAt: true },
     })
     if (!session || session.revokedAt || session.expiresAt < new Date()) return null
-    return payload.sub
+    return { id: payload.sub, role: String(payload.role || '').toUpperCase() }
   } catch {
     return null
   }
 }
 
-function attachEnrollmentState(course, userId) {
+function attachEnrollmentState(course, userContext) {
+  const userId = userContext?.id || null
   const enrollmentCount = course._count?.enrollments ?? course.enrollments?.length ?? 0
   const isEnrolled = userId ? Boolean(course.enrollments?.some((item) => item.userId === userId)) : false
+  const canViewAssignments = isEnrolled || userContext?.role === 'ADMIN'
   const { enrollments: _enrollments, ...rest } = course
   return {
     ...rest,
+    lessons: canViewAssignments ? course.lessons : (course.lessons || []).filter((lesson) => lesson.quizJson?.kind !== 'assessment'),
     isEnrolled,
     enrollmentCount,
     _count: {
@@ -78,7 +81,7 @@ function attachEnrollmentState(course, userId) {
 
 router.get('/', async (req, res, next) => {
   try {
-    const userId = await getOptionalUserId(req)
+    const userContext = await getOptionalUserContext(req)
     const courses = await prisma.course.findMany({
       where: { isPublished: true },
       include: {
@@ -89,7 +92,7 @@ router.get('/', async (req, res, next) => {
       },
       orderBy: { createdAt: 'desc' },
     })
-    res.json({ success: true, courses: courses.map((course) => attachEnrollmentState(course, userId)) })
+    res.json({ success: true, courses: courses.map((course) => attachEnrollmentState(course, userContext)) })
   } catch (error) {
     next(error)
   }
@@ -97,7 +100,7 @@ router.get('/', async (req, res, next) => {
 
 router.get('/:id', async (req, res, next) => {
   try {
-    const userId = await getOptionalUserId(req)
+    const userContext = await getOptionalUserContext(req)
     const course = await prisma.course.findFirst({
       where: { OR: [{ id: req.params.id }, { slug: req.params.id }] },
       include: {
@@ -108,7 +111,7 @@ router.get('/:id', async (req, res, next) => {
       },
     })
     if (!course) return res.status(404).json({ success: false, message: 'Course not found.' })
-    res.json({ success: true, course: attachEnrollmentState(course, userId) })
+    res.json({ success: true, course: attachEnrollmentState(course, userContext) })
   } catch (error) {
     next(error)
   }

@@ -4,7 +4,7 @@ import { pageTransition } from '../utils/animationVariants.js'
 export default function AuthLayout({ children }) {
   return (
     <motion.main
-      className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)]"
+      className="h-[100dvh] overflow-hidden bg-[var(--bg-primary)] text-[var(--text-primary)]"
       initial="hidden"
       animate="enter"
       exit="exit"
