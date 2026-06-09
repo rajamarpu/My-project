@@ -60,8 +60,10 @@ import PersonalityShowcasePage from './pages/Courses/PersonalityShowcasePage.jsx
 function ProtectedRoute({ allowedRoles, redirectTo = '/login' }) {
   const auth = useSelector((state) => state.auth)
   const dispatch = useDispatch()
+  const location = useLocation()
   const [status, setStatus] = useState(auth.token ? 'checking' : 'guest')
   const rolesKey = allowedRoles?.join('|') || ''
+  const loginPath = `${redirectTo}?next=${encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)}`
 
   useEffect(() => {
     let active = true
@@ -96,11 +98,11 @@ function ProtectedRoute({ allowedRoles, redirectTo = '/login' }) {
   }, [rolesKey, auth.token, dispatch])
 
   if (!auth.user || !auth.token) {
-    return <Navigate to={redirectTo} replace />
+    return <Navigate to={loginPath} replace />
   }
 
   if (allowedRoles && !allowedRoles.includes(auth.role)) {
-    return <Navigate to={redirectTo} replace />
+    return <Navigate to={loginPath} replace />
   }
 
   if (status !== 'verified') {
@@ -140,6 +142,29 @@ function AdminLoginRedirect() {
   return <Navigate to="/login" replace />
 }
 
+function AdminHostRedirect() {
+  const location = useLocation()
+
+  useEffect(() => {
+    if (import.meta.env.DEV && window.location.port !== '5174') {
+      window.location.assign(`${window.location.protocol}//${window.location.hostname}:5174${location.pathname}${location.search}${location.hash}`)
+    }
+  }, [location.hash, location.pathname, location.search])
+
+  if (import.meta.env.DEV) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-[var(--bg-primary)] px-6 text-center text-[var(--text-primary)]">
+        <div>
+          <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
+          <p className="mt-4 text-sm font-semibold">Opening admin workspace...</p>
+        </div>
+      </div>
+    )
+  }
+
+  return <Navigate to="/login" replace />
+}
+
 function AnimatedRoutes() {
   const location = useLocation()
   const isAdminHost = import.meta.env.MODE === 'admin'
@@ -158,6 +183,8 @@ function AnimatedRoutes() {
             <Route path="/admin" element={<AdminLayout><AdminDashboard /></AdminLayout>} />
             <Route path="/admin/review" element={<AdminLayout><AdminReviewPage /></AdminLayout>} />
             <Route path="/admin/users" element={<AdminLayout><AdminDataPage resource="users" /></AdminLayout>} />
+            <Route path="/admin/usrs" element={<Navigate to="/admin/users" replace />} />
+            <Route path="/admin/user" element={<Navigate to="/admin/users" replace />} />
             <Route path="/admin/learners" element={<AdminLayout><AdminDataPage resource="learners" /></AdminLayout>} />
             <Route path="/admin/instructors" element={<AdminLayout><AdminDataPage resource="instructors" /></AdminLayout>} />
             <Route path="/admin/courses" element={<AdminLayout><AdminDataPage resource="courses" /></AdminLayout>} />
@@ -245,7 +272,7 @@ function AnimatedRoutes() {
           <Route path="/reports" element={<MainLayout><LearnerReportsPage /></MainLayout>} />
         </Route>
 
-        <Route path="/admin/*" element={<Navigate to="/login" replace />} />
+        <Route path="/admin/*" element={<AdminHostRedirect />} />
 
         <Route path="*" element={<MainLayout><NotFoundPage /></MainLayout>} />
       </Routes>

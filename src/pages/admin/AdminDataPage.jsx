@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Ban, CheckCircle2, Trash2, XCircle } from 'lucide-react'
+import { Activity, Award, Ban, BarChart3, BookOpenCheck, CheckCircle2, Clock3, CreditCard, FolderTree, GraduationCap, ShieldCheck, Trash2, TrendingUp, UserCheck, Users, XCircle } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
 import AdminDataTable from '../../components/admin/AdminDataTable.jsx'
-import { AdminEmptyState, AdminModal, AdminNotice, AdminPageHeader, AdminToastStack } from '../../components/admin/AdminUI.jsx'
+import { AdminEmptyState, AdminGuidancePanel, AdminInsightStrip, AdminModal, AdminNotice, AdminPageHeader, AdminStatusBadge, AdminToastStack } from '../../components/admin/AdminUI.jsx'
 import {
   approveAdminUser,
   deleteAdminCertificate,
@@ -145,6 +145,7 @@ const resources = {
 }
 
 const dateColumns = new Set(['createdAt', 'updatedAt', 'deletedAt', 'enrolledAt', 'issuedAt', 'expiresAt', 'completedAt'])
+const peopleResources = new Set(['users', 'learners', 'instructors'])
 
 function valueFor(row, column) {
   if (column === 'learner') return row.user?.name || row.user?.email || ''
@@ -179,6 +180,8 @@ export default function AdminDataPage({ resource }) {
   const [modal, setModal] = useState(null)
   const [toasts, setToasts] = useState([])
   const hasActions = config.actions || ['users', 'learners', 'instructors', 'categories'].includes(resource)
+  const insights = buildInsights(resource, rows)
+  const guidance = buildGuidance(resource)
 
   function toast(type, message) {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -325,14 +328,12 @@ export default function AdminDataPage({ resource }) {
 
   function viewRow(row) {
     setModal({
-      title: 'Row details',
+      title: `${config.title} quick view`,
       message: '',
       confirmLabel: 'Done',
       onConfirm: () => setModal(null),
       children: (
-        <pre className="max-h-80 overflow-auto rounded-lg bg-[var(--bg-subtle)] p-3 text-left text-xs text-[var(--text-secondary)]">
-          {JSON.stringify(row, null, 2)}
-        </pre>
+        <RecordQuickView row={row} resource={resource} columns={config.columns} />
       ),
     })
   }
@@ -362,6 +363,9 @@ export default function AdminDataPage({ resource }) {
       <AdminNotice type="error">{error}</AdminNotice>
       <AdminNotice type={notice.type || 'info'}>{notice.message}</AdminNotice>
 
+      <AdminInsightStrip items={insights} />
+      <AdminGuidancePanel title="Productivity workflow" items={guidance} />
+
       <AdminDataTable
         title={config.title}
         rows={rows}
@@ -370,7 +374,7 @@ export default function AdminDataPage({ resource }) {
         loading={loading}
         error={error}
         onRetry={load}
-        emptyState={<AdminEmptyState title={`No ${config.title} Yet`} message={resource === 'courses' ? 'Ready to create your first course?' : 'Try refreshing or clearing filters to see the latest rows.'} />}
+        emptyState={<AdminEmptyState title={`No ${config.title} Yet`} message={emptyMessage(resource)} actionLabel={emptyAction(resource)?.label} onAction={emptyAction(resource)?.onClick ? () => navigate(emptyAction(resource).onClick) : undefined} />}
         renderActions={hasActions ? renderActions : null}
         onDeleteRows={confirmDelete}
         onArchiveRows={archiveRows}
@@ -441,6 +445,152 @@ export default function AdminDataPage({ resource }) {
 
     return null
   }
+}
+
+function buildInsights(resource, rows) {
+  const total = rows.length
+  if (peopleResources.has(resource)) {
+    const approved = rows.filter((row) => String(row.approvalStatus || 'APPROVED').toUpperCase() === 'APPROVED').length
+    const inactive = rows.filter((row) => row.isActive === false || String(row.approvalStatus || '').toUpperCase() === 'SUSPENDED').length
+    return [
+      { label: 'Directory size', value: total, detail: 'accounts in this view', icon: Users },
+      { label: 'Approved', value: approved, detail: 'ready for platform access', icon: UserCheck },
+      { label: 'Needs attention', value: Math.max(0, total - approved), detail: 'pending or rejected state', icon: ShieldCheck },
+      { label: 'Risk flags', value: inactive, detail: 'inactive or suspended accounts', icon: Activity },
+    ]
+  }
+  if (resource === 'courses') {
+    const published = rows.filter((row) => row.isPublished).length
+    const enrollments = rows.reduce((sum, row) => sum + Number(row._count?.enrollments ?? row.enrollments ?? 0), 0)
+    return [
+      { label: 'Catalog size', value: total, detail: 'courses in database', icon: BookOpenCheck },
+      { label: 'Published', value: published, detail: `${total ? Math.round((published / total) * 100) : 0}% publish rate`, icon: CheckCircle2 },
+      { label: 'Enrollments', value: enrollments, detail: 'visible demand signal', icon: TrendingUp },
+      { label: 'Draft risk', value: Math.max(0, total - published), detail: 'unpublished courses', icon: Clock3 },
+    ]
+  }
+  if (resource === 'categories') {
+    const active = rows.filter((row) => row.isActive !== false).length
+    const courseCount = rows.reduce((sum, row) => sum + Number(row._count?.courses ?? 0), 0)
+    return [
+      { label: 'Categories', value: total, detail: 'catalog groups', icon: FolderTree },
+      { label: 'Active', value: active, detail: 'available for browsing', icon: CheckCircle2 },
+      { label: 'Course links', value: courseCount, detail: 'distribution across categories', icon: BarChart3 },
+      { label: 'Empty groups', value: rows.filter((row) => Number(row._count?.courses ?? 0) === 0).length, detail: 'need course assignment', icon: BookOpenCheck },
+    ]
+  }
+  if (resource === 'enrollments') {
+    const completed = rows.filter((row) => Number(row.completionPct || 0) >= 100).length
+    const atRisk = rows.filter((row) => Number(row.completionPct || 0) < 25).length
+    const avg = total ? Math.round(rows.reduce((sum, row) => sum + Number(row.completionPct || 0), 0) / total) : 0
+    return [
+      { label: 'Enrollments', value: total, detail: 'learner-course records', icon: GraduationCap },
+      { label: 'Completed', value: completed, detail: '100% progress', icon: Award },
+      { label: 'At risk', value: atRisk, detail: 'below 25% progress', icon: Activity },
+      { label: 'Average progress', value: `${avg}%`, detail: 'completion forecast signal', icon: TrendingUp },
+    ]
+  }
+  if (resource === 'payments' || resource === 'revenue') {
+    const paid = rows.filter((row) => String(row.status || '').toUpperCase() === 'PAID')
+    const revenue = paid.reduce((sum, row) => sum + Number(row.amountCents || 0), 0)
+    return [
+      { label: 'Transactions', value: total, detail: 'payment records', icon: CreditCard },
+      { label: 'Paid', value: paid.length, detail: 'successful payments', icon: CheckCircle2 },
+      { label: 'Pending or failed', value: Math.max(0, total - paid.length), detail: 'monitor closely', icon: Activity },
+      { label: 'Revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'from paid rows', icon: TrendingUp },
+    ]
+  }
+  if (resource === 'certificates') {
+    return [
+      { label: 'Certificates', value: total, detail: 'issued credential rows', icon: Award },
+      { label: 'Verified status', value: rows.filter((row) => String(row.status || 'ISSUED').toUpperCase() === 'ISSUED').length, detail: 'ready to share', icon: CheckCircle2 },
+      { label: 'Course coverage', value: new Set(rows.map((row) => row.course?.id || row.course?.title).filter(Boolean)).size, detail: 'courses represented', icon: BookOpenCheck },
+      { label: 'Learners certified', value: new Set(rows.map((row) => row.user?.id || row.user?.email).filter(Boolean)).size, detail: 'unique recipients', icon: Users },
+    ]
+  }
+  if (resource === 'activity-logs' || resource === 'analytics' || resource === 'reports') {
+    return [
+      { label: 'Log events', value: total, detail: 'audit records in view', icon: Activity },
+      { label: 'Actors', value: new Set(rows.map((row) => row.user?.id || row.user?.email).filter(Boolean)).size, detail: 'unique users', icon: Users },
+      { label: 'Modules', value: new Set(rows.map((row) => row.entityType || row.action).filter(Boolean)).size, detail: 'areas touched', icon: ShieldCheck },
+      { label: 'Security review', value: rows.filter((row) => String(row.action || '').toLowerCase().includes('login')).length, detail: 'login-related events', icon: Clock3 },
+    ]
+  }
+  return [
+    { label: 'Rows', value: total, detail: 'records in this view', icon: BarChart3 },
+    { label: 'Current status', value: loadingLabel(total), detail: 'latest API response', icon: CheckCircle2 },
+  ]
+}
+
+function loadingLabel(total) {
+  return total ? 'Ready' : 'Empty'
+}
+
+function buildGuidance(resource) {
+  const map = {
+    users: ['Review pending accounts first.', 'Use quick view before rejecting or suspending.', 'Export filtered rows for weekly user operations.'],
+    learners: ['Sort by activity and status to find at-risk learners.', 'Use progress and certificate signals before intervention.', 'Export cohorts for learner success follow-up.'],
+    instructors: ['Check workload before assigning more courses.', 'Review instructor profile completeness.', 'Monitor ownership and approval status together.'],
+    courses: ['Keep draft courses low to improve catalog trust.', 'Review enrollment demand before unpublishing.', 'Use edit flow for content and metadata quality.'],
+    categories: ['Avoid empty categories in learner catalog.', 'Use course distribution to balance discovery.', 'Keep inactive categories hidden from browsing.'],
+    enrollments: ['Prioritize learners below 25% progress.', 'Use completion and hours studied together.', 'Export cohorts for intervention campaigns.'],
+    'instructor-changes': ['Audit frequent switches by course.', 'Compare original and new instructor ownership.', 'Use reason text to spot operational issues.'],
+    revenue: ['Review month-end paid rows.', 'Compare pending payments against paid revenue.', 'Export finance-ready reports regularly.'],
+    payments: ['Filter failed or pending transactions daily.', 'Use quick view for transaction context.', 'Export rows before refund reconciliation.'],
+    certificates: ['Verify learner and course before reissuing.', 'Use certificate ID for support requests.', 'Track course coverage for credential quality.'],
+    notifications: ['Separate urgent learning reminders from general updates.', 'Check read status before resending.', 'Use categories for learner relevance.'],
+    'activity-logs': ['Filter by actor for investigations.', 'Review login and password events first.', 'Export audit trails for security reviews.'],
+  }
+  return map[resource] || ['Use filters to narrow the operational view.', 'Open quick view before taking action.', 'Export rows for offline review when needed.']
+}
+
+function emptyMessage(resource) {
+  if (resource === 'courses') return 'Create the first course to start building a catalog learners can enroll in.'
+  if (resource === 'categories') return 'Create categories so learners can browse courses by topic.'
+  if (resource === 'certificates') return 'Generate certificates after learners complete courses and assessments.'
+  if (peopleResources.has(resource)) return 'No accounts match this view yet. Try refreshing or add a new user.'
+  return 'Try refreshing or clearing filters to see the latest rows.'
+}
+
+function emptyAction(resource) {
+  if (resource === 'courses') return { label: 'Upload course', onClick: '/admin/upload-course' }
+  if (resource === 'categories') return { label: 'Create category', onClick: '/admin/create-category' }
+  if (resource === 'certificates') return { label: 'Generate certificate', onClick: '/admin/generate-certificate' }
+  if (resource === 'instructors') return { label: 'Add instructor', onClick: '/admin/add-instructor' }
+  if (resource === 'learners' || resource === 'users') return { label: 'Add learner', onClick: '/admin/add-learner' }
+  return null
+}
+
+function RecordQuickView({ row, resource, columns }) {
+  return (
+    <div className="max-h-[70vh] overflow-auto text-left">
+      <div className="grid gap-3 sm:grid-cols-2">
+        {columns.map((column) => (
+          <div key={column} className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">{column.replace(/([a-z0-9])([A-Z])/g, '$1 $2')}</p>
+            <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">
+              {['status', 'approvalStatus', 'isActive', 'isPublished', 'isRead'].includes(column)
+                ? <AdminStatusBadge value={valueFor(row, column)} />
+                : String(valueFor(row, column) || 'Not provided')}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-4 rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-4">
+        <p className="text-sm font-semibold text-[var(--text-primary)]">Recommended next action</p>
+        <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">{quickViewRecommendation(resource, row)}</p>
+      </div>
+    </div>
+  )
+}
+
+function quickViewRecommendation(resource, row) {
+  if (peopleResources.has(resource)) return `Review ${row.email || 'this account'} status, role, and activity before moderation.`
+  if (resource === 'enrollments') return 'Use progress and hours studied to decide whether this learner needs outreach.'
+  if (resource === 'payments' || resource === 'revenue') return 'Confirm payment status and course context before finance export or support follow-up.'
+  if (resource === 'certificates') return 'Verify certificate ID, learner, and course before sharing or reissuing.'
+  if (resource === 'activity-logs') return 'Correlate actor, IP address, and action before treating this as a security event.'
+  return 'Use this quick view to confirm context before editing, deleting, or exporting records.'
 }
 
 function ModerationButton({ label, icon, loading, disabled, onClick }) {

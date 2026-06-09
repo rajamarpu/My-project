@@ -134,6 +134,10 @@ export default function StudentDashboard() {
   const averageProgress = courses.length
     ? Math.round(courses.reduce((sum, course) => sum + normalizeNumber(course.progress), 0) / courses.length)
     : analytics.avgProgress
+  const weeklyGoalHours = Math.max(5, Math.min(12, courses.length * 3 || 5))
+  const weeklyCompletedHours = analytics.weekly.reduce((sum, item) => sum + normalizeNumber(item.hours), 0)
+  const weeklyGoalPct = Math.min(100, Math.round((weeklyCompletedHours / weeklyGoalHours) * 100))
+  const atRiskCourses = courses.filter((course) => normalizeNumber(course.progress) < 25)
 
   const roadmapItems = [
     { label: 'Pick a course', done: courses.length > 0 },
@@ -167,15 +171,15 @@ export default function StudentDashboard() {
         animate="visible"
         className="learner-hero-v2 enterprise-mesh-panel rounded-xl border border-[var(--border-color)] p-5 shadow-soft sm:p-6 lg:p-8"
       >
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-end">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,40rem)_36rem] lg:items-center lg:justify-start xl:grid-cols-[minmax(0,42rem)_40rem]">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-[var(--accent-primary)]">
               <Sparkles size={14} /> Learner workspace
             </p>
-            <h1 className="mt-4 max-w-4xl text-3xl font-bold leading-tight text-[var(--text-primary)] sm:text-4xl lg:text-5xl">
+            <h1 className="mt-4 max-w-3xl text-3xl font-bold leading-tight text-[var(--text-primary)] sm:text-4xl lg:text-5xl">
               Welcome back, {auth.user?.name || auth.user?.fullName || 'learner'}.
             </h1>
-            <p className="mt-4 max-w-3xl text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
               Your courses, progress, practice, and certificates are organized into one focused learning cockpit.
             </p>
             <div className="mt-6 flex flex-wrap gap-3">
@@ -191,12 +195,15 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 shadow-soft">
-            <div className="flex items-center justify-between gap-4">
+          <div className="learner-hero-snapshot w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 shadow-soft">
+            <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">Current focus</p>
-                <p className="mt-2 line-clamp-2 text-lg font-bold text-[var(--text-primary)]">
-                  {loading ? 'Loading course...' : activeCourse?.title || 'Start your first course'}
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">Next focus</p>
+                <p className="mt-2 text-lg font-bold text-[var(--text-primary)]">
+                  {loading ? 'Loading your workspace...' : activeCourse?.title || 'Choose your first course'}
+                </p>
+                <p className="mt-1 text-sm text-[var(--text-secondary)]">
+                  {activeCourse ? `Instructor: ${getInstructor(activeCourse)}` : 'Start with a guided course, then practice questions to build momentum.'}
                 </p>
               </div>
               <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">
@@ -204,11 +211,26 @@ export default function StudentDashboard() {
               </span>
             </div>
             <div className="mt-5 h-3 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
-              <div className="h-full rounded-full" style={{ width: `${Math.min(100, averageProgress)}%`, background: 'var(--brand-gradient)' }} />
+              <div className="h-full rounded-full" style={{ width: `${Math.min(100, normalizeNumber(activeCourse?.progress))}%`, background: 'var(--brand-gradient)' }} />
             </div>
-            <div className="mt-3 flex items-center justify-between text-xs font-semibold text-[var(--text-secondary)]">
-              <span>{averageProgress}% average progress</span>
-              <span>{analytics.streak} day streak</span>
+            <div className="mt-5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-[0.68rem] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Recommended action</p>
+                  <p className="mt-2 text-sm font-semibold text-[var(--text-primary)]">
+                    {activeCourse ? 'Continue the latest enrolled course' : 'Explore courses and enroll in a learning track'}
+                  </p>
+                </div>
+                <span className="text-xl font-black text-[var(--accent-primary)]">{loading ? '-' : `${Math.min(100, normalizeNumber(activeCourse?.progress))}%`}</span>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <Button onClick={resumeLearning}>
+                <PlayCircle size={17} /> {activeCourse ? 'Continue course' : 'Start learning'}
+              </Button>
+              <Button variant="secondary" onClick={() => goTo(activeCourse?.id ? `/course/${activeCourse.id}` : '/explore')}>
+                <ArrowRight size={17} /> {activeCourse ? 'View details' : 'Browse catalog'}
+              </Button>
             </div>
           </div>
         </div>
@@ -230,6 +252,12 @@ export default function StudentDashboard() {
         <MetricCard icon={Clock3} label="Study hours" value={analytics.hoursStudied} detail="tracked total" loading={loading} />
         <MetricCard icon={Award} label="Certificates" value={analytics.certificates} detail="earned credentials" loading={loading} onClick={() => goTo('/certificates')} />
       </div>
+
+      <section className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr]">
+        <LearningGoalCard label="Weekly goal" value={`${weeklyCompletedHours}/${weeklyGoalHours}h`} progress={weeklyGoalPct} detail="Stay consistent with short daily sessions." icon={Target} />
+        <LearningGoalCard label="Learning streak" value={`${analytics.streak} days`} progress={Math.min(100, analytics.streak * 14)} detail={analytics.streak ? 'Keep the streak alive with one lesson today.' : 'Open a lesson today to start a streak.'} icon={Sparkles} />
+        <LearningGoalCard label="Attention needed" value={atRiskCourses.length} progress={courses.length ? Math.round(((courses.length - atRiskCourses.length) / courses.length) * 100) : 0} detail={atRiskCourses.length ? 'Resume low-progress courses before they stall.' : 'No low-progress courses right now.'} icon={AlertCircle} />
+      </section>
 
       <div className="learner-insights-v2 grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(25rem,0.9fr)] xl:items-start">
         <section className="learner-activity-card glass-card self-start rounded-xl p-5 shadow-soft sm:p-6">
@@ -394,6 +422,25 @@ function MetricCard({ icon: Icon, label, value, detail, loading, onClick }) {
   return onClick ? <button type="button" onClick={onClick} className={className}>{content}</button> : <div className="theme-card rounded-lg p-5">{content}</div>
 }
 
+function LearningGoalCard({ icon: Icon, label, value, progress, detail }) {
+  const safeProgress = Math.max(0, Math.min(100, normalizeNumber(progress)))
+  return (
+    <div className="theme-card rounded-lg p-5">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">{label}</p>
+          <p className="mt-2 text-2xl font-black text-[var(--text-primary)]">{value}</p>
+        </div>
+        <span className="theme-icon-badge grid h-11 w-11 place-items-center rounded-lg"><Icon size={19} /></span>
+      </div>
+      <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+        <span className="block h-full rounded-full" style={{ width: `${safeProgress}%`, background: 'var(--brand-gradient)' }} />
+      </div>
+      <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">{detail}</p>
+    </div>
+  )
+}
+
 function ProgressSnapshot({ label, value, detail }) {
   const safeValue = Math.max(0, Math.min(100, normalizeNumber(value)))
 
@@ -424,11 +471,28 @@ function MiniHealthStat({ label, value }) {
 
 function CourseRow({ course, onOpen, onDetails }) {
   const progress = Math.min(100, normalizeNumber(course.progress))
+  const [imageFailed, setImageFailed] = useState(false)
+  const thumbnail = resolveCourseThumbnail(course)
 
   return (
     <article className="theme-subcard theme-subcard-hover grid gap-4 rounded-lg p-3 sm:grid-cols-[9rem_minmax(0,1fr)_auto] sm:items-center">
-      <div className="aspect-[16/10] overflow-hidden rounded-lg bg-slate-950">
-        <img src={resolveCourseThumbnail(course)} alt={course.title} className="h-full w-full object-cover" />
+      <div className="aspect-[16/10] overflow-hidden rounded-lg border border-[var(--border-color)] bg-gradient-to-br from-cyan-400/15 via-white to-orange-400/15 dark:via-white/5">
+        {!imageFailed && thumbnail ? (
+          <img
+            src={thumbnail}
+            alt={course.title}
+            className="h-full w-full object-cover"
+            onLoad={(event) => { event.currentTarget.style.display = 'block' }}
+            onError={() => setImageFailed(true)}
+          />
+        ) : (
+          <div className="grid h-full w-full place-items-center p-3 text-center">
+            <div>
+              <BookOpenCheck className="mx-auto text-[var(--accent-primary)]" size={24} />
+              <p className="mt-2 line-clamp-2 text-xs font-bold text-[var(--text-primary)]">{course.title || 'Course'}</p>
+            </div>
+          </div>
+        )}
       </div>
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">

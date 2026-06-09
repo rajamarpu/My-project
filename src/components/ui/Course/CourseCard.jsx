@@ -23,6 +23,7 @@ export default function CourseCard({ course, onViewDetails, onEnrollToggle, enro
   const isEnrolled = Boolean(course.isEnrolled)
   const priceCents = Number(course.priceCents || 0)
   const priceLabel = priceCents > 0 ? formatRupeesFromPaise(priceCents) : 'Free'
+  const progressLabel = progress >= 100 ? 'Completed' : progress > 0 ? 'Continue' : 'Not started'
 
   return (
     <motion.article
@@ -48,6 +49,11 @@ export default function CourseCard({ course, onViewDetails, onEnrollToggle, enro
             {priceLabel}
           </span>
         </div>
+        {isEnrolled ? (
+          <div className="absolute bottom-3 left-3 rounded-full border border-white/15 bg-slate-950/85 px-3 py-1 text-xs font-semibold text-cyan-100 backdrop-blur">
+            {progressLabel}
+          </div>
+        ) : null}
       </div>
 
       <div className="relative mt-3 flex items-start gap-3">
@@ -83,12 +89,19 @@ export default function CourseCard({ course, onViewDetails, onEnrollToggle, enro
 
       <div className="relative mt-3">
         <div className="flex items-center justify-between text-xs font-medium text-[var(--text-muted)]">
-          <span>Progress</span>
+          <span>{isEnrolled ? 'Learning progress' : 'Course readiness'}</span>
           <span>{progress}%</span>
         </div>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
           <div className="h-full rounded-full" style={{ width: `${progress}%`, background: 'var(--brand-gradient)' }} />
         </div>
+      </div>
+
+      <div className="relative mt-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">Next best action</p>
+        <p className="mt-1 text-sm font-semibold text-[var(--text-primary)]">
+          {isEnrolled ? (progress > 0 ? 'Resume the next lesson' : 'Start the first lesson') : 'Enroll to unlock progress tracking'}
+        </p>
       </div>
 
       <div className="relative mt-auto grid w-full gap-2 pt-3 sm:grid-cols-3">
@@ -132,7 +145,7 @@ export default function CourseCard({ course, onViewDetails, onEnrollToggle, enro
                 : 'btn-primary border-transparent text-white shadow-glow hover:brightness-110',
             )}
           >
-            {enrollmentBusy ? 'Updating...' : isEnrolled ? 'Unenroll' : priceCents > 0 ? `Pay ${priceLabel}` : 'Enroll Now'}
+            {enrollmentBusy ? 'Updating...' : isEnrolled ? (progress > 0 ? 'Continue' : 'Start') : priceCents > 0 ? `Pay ${priceLabel}` : 'Enroll Now'}
           </button>
         ) : null}
       </div>

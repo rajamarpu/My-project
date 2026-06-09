@@ -267,6 +267,19 @@
   }
 }
 
+@media (min-width: 1024px) {
+  .admin-shell aside .admin-nav-link {
+    min-height: 2.15rem;
+    border-radius: 0.55rem;
+    padding-inline: 0.75rem;
+    font-size: 0.82rem;
+  }
+
+  .admin-shell aside nav p {
+    font-size: 0.62rem;
+  }
+}
+
 /* Admin route fit pass */
 .admin-shell {
   min-width: 0;
@@ -281,6 +294,17 @@
   width: 100%;
   max-width: none;
   overflow-x: hidden;
+}
+
+@media (min-width: 1024px) {
+  .admin-main {
+    width: calc(100vw - 288px);
+    max-width: calc(100vw - 288px);
+  }
+
+  .admin-main > * {
+    max-width: 100%;
+  }
 }
 
 .admin-data-page {

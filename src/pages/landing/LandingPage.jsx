@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, BookOpen, CheckCircle2, MessageSquareText, Play, Sparkles, Users } from 'lucide-react'
+import { ArrowRight, BookOpen, CheckCircle2, Play, Sparkles, Trophy, Zap, Users, Target } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import CourseCard from '../../components/ui/Course/CourseCard.jsx'
@@ -47,7 +47,6 @@ export default function LandingPage() {
   const navigate = useNavigate()
   const auth = useSelector((state) => state.auth)
   const particles = useMemo(() => generateParticlePositions(26), [])
-  const [activeTeacher, setActiveTeacher] = useState(aiPersonalities[0])
   const [courses, setCourses] = useState([])
   const [summary, setSummary] = useState({
     totalLearners: 0,
@@ -101,8 +100,8 @@ export default function LandingPage() {
   }
 
   return (
-    <motion.section className="w-full max-w-full space-y-12 pb-20 sm:space-y-16 xl:space-y-20" variants={pageTransition} initial="hidden" animate="enter" exit="exit">
-      <section className="homepage-laptop-fill relative isolate w-full max-w-full overflow-hidden rounded-xl border border-[var(--border-color)] bg-white px-[clamp(16px,4vw,64px)] py-[clamp(32px,6vw,72px)] text-[var(--text-primary)] shadow-[0_28px_90px_rgba(37,99,235,0.14)] transition-colors dark:bg-[var(--bg-secondary)] sm:rounded-[2rem]">
+    <motion.section className="w-full max-w-full space-y-8 pb-14 sm:space-y-10 xl:space-y-12" variants={pageTransition} initial="hidden" animate="enter" exit="exit">
+      <section className="relative isolate w-full max-w-full overflow-hidden rounded-xl border border-[var(--border-color)] bg-white px-[clamp(16px,4vw,48px)] py-[clamp(20px,3vw,40px)] text-[var(--text-primary)] shadow-[0_28px_90px_rgba(37,99,235,0.14)] transition-colors dark:bg-[var(--bg-secondary)] sm:rounded-[2rem]">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_15%,rgba(37,99,235,0.15),transparent_28%),radial-gradient(circle_at_82%_16%,rgba(6,182,212,0.16),transparent_30%),radial-gradient(circle_at_54%_90%,rgba(219,39,119,0.10),transparent_26%),linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,251,255,0.96))] dark:bg-[radial-gradient(circle_at_18%_15%,rgba(56,189,248,0.22),transparent_28%),radial-gradient(circle_at_82%_16%,rgba(45,212,191,0.16),transparent_30%),linear-gradient(135deg,rgba(7,29,47,0.98),rgba(8,62,87,0.94))]" />
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--accent-secondary)]/50 to-transparent" />
         {particles.map((pos, index) => (
@@ -115,14 +114,14 @@ export default function LandingPage() {
           />
         ))}
 
-        <div className="relative grid w-full gap-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] lg:items-center xl:gap-12 2xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
-          <div className="w-full max-w-[72rem] space-y-7">
+        <div className="relative grid w-full gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)] lg:items-center xl:gap-8 2xl:grid-cols-[minmax(0,1.15fr)_minmax(400px,0.85fr)]">
+          <div className="w-full max-w-[72rem] space-y-5">
             <div className="inline-flex items-center gap-2 rounded-full border border-[var(--accent-secondary)]/35 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700 dark:bg-white/10 dark:text-cyan-100">
               <Sparkles size={16} />
               XP tracks, badges, and AI teachers built for freshers
             </div>
-            <div className="space-y-5">
-              <h1 className="text-[clamp(2.25rem,6vw,5.25rem)] font-semibold leading-[1.04] tracking-normal text-slate-800 dark:text-white">
+            <div className="space-y-4">
+              <h1 className="text-[clamp(2rem,5vw,4.5rem)] font-semibold leading-[1.04] tracking-normal text-slate-800 dark:text-white">
                 Learn faster with a
                 <span className="block text-[var(--accent-bold)] dark:text-pink-300">
                   gamified skill campus
@@ -170,45 +169,46 @@ export default function LandingPage() {
             <div className="relative rounded-xl border border-[var(--border-color)] bg-white/88 p-4 shadow-2xl backdrop-blur-xl dark:bg-white/[0.08] sm:rounded-[2rem] sm:p-5">
               <div className="flex flex-col gap-4 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-200">Live mentor quest</p>
-                  <h2 className="mt-2 text-2xl font-semibold text-slate-800 dark:text-white">{activeTeacher.name}</h2>
-                  <p className="mt-1 text-sm text-[var(--text-secondary)] dark:text-slate-300">{activeTeacher.specialty}</p>
+                  <p className="text-sm uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-200">Your skill journey</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-slate-800 dark:text-white">Track your progress</h2>
+                  <p className="mt-1 text-sm text-[var(--text-secondary)] dark:text-slate-300">Earn XP, unlock badges, and climb the leaderboard as you learn.</p>
                 </div>
-                <div className="grid h-20 w-20 shrink-0 place-items-center rounded-3xl border border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 shadow-[0_16px_38px_rgba(37,99,235,0.18)] dark:border-cyan-200/30 dark:from-slate-900 dark:to-slate-800">
-                  <OwlMascot />
-                </div>
-              </div>
-
-              <div className={cn('mt-6 rounded-3xl border border-cyan-200 bg-gradient-to-br p-5 shadow-soft dark:border-white/10', activeTeacher.colorTheme.bg)}>
-                <div className="flex items-center gap-3 text-slate-800 dark:text-slate-100">
-                  <MessageSquareText className="text-cyan-600 dark:text-cyan-200" />
-                  <p className="text-sm leading-6">
-                    "I will teach this as {activeTeacher.teachingStyle.toLowerCase()}."
-                  </p>
-                </div>
-                <div className="mt-5 grid gap-3 text-sm sm:grid-cols-2">
-                  <span className="rounded-2xl bg-white/75 p-3 text-slate-700 dark:bg-slate-950/75 dark:text-slate-200">XP: +250 lesson streak</span>
-                  <span className="rounded-2xl bg-white/75 p-3 text-slate-700 dark:bg-slate-950/75 dark:text-slate-200">Badge: Mentor mode</span>
+                <div className="grid h-20 w-20 shrink-0 place-items-center rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 shadow-[0_16px_38px_rgba(245,158,11,0.18)] dark:border-amber-200/30 dark:from-slate-900 dark:to-slate-800">
+                  <Trophy className="h-10 w-10 text-amber-500" />
                 </div>
               </div>
 
-              <div className="mt-5 grid gap-3 min-[420px]:grid-cols-2">
-                {aiPersonalities.map((teacher) => (
-                  <button
-                    key={teacher.id}
-                    type="button"
-                    onClick={() => setActiveTeacher(teacher)}
-                    className={cn(
-                      'rounded-2xl border p-3 text-left transition',
-                      activeTeacher.id === teacher.id
-                        ? 'border-cyan-400 bg-cyan-50 text-slate-900 shadow-soft dark:bg-cyan-300/15 dark:text-white'
-                        : 'border-[var(--border-color)] bg-white/70 text-slate-700 hover:border-cyan-400/60 dark:bg-white/[0.06] dark:text-slate-300',
-                    )}
-                  >
-                    <span className="block text-sm font-semibold">{teacher.name}</span>
-                    <span className="mt-1 block text-xs text-[var(--text-muted)] dark:text-slate-400">{teacher.category}</span>
-                  </button>
-                ))}
+            <div className="mt-4 space-y-3">
+              <div className="flex items-center justify-between rounded-3xl border border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 p-4 shadow-soft dark:border-white/10 dark:from-slate-900/80 dark:to-slate-800/80">
+                  <div className="flex items-center gap-3">
+                    <Zap className="text-amber-500" />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800 dark:text-white">XP Points</p>
+                      <p className="text-xs text-[var(--text-muted)] dark:text-slate-400">Complete lessons to earn more</p>
+                    </div>
+                  </div>
+                  <span className="text-2xl font-bold text-amber-500">0</span>
+                </div>
+
+                <div className="flex items-center justify-between rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-4 shadow-soft dark:border-white/10 dark:from-slate-900/80 dark:to-slate-800/80">
+                  <div className="flex items-center gap-3">
+                    <Target className="text-emerald-500" />
+                    <div>
+                      <p className="text-sm font-semibold text-slate-800 dark:text-white">Skill Badges</p>
+                      <p className="text-xs text-[var(--text-muted)] dark:text-slate-400">Unlock by mastering topics</p>
+                    </div>
+                  </div>
+                  <span className="text-2xl font-bold text-emerald-500">0</span>
+                </div>
+
+                <div className="rounded-3xl border border-[var(--border-color)] bg-white/75 p-4 shadow-soft dark:bg-slate-950/75">
+                  <div className="flex items-center gap-3 text-slate-800 dark:text-slate-100">
+                    <Sparkles className="text-cyan-600 dark:text-cyan-200" />
+                    <p className="text-sm leading-6">
+                      Start your first course to begin earning achievements and tracking your learning streak.
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

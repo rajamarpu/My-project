@@ -96,6 +96,37 @@
   }
 }
 
+@keyframes upto-soft-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes upto-soft-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes upto-shine-sweep {
+  from {
+    transform: translateX(-120%);
+  }
+  to {
+    transform: translateX(120%);
+  }
+}
+
 .animate-upto-float {
   animation: upto-float 5s ease-in-out infinite;
 }
@@ -127,6 +158,92 @@
 
 .animate-upto-success-pop {
   animation: upto-success-pop 180ms ease-out both;
+}
+
+.app-shell main > *,
+.admin-main > *,
+.auth-viewport .auth-card,
+.landing-page > *,
+.courses-page > * {
+  animation: upto-soft-rise 320ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.app-shell main > *:nth-child(2),
+.admin-main > *:nth-child(2) {
+  animation-delay: 45ms;
+}
+
+.app-shell main > *:nth-child(3),
+.admin-main > *:nth-child(3) {
+  animation-delay: 90ms;
+}
+
+.app-shell main > *:nth-child(n+4),
+.admin-main > *:nth-child(n+4) {
+  animation-delay: 120ms;
+}
+
+:where(.glass-card, .theme-card, .theme-subcard, .admin-panel, .admin-table-card, .enterprise-glass-panel, .enterprise-glow-card, .upto-premium-panel, .upto-hero-panel) {
+  animation: upto-soft-scale 260ms ease-out both;
+  will-change: transform;
+}
+
+:where(.glass-card, .theme-card, .theme-subcard, .admin-panel-hover, .enterprise-glow-card, .course-card, .learner-dashboard-v2 .theme-card):hover {
+  transform: translateY(-2px);
+}
+
+:where(button, .btn-primary, .btn-secondary, .action-link, .admin-nav-link, .nav-link) {
+  transform-origin: center;
+}
+
+:where(button, .btn-primary, .btn-secondary, .action-link):active {
+  transform: scale(0.98);
+}
+
+.btn-primary,
+.auth-submit-button,
+.admin-shell button[class*="bg-[var(--brand-gradient)]"] {
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary::after,
+.auth-submit-button::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background: linear-gradient(105deg, transparent 0 35%, rgba(255, 255, 255, 0.28) 48%, transparent 62% 100%);
+  transform: translateX(-120%);
+}
+
+.btn-primary:hover::after,
+.auth-submit-button:hover::after {
+  animation: upto-shine-sweep 720ms ease-out;
+}
+
+.admin-premium-table tbody tr,
+.admin-data-page article,
+.learner-active-courses-v2 article {
+  animation: upto-soft-rise 240ms ease-out both;
+}
+
+.admin-premium-table tbody tr:nth-child(2),
+.admin-data-page article:nth-child(2),
+.learner-active-courses-v2 article:nth-child(2) {
+  animation-delay: 35ms;
+}
+
+.admin-premium-table tbody tr:nth-child(3),
+.admin-data-page article:nth-child(3),
+.learner-active-courses-v2 article:nth-child(3) {
+  animation-delay: 70ms;
+}
+
+.admin-premium-table tbody tr:nth-child(n+4),
+.admin-data-page article:nth-child(n+4),
+.learner-active-courses-v2 article:nth-child(n+4) {
+  animation-delay: 95ms;
 }
 
 @media (prefers-reduced-motion: reduce) {

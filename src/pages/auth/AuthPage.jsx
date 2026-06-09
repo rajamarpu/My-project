@@ -54,7 +54,7 @@ export default function AuthPage() {
   const needsPassword = ['login', 'register', 'reset'].includes(mode)
 
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(!isAdminPortal)
+  const [rememberMe, setRememberMe] = useState(true)
   const [loading, setLoading] = useState(false)
   const [attempted, setAttempted] = useState(false)
   const [toast, setToast] = useState(() => {
@@ -128,7 +128,10 @@ export default function AuthPage() {
     const role = user.role
     dispatch(login({ user, role, token: response.data.token, rememberMe }))
     setToast({ type: 'success', message: fallbackMessage })
-    navigate(routeByRole[role] || '/dashboard')
+    const params = new URLSearchParams(location.search)
+    const next = params.get('next')
+    const safeNext = next?.startsWith('/') && !next.startsWith('//') ? next : ''
+    navigate(safeNext || routeByRole[role] || '/dashboard')
   }
 
   const handleSubmit = async (event) => {

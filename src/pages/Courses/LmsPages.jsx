@@ -1,7 +1,7 @@
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
-import { Award, BarChart3, Bell, BriefcaseBusiness, CheckCircle2, CreditCard, FileQuestion, Headphones, LifeBuoy, MessageSquare, Newspaper, Settings, ShieldCheck, UserPlus, Users } from 'lucide-react'
+import { Award, BarChart3, Bell, BookOpenCheck, BriefcaseBusiness, CheckCircle2, ClipboardCheck, Compass, CreditCard, FileQuestion, GraduationCap, Headphones, Layers3, LifeBuoy, LockKeyhole, MessageSquare, MonitorPlay, Newspaper, Rocket, Settings, ShieldCheck, Sparkles, Target, Trophy, UserPlus, Users } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
 import { createAdminUser, createCertificate, fetchAdminCourses, fetchAdminLearners, fetchCourses, uploadAdminCourseAsset } from '../../api/api.js'
 import { AdminNotice, AdminPageHeader, FieldError } from '../../components/admin/AdminUI.jsx'
@@ -64,272 +64,335 @@ function CardGrid({ items }) {
   )
 }
 
-export function AboutPage() {
+function FeatureTile({ icon: Icon, title, text, tone = 'from-cyan-500 to-teal-600' }) {
   return (
-    <Shell eyebrow="About UptoSkills" title="Transforming Education Through Expert-Led Learning" description="UptoSkills combines cinematic course design with role-based dashboards, assessments, certificates, and production-grade authentication to create a premium learning experience.">
+    <article className="glass-card group h-full rounded-xl p-6 shadow-soft transition hover:-translate-y-1">
+      <div className={`grid h-12 w-12 place-items-center rounded-lg bg-gradient-to-br ${tone} text-white shadow-soft`}>
+        <Icon size={22} />
+      </div>
+      <h3 className="mt-5 text-lg font-semibold text-slate-950 dark:text-white">{title}</h3>
+      <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{text}</p>
+    </article>
+  )
+}
+
+function MetricStrip({ metrics }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      {metrics.map((metric) => (
+        <div key={metric.label} className="rounded-lg border border-[var(--border-color)] bg-white/70 p-5 shadow-sm dark:bg-slate-950/40">
+          <p className="text-3xl font-semibold text-slate-950 dark:text-white">{metric.value}</p>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{metric.label}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function AboutPage() {
+  const pillars = [
+    {
+      icon: GraduationCap,
+      title: 'Career-first learning',
+      text: 'Programs are shaped around employability, practical projects, assessment readiness, and the confidence freshers need before interviews.',
+      tone: 'from-orange-500 to-amber-500',
+    },
+    {
+      icon: Target,
+      title: 'Guided skill growth',
+      text: 'Learners move through structured paths with measurable progress, feedback loops, and recommendations that keep the next step clear.',
+      tone: 'from-cyan-500 to-teal-600',
+    },
+    {
+      icon: Trophy,
+      title: 'Verified outcomes',
+      text: 'Certificates, completion history, and assessment records help learners show credible proof of work to mentors, teams, and employers.',
+      tone: 'from-emerald-500 to-teal-600',
+    },
+  ]
+
+  const metrics = [
+    { value: '500K+', label: 'learners supported' },
+    { value: '1K+', label: 'industry mentors' },
+    { value: '5K+', label: 'learning resources' },
+    { value: '95%', label: 'reported satisfaction' },
+  ]
+
+  return (
+    <Shell
+      eyebrow="About UptoSkills"
+      title="Transforming Education Through Expert-Led Learning"
+      description="UptoSkills helps learners turn interest into employable skill through expert content, guided practice, assessments, certificates, and dashboards that keep every role focused."
+      action={
+        <div className="grid w-full gap-3 sm:grid-cols-3 lg:w-[42rem]">
+          {[
+            [BookOpenCheck, 'Structured courses', 'Clear paths from discovery to completion.'],
+            [Target, 'Practice-led growth', 'Assignments and progress keep learning active.'],
+            [Award, 'Proof of skill', 'Certificates and records support career outcomes.'],
+          ].map(([Icon, title, text]) => (
+            <div key={title} className="rounded-lg border border-[var(--border-color)] bg-white/70 p-4 text-left shadow-sm dark:bg-slate-950/40">
+              <span className="grid h-10 w-10 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">
+                <Icon size={18} />
+              </span>
+              <p className="mt-3 text-sm font-bold text-slate-950 dark:text-white">{title}</p>
+              <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">{text}</p>
+            </div>
+          ))}
+        </div>
+      }
+    >
       <div className="space-y-8">
-        <div className="grid gap-6 md:grid-cols-2">
-          <div>
-            <h2 className="text-2xl font-semibold text-slate-950 dark:text-white">Our Mission</h2>
-            <p className="mt-4 text-slate-600 dark:text-slate-300">
-              To make freshers employable by providing access to high-quality, expert-led courses that bridge the gap between academic learning and industry requirements.
+        <section className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
+          <div className="glass-card rounded-xl p-6 shadow-soft sm:p-8">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-300">Our mission</p>
+            <h2 className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">Make freshers job-ready with learning that feels practical from day one.</h2>
+            <p className="mt-4 leading-7 text-slate-600 dark:text-slate-300">
+              We bridge the gap between academic theory and industry expectations by combining clear course structure, hands-on assignments, mentor-style guidance, and proof of progress.
             </p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              {['Role-based dashboards', 'Practical assessments', 'Verified certificates', 'AI-assisted learning'].map((item) => (
+                <span key={item} className="inline-flex items-center gap-2 rounded-lg border border-[var(--border-color)] bg-white/70 px-4 py-3 text-sm font-semibold text-slate-700 dark:bg-slate-950/40 dark:text-slate-200">
+                  <CheckCircle2 size={16} className="text-emerald-500" />
+                  {item}
+                </span>
+              ))}
+            </div>
           </div>
-          <div>
-            <h2 className="text-2xl font-semibold text-slate-950 dark:text-white">Our Vision</h2>
-            <p className="mt-4 text-slate-600 dark:text-slate-300">
-              To become the leading global platform for skill development, empowering millions of learners to achieve their career goals through accessible, engaging, and effective education.
-            </p>
-          </div>
-        </div>
-        
-        <div className="grid gap-6 md:grid-cols-3">
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-teal-500 rounded-xl flex items-center justify-center">
-                <span className="text-white text-2xl">🎓</span>
-              </div>
+
+          <div className="rounded-xl border border-[var(--border-color)] bg-slate-950 p-6 text-white shadow-glow">
+            <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Expert-Led Learning</h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-300">
-                  Learn from industry professionals and AI-powered instructors who bring real-world experience to every lesson.
-                </p>
+                <p className="text-sm uppercase tracking-[0.2em] text-cyan-200">Platform focus</p>
+                <h3 className="mt-2 text-2xl font-semibold">Learn. Prove. Grow.</h3>
               </div>
+              <Rocket className="text-orange-300" size={34} />
+            </div>
+            <div className="mt-8 space-y-4">
+              {['Discover the right course path', 'Practice with real assignments', 'Track progress across modules', 'Share completion proof'].map((step, index) => (
+                <div key={step} className="flex gap-4 rounded-lg border border-white/10 bg-white/[0.06] p-4">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white text-sm font-bold text-slate-950">{index + 1}</span>
+                  <p className="text-sm leading-6 text-slate-200">{step}</p>
+                </div>
+              ))}
             </div>
           </div>
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-xl flex items-center justify-center">
-                <span className="text-white text-2xl">📊</span>
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Progress Tracking</h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-300">
-                  Monitor your learning journey with detailed analytics, skill assessments, and personalized recommendations.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-red-600 rounded-xl flex items-center justify-center">
-                <span className="text-white text-2xl">🏆</span>
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Industry Recognition</h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-300">
-                  Earn verified certificates that are recognized by employers and help you stand out in the job market.
-                </p>
-              </div>
-            </div>
-          </div>
+        </section>
+
+        <div className="grid gap-5 md:grid-cols-3">
+          {pillars.map((pillar) => <FeatureTile key={pillar.title} {...pillar} />)}
         </div>
-        
-        <div className="border-t pt-8">
-          <h2 className="text-2xl font-semibold text-slate-950 dark:text-white mb-6">Trusted by Learners Worldwide</h2>
-          <div className="grid gap-4 md:grid-cols-4">
-            <div className="text-center">
-              <p className="text-3xl font-bold text-cyan-400">500K+</p>
-              <p className="text-slate-600 dark:text-slate-300">Active Learners</p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-emerald-400">1K+</p>
-              <p className="text-slate-600 dark:text-slate-300">Expert Instructors</p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-amber-400">5K+</p>
-              <p className="text-slate-600 dark:text-slate-300">Courses Available</p>
-            </div>
-            <div className="text-center">
-              <p className="text-3xl font-bold text-teal-400">95%</p>
-              <p className="text-slate-600 dark:text-slate-300">Satisfaction Rate</p>
-            </div>
-          </div>
-        </div>
+
+        <MetricStrip metrics={metrics} />
       </div>
     </Shell>
   );
 }
 
 export function ServicesPage() {
+  const services = [
+    {
+      icon: BarChart3,
+      title: 'Learning analytics',
+      text: 'Track completion, engagement, assessment performance, and learner momentum with useful dashboard insights.',
+      tone: 'from-cyan-500 to-teal-600',
+    },
+    {
+      icon: ClipboardCheck,
+      title: 'Skill assessments',
+      text: 'Run quizzes, assignments, question practice, retakes, and evaluations that make progress measurable.',
+      tone: 'from-emerald-500 to-teal-600',
+    },
+    {
+      icon: MonitorPlay,
+      title: 'Course delivery',
+      text: 'Publish structured lessons, videos, resources, learning modules, and premium content in one learning flow.',
+      tone: 'from-blue-500 to-cyan-600',
+    },
+    {
+      icon: Users,
+      title: 'Community learning',
+      text: 'Support peer discussion, study groups, instructor updates, and collaborative learning moments.',
+      tone: 'from-orange-500 to-amber-500',
+    },
+    {
+      icon: Award,
+      title: 'Certification',
+      text: 'Issue verified certificates with learner, course, date, grade, and validation details for career proof.',
+      tone: 'from-yellow-500 to-orange-500',
+    },
+    {
+      icon: Settings,
+      title: 'Personalized paths',
+      text: 'Adapt recommendations, settings, role experiences, and learning journeys around each learner goal.',
+      tone: 'from-teal-500 to-cyan-600',
+    },
+  ]
+
+  const workflow = [
+    ['Plan', 'Choose the learner goal, course sequence, and assessment milestones.'],
+    ['Deliver', 'Keep videos, resources, and practice tasks organized inside each course.'],
+    ['Measure', 'Use dashboards, scores, progress, and certificates to show outcomes.'],
+  ]
+
   return (
-    <Shell eyebrow="Services" title="Complete Learning Platform Services" description="Access everything you need for successful learning: course management, skill tracking, certification, analytics, and content delivery.">
+    <Shell eyebrow="Services" title="Complete Learning Platform Services" description="Access the tools needed to manage learning from enrollment to measurable outcomes: course delivery, skill tracking, certification, analytics, and learner support.">
       <div className="space-y-8">
-        <div className="grid gap-6 md:grid-cols-3">
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-teal-600 rounded-xl flex items-center justify-center">
-                <BarChart3 className="text-white" size={20} />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Learning Analytics</h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-300">
-                  Track your progress, engagement, completion rates, and skill development with detailed insights and reports.
-                </p>
-              </div>
+        <section className="grid gap-5 md:grid-cols-3">
+          {workflow.map(([title, text], index) => (
+            <div key={title} className="glass-card rounded-xl p-6 shadow-soft">
+              <span className="grid h-10 w-10 place-items-center rounded-lg bg-[var(--accent-soft)] text-sm font-bold text-[var(--accent-primary)]">{index + 1}</span>
+              <h2 className="mt-5 text-xl font-semibold text-slate-950 dark:text-white">{title}</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{text}</p>
+            </div>
+          ))}
+        </section>
+
+        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {services.map((service) => <FeatureTile key={service.title} {...service} />)}
+        </section>
+
+        <section className="rounded-xl border border-[var(--border-color)] bg-white/75 p-6 shadow-soft dark:bg-slate-950/45 sm:p-8">
+          <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-300">Built for teams</p>
+              <h2 className="mt-3 text-2xl font-semibold text-slate-950 dark:text-white">One platform for learners, instructors, and admins.</h2>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {['Protected course access', 'Admin course management', 'Learner progress views', 'Instructor-ready content'].map((item) => (
+                <div key={item} className="flex items-center gap-3 rounded-lg border border-[var(--border-color)] bg-white/80 p-4 text-sm font-semibold text-slate-700 dark:bg-slate-900/55 dark:text-slate-200">
+                  <CheckCircle2 size={18} className="text-emerald-500" />
+                  {item}
+                </div>
+              ))}
             </div>
           </div>
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
-                <CheckCircle2 className="text-white" size={20} />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Skill Development</h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-300">
-                  Complete hands-on projects, assessments, and practical exercises to build real-world skills that employers value.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl flex items-center justify-center">
-                <Newspaper className="text-white" size={20} />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Content Library</h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-300">
-                  Access premium video lessons, downloadable resources, interactive quizzes, and supplementary learning materials.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-teal-600 rounded-xl flex items-center justify-center">
-                <Users className="text-white" size={20} />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Community Learning</h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-300">
-                  Join discussions, collaborate on projects, and learn from peers in our vibrant learning community.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-xl flex items-center justify-center">
-                <Award className="text-white" size={20} />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Certification</h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-300">
-                  Earn industry-recognized certificates upon course completion, complete with verification codes and blockchain validation.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl flex items-center justify-center">
-                <Settings className="text-white" size={20} />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Personalized Learning</h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-300">
-                  Enjoy customized learning paths, adaptive difficulty levels, and AI-powered recommendations based on your progress and goals.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        </section>
       </div>
     </Shell>
   );
 }
 
 export function FeaturesPage() {
+  const features = [
+    {
+      icon: Bell,
+      title: 'Smart notifications',
+      text: 'Real-time course updates, deadlines, alerts, and learner activity keep everyone aware of what needs attention.',
+      tone: 'from-orange-500 to-amber-500',
+    },
+    {
+      icon: Settings,
+      title: 'Personal settings',
+      text: 'Theme controls, notification preferences, privacy choices, and account tools make the experience feel owned.',
+      tone: 'from-emerald-500 to-teal-600',
+    },
+    {
+      icon: CreditCard,
+      title: 'Secure payments',
+      text: 'Purchase flows support encrypted transactions, receipts, invoices, and subscription-friendly account records.',
+      tone: 'from-cyan-500 to-teal-600',
+    },
+    {
+      icon: Compass,
+      title: 'Advanced discovery',
+      text: 'Search, filters, categories, and recommendations help learners find the right course without friction.',
+      tone: 'from-blue-500 to-cyan-600',
+    },
+    {
+      icon: LockKeyhole,
+      title: 'Role-based security',
+      text: 'JWT authentication, protected routes, role checks, and secure dashboards keep sensitive workflows controlled.',
+      tone: 'from-amber-500 to-red-600',
+    },
+    {
+      icon: MessageSquare,
+      title: 'Collaborative learning',
+      text: 'Discussion surfaces, groups, instructor touchpoints, and peer support make learning less isolated.',
+      tone: 'from-teal-500 to-cyan-600',
+    },
+  ]
+
+  const platformLayers = [
+    ['Experience', 'Responsive design, dark mode, accessible states, and smooth navigation across public and protected pages.'],
+    ['Learning core', 'Courses, lessons, assessments, practice questions, progress tracking, and certificates.'],
+    ['Operations', 'Admin controls, course forms, learner records, analytics, evaluations, and notification-ready flows.'],
+  ]
+
   return (
-    <Shell eyebrow="Features" title="Everything Expected from a Modern SaaS LMS" description="UptoSkills delivers a complete learning ecosystem with protected content, advanced search, real-time notifications, customizable dashboards, profile management, and responsive design.">
+    <Shell eyebrow="Features" title="Everything Expected from a Modern SaaS LMS" description="UptoSkills delivers a complete learning ecosystem with protected content, advanced search, notifications, dashboards, profile management, assessments, and responsive design.">
       <div className="space-y-8">
-        <div className="grid gap-6 md:grid-cols-3">
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-teal-500 rounded-xl flex items-center justify-center">
-                <Bell className="text-white" size={20} />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Smart Notifications</h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-300">
-                  Get real-time alerts for live sessions, assignment deadlines, course updates, and community activity through our intelligent notification system.
-                </p>
-              </div>
-            </div>
+        <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+          {features.map((feature) => <FeatureTile key={feature.title} {...feature} />)}
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="glass-card rounded-xl p-6 shadow-soft sm:p-8">
+            <Sparkles className="text-orange-500" size={30} />
+            <h2 className="mt-4 text-2xl font-semibold text-slate-950 dark:text-white">Designed to feel complete, not patched together.</h2>
+            <p className="mt-3 leading-7 text-slate-600 dark:text-slate-300">
+              The platform connects public discovery, authenticated learning, admin operations, and assessment workflows so the product feels consistent across the full learner lifecycle.
+            </p>
           </div>
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
-                <Settings className="text-white" size={20} />
+          <div className="space-y-4">
+            {platformLayers.map(([title, text]) => (
+              <div key={title} className="rounded-xl border border-[var(--border-color)] bg-white/75 p-5 shadow-sm dark:bg-slate-950/45">
+                <div className="flex gap-4">
+                  <Layers3 className="mt-1 shrink-0 text-cyan-600 dark:text-cyan-300" size={22} />
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-950 dark:text-white">{title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{text}</p>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Personalized Settings</h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-300">
-                  Customize your learning experience with theme preferences, notification controls, privacy settings, and account management tools.
-                </p>
-              </div>
-            </div>
+            ))}
           </div>
-          <div className="glass-card p-6">
-             <div className="flex items-center justify-start gap-4">
-               <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-teal-600 rounded-xl flex items-center justify-center">
-                 <CreditCard className="text-white" size={20} />
-               </div>
-               <div>
-                 <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Secure Payments</h3>
-                 <p className="mt-2 text-slate-600 dark:text-slate-300">
-                   Enjoy safe, encrypted transactions with multiple payment options, invoice generation, and automated receipts for all purchases and subscriptions.
-                 </p>
-               </div>
-             </div>
-          </div>
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl flex items-center justify-center">
-                <FileQuestion className="text-white" size={20} />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Advanced Search</h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-300">
-                  Find exactly what you need with faceted search, filters, sorting options, and intelligent recommendations across our entire course catalog.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-red-600 rounded-xl flex items-center justify-center">
-                <ShieldCheck className="text-white" size={20} />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Enterprise Security</h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-300">
-                  Learn with confidence knowing your data is protected by JWT authentication, role-based access control, regular security audits, and GDPR compliance.
-                </p>
-              </div>
-            </div>
-          </div>
-          <div className="glass-card p-6">
-            <div className="flex items-center justify-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-teal-500 to-cyan-600 rounded-xl flex items-center justify-center">
-                <Users className="text-white" size={20} />
-              </div>
-              <div>
-                <h3 className="text-xl font-semibold text-slate-950 dark:text-white">Collaborative Learning</h3>
-                <p className="mt-2 text-slate-600 dark:text-slate-300">
-                  Engage in peer discussions, group projects, study groups, and knowledge sharing through our integrated community features.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
+        </section>
       </div>
     </Shell>
   );
 }
 
 export function TeamPage() {
+  const leaders = [
+    { icon: GraduationCap, title: 'Learning Experience', text: 'Designs career-first curricula, assessments, and learner journeys that feel practical from day one.', tone: 'from-orange-500 to-amber-500' },
+    { icon: MonitorPlay, title: 'Platform Engineering', text: 'Ships dashboards, protected learning flows, analytics surfaces, and reliable course delivery.', tone: 'from-cyan-500 to-teal-600' },
+    { icon: Headphones, title: 'Learner Success', text: 'Guides learners, instructors, and teams through every milestone with fast, human support.', tone: 'from-emerald-500 to-teal-600' },
+  ]
+  const culture = [
+    ['Outcome obsessed', 'Every course, dashboard, and certificate is judged by whether it helps learners move closer to work-ready skill.'],
+    ['Craft matters', 'We care about interface polish, copy clarity, assessment quality, and the small details learners feel every day.'],
+    ['Built together', 'Instructors, admins, support, and learners share one platform language so operations stay smooth.'],
+  ]
+
+  return (
+    <Shell eyebrow="Team" title="The People Building Career-Ready Learning" description="A focused team of learning designers, engineers, instructors, and success specialists shaping UptoSkills into a premium learning platform.">
+      <div className="space-y-8">
+        <section className="grid gap-5 md:grid-cols-3">
+          {leaders.map((leader) => <FeatureTile key={leader.title} {...leader} />)}
+        </section>
+        <section className="rounded-xl border border-[var(--border-color)] bg-slate-950 p-6 text-white shadow-glow sm:p-8">
+          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200">How we work</p>
+              <h2 className="mt-3 text-2xl font-semibold">Small teams, clear ownership, measurable outcomes.</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                We design every learner touchpoint around clarity: what to learn, what to practice, what to prove, and what to do next.
+              </p>
+            </div>
+            <div className="grid gap-3">
+              {culture.map(([title, text]) => (
+                <div key={title} className="rounded-lg border border-white/10 bg-white/[0.06] p-4">
+                  <h3 className="font-semibold">{title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-300">{text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </div>
+    </Shell>
+  )
+
   return (
     <Shell eyebrow="Team" title="Meet the UptoSkills Team" description="Get to know the dedicated professionals behind our mission to make freshers employable through expert-led education.">
       <div className="space-y-8">
@@ -442,6 +505,24 @@ export function FaqPage() {
     ['Are courses updated regularly?', 'Our instructors and content team regularly update courses to reflect current industry trends, tools, and best practices.']
   ];
   return (
+    <Shell eyebrow="FAQ" title="Answers Before You Commit" description="Clear answers about access, certificates, support, payments, security, and how UptoSkills helps learners show real progress.">
+      <div className="grid gap-4 lg:grid-cols-2">
+        {faqs.map(([question, answer], index) => (
+          <article key={question} className="glass-card rounded-xl p-6 shadow-soft">
+            <div className="flex gap-4">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-sm font-bold text-[var(--accent-primary)]">{index + 1}</span>
+              <div>
+                <h3 className="text-lg font-semibold text-slate-950 dark:text-white">{question}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{answer}</p>
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </Shell>
+  )
+
+  return (
     <Shell eyebrow="FAQ" title="Frequently Asked Questions" description="Find answers to common questions about the UptoSkills learning platform, features, and policies.">
       <div className="space-y-6">
         {faqs.map(([question, answer], index) => (
@@ -463,6 +544,46 @@ export function FaqPage() {
 }
 
 export function BlogPage() {
+  const navigate = useNavigate()
+  const columns = [
+    { icon: BriefcaseBusiness, title: 'Career playbooks', text: 'Interview prep, resumes, portfolios, and job-readiness guides for early-career learners.', tone: 'from-orange-500 to-amber-500' },
+    { icon: Sparkles, title: 'Technology shifts', text: 'Practical explainers on AI, data, web, cloud, and the tools changing modern teams.', tone: 'from-cyan-500 to-teal-600' },
+    { icon: GraduationCap, title: 'Learning strategy', text: 'How to practice, retain, assess, and turn course progress into visible career proof.', tone: 'from-emerald-500 to-teal-600' },
+  ]
+  const articles = [
+    ['Campus to career without the guesswork', 'A practical roadmap for converting coursework into portfolio-ready projects and interview stories.'],
+    ['How AI changes beginner learning paths', 'Where AI helps, where fundamentals still matter, and how learners can use both responsibly.'],
+    ['Certificates that actually carry signal', 'What employers look for when a learner shares completion proof, projects, and assessment results.'],
+  ]
+
+  return (
+    <Shell eyebrow="Blog" title="Learning and Career Insights" description="Practical, career-aware writing that supports the learning journey instead of floating beside it.">
+      <div className="space-y-8">
+        <section className="grid gap-5 md:grid-cols-3">
+          {columns.map((item) => <FeatureTile key={item.title} {...item} />)}
+        </section>
+        <section className="grid gap-5 lg:grid-cols-[0.8fr_1.2fr]">
+          <div className="glass-card rounded-xl p-6 shadow-soft sm:p-8">
+            <Newspaper className="text-orange-500" size={30} />
+            <h2 className="mt-4 text-2xl font-semibold text-slate-950 dark:text-white">Featured reads for serious learners.</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+              Guides are written around decisions learners actually face: what to study, how to practice, and how to prove it.
+            </p>
+            <Button className="mt-6" onClick={() => navigate('/explore')}>Explore Courses</Button>
+          </div>
+          <div className="grid gap-4">
+            {articles.map(([title, text]) => (
+              <article key={title} className="rounded-xl border border-[var(--border-color)] bg-white/75 p-5 shadow-sm dark:bg-slate-950/45">
+                <h3 className="text-lg font-semibold text-slate-950 dark:text-white">{title}</h3>
+                <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{text}</p>
+              </article>
+            ))}
+          </div>
+        </section>
+      </div>
+    </Shell>
+  )
+
   return (
     <Shell eyebrow="Blog" title="Learning & Career Insights" description="Stay updated with the latest trends in education, technology, and career development through our expert-written articles and guides.">
       <div className="space-y-8">
@@ -537,6 +658,32 @@ export function BlogPage() {
 }
 
 export function CareersPage() {
+  const navigate = useNavigate()
+  const roles = [
+    { icon: BriefcaseBusiness, title: 'Frontend Engineer', text: 'Build polished dashboards, catalog surfaces, and premium learner workflows.', tone: 'from-cyan-500 to-teal-600' },
+    { icon: Users, title: 'Course Success Manager', text: 'Help instructors launch high-quality programs and improve learner outcomes.', tone: 'from-orange-500 to-amber-500' },
+    { icon: LifeBuoy, title: 'Support Specialist', text: 'Give learners and teams fast, human help across platform and course questions.', tone: 'from-emerald-500 to-teal-600' },
+  ]
+
+  return (
+    <Shell eyebrow="Careers" title="Build the Future of Online Learning" description="Join a team improving how freshers learn, practice, prove skills, and move into career opportunities.">
+      <div className="space-y-8">
+        <section className="grid gap-5 md:grid-cols-3">
+          {roles.map((role) => <FeatureTile key={role.title} {...role} />)}
+        </section>
+        <section className="rounded-xl border border-[var(--border-color)] bg-white/75 p-6 shadow-soft dark:bg-slate-950/45 sm:p-8">
+          <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+              <h2 className="text-2xl font-semibold text-slate-950 dark:text-white">Work on a product where craft meets impact.</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">We value clear thinking, strong execution, learner empathy, and the patience to make complex systems feel simple.</p>
+            </div>
+            <Button onClick={() => navigate('/contact')}>Contact Hiring Team</Button>
+          </div>
+        </section>
+      </div>
+    </Shell>
+  )
+
   return (
     <Shell eyebrow="Careers" title="Build the future of online learning" description="A careers page ready for hiring instructors, engineers, designers, and support specialists.">
       <CardGrid items={[
@@ -549,6 +696,41 @@ export function CareersPage() {
 }
 
 export function HelpCenterPage() {
+  const navigate = useNavigate()
+  const topics = [
+    { icon: LifeBuoy, title: 'Getting started', text: 'Create your account, explore courses, enroll, and understand your learner dashboard.', tone: 'from-cyan-500 to-teal-600' },
+    { icon: FileQuestion, title: 'Certificates', text: 'Learn how completion, verification IDs, and certificate eligibility work.', tone: 'from-emerald-500 to-teal-600' },
+    { icon: CreditCard, title: 'Billing and access', text: 'Resolve payment, subscription, enrollment, and protected-content questions.', tone: 'from-orange-500 to-amber-500' },
+  ]
+  const quickLinks = [
+    ['Browse the catalog', '/explore'],
+    ['Read the FAQ', '/faq'],
+    ['Contact support', '/contact'],
+  ]
+
+  return (
+    <Shell eyebrow="Help Center" title="Fast Answers for Learners and Teams" description="Find the right guide, solve access issues, and get a clear next step without digging through a generic support wall.">
+      <div className="space-y-8">
+        <section className="grid gap-5 md:grid-cols-3">
+          {topics.map((topic) => <FeatureTile key={topic.title} {...topic} />)}
+        </section>
+        <section className="glass-card rounded-xl p-6 shadow-soft sm:p-8">
+          <div className="grid gap-6 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-300">Quick actions</p>
+              <h2 className="mt-3 text-2xl font-semibold text-slate-950 dark:text-white">Jump directly to the page that solves the problem.</h2>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {quickLinks.map(([label, route]) => (
+                <Button key={route} variant="secondary" onClick={() => navigate(route)}>{label}</Button>
+              ))}
+            </div>
+          </div>
+        </section>
+      </div>
+    </Shell>
+  )
+
   return (
     <Shell eyebrow="Help Center" title="Get Help & Support" description="Find answers to common questions, access tutorials, and contact our support team for assistance with any aspect of the UptoSkills platform.">
       <div className="space-y-8">
@@ -616,7 +798,7 @@ export function HelpCenterPage() {
             <div className="glass-card p-4">
               <h3 className="text-lg font-semibold text-slate-950 dark:text-white">Email Support</h3>
               <p className="text-slate-600 dark:text-slate-300">
-                support@uptoskills.test
+                support@uptoskills.com
               </p>
             </div>
             <div className="glass-card p-4">
@@ -639,6 +821,46 @@ export function HelpCenterPage() {
 }
 
 export function SupportPage() {
+  const navigate = useNavigate()
+  const channels = [
+    { icon: Headphones, title: 'Learning support', text: 'Get help with course concepts, assignments, progress, and next-step planning.', tone: 'from-cyan-500 to-teal-600' },
+    { icon: MessageSquare, title: 'Technical assistance', text: 'Resolve login, playback, payment, enrollment, and certificate-access issues.', tone: 'from-emerald-500 to-teal-600' },
+    { icon: UserPlus, title: 'Team onboarding', text: 'Plan cohorts, instructor workflows, admin reporting, and institution rollouts.', tone: 'from-orange-500 to-amber-500' },
+  ]
+  const serviceLevels = [
+    ['Learners', 'Course access, progress, assessments, certificates, and account questions.'],
+    ['Instructors', 'Course setup, content readiness, learner feedback, and assessment review.'],
+    ['Institutions', 'Cohort planning, custom reporting, onboarding, and success operations.'],
+  ]
+
+  return (
+    <Shell eyebrow="Support" title="Expert Help When You Need It" description="Premium support should feel precise, calm, and useful. Choose the right channel and move forward with confidence.">
+      <div className="space-y-8">
+        <section className="grid gap-5 md:grid-cols-3">
+          {channels.map((channel) => <FeatureTile key={channel.title} {...channel} />)}
+        </section>
+        <section className="rounded-xl border border-[var(--border-color)] bg-slate-950 p-6 text-white shadow-glow sm:p-8">
+          <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr]">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200">Support coverage</p>
+              <h2 className="mt-3 text-2xl font-semibold">One contact surface for every role.</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-300">Email support@uptoskills.com or use the learner dashboard support actions when signed in.</p>
+              <Button className="mt-6" onClick={() => navigate('/faq')}>Read FAQ</Button>
+            </div>
+            <div className="grid gap-3">
+              {serviceLevels.map(([title, text]) => (
+                <div key={title} className="rounded-lg border border-white/10 bg-white/[0.06] p-4">
+                  <h3 className="font-semibold">{title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-slate-300">{text}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      </div>
+    </Shell>
+  )
+
   return (
     <Shell eyebrow="Support" title="Expert Help When You Need It" description="Get personalized assistance with your learning journey, technical issues, account management, and course-related questions from our dedicated support team.">
       <div className="space-y-8">
@@ -690,7 +912,7 @@ export function SupportPage() {
             <div className="glass-card p-4">
               <h3 className="text-lg font-semibold text-slate-950 dark:text-white">Email</h3>
               <p className="text-slate-600 dark:text-slate-300">
-                support@uptoskills.test
+                support@uptoskills.com
               </p>
             </div>
             <div className="glass-card p-4">
@@ -781,19 +1003,72 @@ export function ForbiddenPage() {
 
 export function NotificationsPage() {
   const navigate = useNavigate()
+  const [filter, setFilter] = useState('All')
+  const notifications = [
+    {
+      icon: BookOpenCheck,
+      title: 'New Course: Data Science with Python',
+      text: 'Learn data analysis, visualization, and machine learning fundamentals with hands-on projects.',
+      time: 'Published 2 hours ago',
+      badge: 'New',
+      tone: 'cyan',
+      category: 'Course',
+      priority: 'Medium',
+      unread: true,
+      action: 'Explore course',
+      path: '/explore',
+    },
+    {
+      icon: MonitorPlay,
+      title: 'Live Session Today at 6PM',
+      text: 'Join an expert instructor for a Q&A on career development and resume building.',
+      time: 'Starting in 2 hours',
+      badge: 'Live',
+      tone: 'emerald',
+      category: 'Live',
+      priority: 'High',
+      unread: true,
+      action: 'View session',
+      path: '/live-sessions',
+    },
+    {
+      icon: ClipboardCheck,
+      title: 'Assignment Due Tomorrow',
+      text: 'Complete the Python data structures assignment to unlock the next module.',
+      time: 'Due tomorrow at 9AM',
+      badge: 'Due soon',
+      tone: 'amber',
+      category: 'Assessment',
+      priority: 'High',
+      unread: false,
+      action: 'Practice now',
+      path: '/questions',
+    },
+  ]
+  const categories = ['All', 'Unread', ...new Set(notifications.map((item) => item.category))]
+  const visibleNotifications = notifications.filter((item) => {
+    if (filter === 'All') return true
+    if (filter === 'Unread') return item.unread
+    return item.category === filter
+  })
 
   return (
     <Shell eyebrow="Notifications" title="Your Learning Updates" description="Stay informed about important platform updates, course announcements, deadlines, and personalized recommendations.">
       <div className="space-y-8">
-        <div className="glass-card p-6">
-          <div className="flex items-center justify-between gap-4">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <NotificationMetric label="Unread" value={notifications.filter((item) => item.unread).length} />
+          <NotificationMetric label="High priority" value={notifications.filter((item) => item.priority === 'High').length} />
+          <NotificationMetric label="Categories" value={new Set(notifications.map((item) => item.category)).size} />
+        </div>
+        <div className="glass-card p-5 shadow-soft sm:p-6">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(34rem,0.95fr)] xl:items-center">
             <div>
               <h2 className="text-xl font-semibold text-slate-950 dark:text-white">Notification Preferences</h2>
               <p className="mt-2 text-slate-600 dark:text-slate-300">
                 Customize how and when you receive updates from UptoSkills.
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="grid gap-3 sm:grid-cols-3">
               <ToggleInput 
                 label="Email Notifications" 
                 description="Get updates via email"
@@ -813,74 +1088,31 @@ export function NotificationsPage() {
           </div>
         </div>
         
-        <div className="border-t pt-8">
-          <h2 className="text-2xl font-semibold text-slate-950 dark:text-white mb-6">Recent Updates</h2>
-          <div className="space-y-6">
-            <div className="glass-card p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-shrink-0">
-                  <Bell className="text-cyan-400" size={20} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-950 dark:text-white">New Course: Data Science with Python</h3>
-                  <p className="mt-2 text-slate-600 dark:text-slate-300">
-                    Learn data analysis, visualization, and machine learning fundamentals with hands-on projects.
-                  </p>
-                  <span className="inline-flex items-center rounded-full bg-blue-500/20 px-3 py-1 text-xs text-blue-600">
-                    New
-                  </span>
-                </div>
-              </div>
-              <p className="mt-3 text-slate-500 dark:text-slate-400 text-xs">
-                Published 2 hours ago
-              </p>
+        <section className="space-y-4 border-t border-[var(--border-color)] pt-8">
+          <div className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">Inbox</p>
+              <h2 className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">Recent Updates</h2>
             </div>
-            
-            <div className="glass-card p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-shrink-0">
-                  <Bell className="text-emerald-400" size={20} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-950 dark:text-white">Live Session Today at 6PM</h3>
-                  <p className="mt-2 text-slate-600 dark:text-slate-300">
-                    Join our expert instructor for a Q&A on career development and resume building.
-                  </p>
-                  <span className="inline-flex items-center rounded-full bg-emerald-500/20 px-3 py-1 text-xs text-emerald-600">
-                    Live
-                  </span>
-                </div>
-              </div>
-              <p className="mt-3 text-slate-500 dark:text-slate-400 text-xs">
-                Starting in 2 hours
-              </p>
-            </div>
-            
-            <div className="glass-card p-6">
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-shrink-0">
-                  <Bell className="text-amber-400" size={20} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-slate-950 dark:text-white">Assignment Due Tomorrow</h3>
-                  <p className="mt-2 text-slate-600 dark:text-slate-300">
-                    Complete the Python data structures assignment to unlock the next module.
-                  </p>
-                  <span className="inline-flex items-center rounded-full bg-amber-500/20 px-3 py-1 text-xs text-amber-600">
-                    Due Soon
-                  </span>
-                </div>
-              </div>
-              <p className="mt-3 text-slate-500 dark:text-slate-400 text-xs">
-                Due tomorrow at 9AM
-              </p>
+            <div className="flex flex-wrap gap-2">
+              {categories.map((category) => (
+                <button key={category} type="button" onClick={() => setFilter(category)} className={`min-h-10 rounded-lg border px-3 text-sm font-semibold transition ${filter === category ? 'border-cyan-400 bg-cyan-500 text-white' : 'border-[var(--border-color)] bg-[var(--bg-subtle)] text-[var(--text-primary)] hover:border-cyan-400/50'}`}>
+                  {category}
+                </button>
+              ))}
             </div>
           </div>
-        </div>
+
+          <div className="grid gap-3">
+            {visibleNotifications.map((notification) => (
+              <NotificationRow key={notification.title} notification={notification} onOpen={() => navigate(notification.path)} />
+            ))}
+          </div>
+        </section>
         
-        <div className="border-t pt-8">
+        <div className="border-t border-[var(--border-color)] pt-8">
           <div className="flex justify-center">
-            <Button variant="outline" onClick={() => navigate('/settings/notifications')}>
+            <Button variant="secondary" onClick={() => navigate('/settings')}>
               Manage All Notifications
             </Button>
           </div>
@@ -890,12 +1122,54 @@ export function NotificationsPage() {
   );
 }
 
+function NotificationMetric({ label, value }) {
+  return (
+    <div className="glass-card rounded-xl p-5 shadow-soft">
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">{label}</p>
+      <p className="mt-2 text-2xl font-black text-[var(--text-primary)]">{value}</p>
+    </div>
+  )
+}
+
+function NotificationRow({ notification, onOpen }) {
+  const Icon = notification.icon
+  const toneClasses = {
+    cyan: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-200',
+    emerald: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-200',
+    amber: 'bg-amber-500/10 text-amber-700 dark:text-amber-200',
+  }
+
+  return (
+    <article className="glass-card grid gap-4 rounded-xl p-4 shadow-soft transition hover:-translate-y-0.5 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center sm:p-5">
+      <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-lg ${toneClasses[notification.tone] || toneClasses.cyan}`}>
+        <Icon size={21} />
+      </span>
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-2">
+          <h3 className="text-base font-semibold text-slate-950 dark:text-white">{notification.title}</h3>
+          <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneClasses[notification.tone] || toneClasses.cyan}`}>
+            {notification.badge}
+          </span>
+          <span className="rounded-full border border-[var(--border-color)] px-2.5 py-1 text-xs font-semibold text-[var(--text-secondary)]">{notification.category}</span>
+          <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${notification.priority === 'High' ? 'bg-red-500/10 text-red-700 dark:text-red-100' : 'bg-[var(--bg-subtle)] text-[var(--text-muted)]'}`}>{notification.priority}</span>
+          {notification.unread ? <span className="h-2.5 w-2.5 rounded-full bg-cyan-400" aria-label="Unread notification" /> : null}
+        </div>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{notification.text}</p>
+        <p className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">{notification.time}</p>
+      </div>
+      <Button variant="secondary" onClick={onOpen}>
+        {notification.action}
+      </Button>
+    </article>
+  )
+}
+
 // Helper component for toggle inputs
 function ToggleInput({ label, description, defaultChecked }) {
   const [checked, setChecked] = useState(defaultChecked);
   
   return (
-    <div className="flex items-center gap-3">
+    <label className="flex min-h-[4.25rem] items-center gap-3 rounded-lg border border-[var(--border-color)] bg-white/70 p-3 dark:bg-slate-950/40">
       <input
         type="checkbox"
         checked={checked}
@@ -906,29 +1180,65 @@ function ToggleInput({ label, description, defaultChecked }) {
         <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{label}</p>
         <p className="text-xs text-slate-500 dark:text-slate-400">{description}</p>
       </div>
-    </div>
+    </label>
   );
 }
 
 export function SettingsPage() {
   const user = useSelector((state) => state.auth.user)
+  const groups = [
+    {
+      title: 'Notifications',
+      items: [
+        ['Email notifications', 'Receive live class and task reminders.', true],
+        ['Learning reminders', 'Nudge me when courses or assessments are due.', true],
+        ['Product updates', 'Get new feature and content release notes.', false],
+      ],
+    },
+    {
+      title: 'Learning preferences',
+      items: [
+        ['Weekly goal reminders', 'Keep study momentum visible on the dashboard.', true],
+        ['Autoplay next lesson', 'Move smoothly through course modules.', false],
+        ['Practice recommendations', 'Show assessment prompts after lessons.', true],
+      ],
+    },
+    {
+      title: 'Privacy and security',
+      items: [
+        ['Secure session', `Signed in as ${user?.email || user?.fullName || 'current user'}.`, true],
+        ['Profile visibility', 'Control what other learners can see.', true],
+        ['Security alerts', 'Notify me about password and session activity.', true],
+      ],
+    },
+  ]
+
   return (
     <Shell eyebrow="Settings" title="User settings" description="Manage account preferences, theme behavior, product updates, and notification delivery.">
-      <div className="grid gap-5 lg:grid-cols-2">
-        {[
-          ['Email notifications', 'Receive live class and task reminders.'],
-          ['Product updates', 'Get new feature and content release notes.'],
-          ['Secure session', `Signed in as ${user?.email || user?.fullName || 'current user'}.`],
-          ['Profile visibility', 'Control what other learners can see.'],
-        ].map(([title, text]) => (
-          <div key={title} className="glass-card flex items-center justify-between gap-4 p-6 shadow-soft">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-950 dark:text-white">{title}</h2>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{text}</p>
-            </div>
-            <input type="checkbox" defaultChecked className="h-5 w-5" />
+      <div className="grid gap-6 xl:grid-cols-[0.8fr_1.2fr]">
+        <aside className="glass-card self-start rounded-xl p-6 shadow-soft">
+          <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-300">Account readiness</p>
+          <div className="mt-5 grid gap-3">
+            {['Profile details saved', 'Notifications configured', 'Security alerts enabled'].map((item) => (
+              <div key={item} className="flex items-center gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-3 text-sm font-semibold text-[var(--text-primary)]">
+                <CheckCircle2 className="text-emerald-500" size={17} />
+                {item}
+              </div>
+            ))}
           </div>
-        ))}
+        </aside>
+        <div className="grid gap-5">
+          {groups.map((group) => (
+            <section key={group.title} className="glass-card rounded-xl p-5 shadow-soft sm:p-6">
+              <h2 className="text-xl font-semibold text-slate-950 dark:text-white">{group.title}</h2>
+              <div className="mt-5 grid gap-3">
+                {group.items.map(([title, text, checked]) => (
+                  <ToggleInput key={title} label={title} description={text} defaultChecked={checked} />
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
       </div>
     </Shell>
   )
@@ -989,16 +1299,130 @@ export function MentorsPage() {
 }
 
 export function PricingPage() {
+  const navigate = useNavigate()
+  const plans = [
+    {
+      name: 'Starter',
+      price: 'Free',
+      summary: 'Preview the catalog, explore mentors, and begin learning with free resources.',
+      action: 'Start Free',
+      route: '/register',
+      tone: 'from-cyan-500 to-teal-600',
+      features: ['Free course previews', 'Community access', 'Basic learner profile', 'Progress-ready dashboard'],
+    },
+    {
+      name: 'Pro Learner',
+      price: 'Rs. 799/mo',
+      summary: 'For learners who want full course access, assessments, and certificates.',
+      action: 'Explore Courses',
+      route: '/explore',
+      highlighted: true,
+      tone: 'from-orange-500 to-amber-500',
+      features: ['Premium course library', 'Assessments and retakes', 'Verified certificates', 'Priority learning support'],
+    },
+    {
+      name: 'Institution',
+      price: 'Custom',
+      summary: 'For colleges, training teams, and learning partners that need managed rollouts.',
+      action: 'Contact Team',
+      route: '/contact',
+      tone: 'from-emerald-500 to-teal-600',
+      features: ['Learner cohorts', 'Admin reporting', 'Instructor workflows', 'Dedicated onboarding'],
+    },
+  ]
+
+  const comparisons = [
+    ['Course previews', 'Included', 'Included', 'Included'],
+    ['Premium lessons', 'Limited', 'Unlimited', 'Custom catalog'],
+    ['Assessments', 'Practice only', 'Full access', 'Managed cohorts'],
+    ['Certificates', 'No', 'Verified', 'Verified at scale'],
+    ['Support', 'Community', 'Priority', 'Dedicated'],
+  ]
+
   return (
-    <Shell eyebrow="Pricing" title="Simple plans for learning teams" description="Free previews, premium learning, and institution-ready plans.">
-      <div className="grid gap-5 lg:grid-cols-3">
-        {['Starter', 'Pro Learner', 'Institution'].map((plan, index) => (
-          <div key={plan} className="glass-card p-7 shadow-soft">
-            <h2 className="text-2xl font-semibold text-slate-950 dark:text-white">{plan}</h2>
-            <p className="mt-4 text-3xl font-semibold text-cyan-700 dark:text-cyan-300">{index === 0 ? 'Free' : index === 1 ? 'Rs. 799/mo' : 'Custom'}</p>
-            <Button className="mt-6">Choose Plan</Button>
+    <Shell eyebrow="Pricing" title="Simple Plans for Every Learning Goal" description="Start free, upgrade when you need structured progress, or bring UptoSkills to an institution with managed learning operations.">
+      <div className="space-y-8">
+        <section className="grid gap-5 lg:grid-cols-3">
+          {plans.map((plan) => (
+            <article
+              key={plan.name}
+              className={`glass-card relative flex h-full flex-col rounded-xl p-6 shadow-soft sm:p-7 ${plan.highlighted ? 'border-orange-400/60 ring-2 ring-orange-400/20' : ''}`}
+            >
+              {plan.highlighted ? (
+                <span className="absolute right-5 top-5 rounded-full bg-orange-500 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-white">
+                  Popular
+                </span>
+              ) : null}
+              <div className={`grid h-12 w-12 place-items-center rounded-lg bg-gradient-to-br ${plan.tone} text-white shadow-soft`}>
+                {plan.name === 'Starter' ? <Sparkles size={22} /> : plan.name === 'Pro Learner' ? <Rocket size={22} /> : <Users size={22} />}
+              </div>
+              <h2 className="mt-5 text-2xl font-semibold text-slate-950 dark:text-white">{plan.name}</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{plan.summary}</p>
+              <p className="mt-6 text-3xl font-semibold text-slate-950 dark:text-white">{plan.price}</p>
+              <ul className="mt-6 flex-1 space-y-3">
+                {plan.features.map((feature) => (
+                  <li key={feature} className="flex gap-3 text-sm text-slate-600 dark:text-slate-300">
+                    <CheckCircle2 className="mt-0.5 shrink-0 text-emerald-500" size={17} />
+                    <span>{feature}</span>
+                  </li>
+                ))}
+              </ul>
+              <Button
+                className="mt-7 w-full"
+                variant={plan.highlighted ? 'primary' : 'secondary'}
+                onClick={() => navigate(plan.route)}
+                aria-label={`${plan.action} with ${plan.name}`}
+              >
+                {plan.action}
+              </Button>
+            </article>
+          ))}
+        </section>
+
+        <section className="glass-card overflow-hidden rounded-xl p-0 shadow-soft">
+          <div className="border-b border-[var(--border-color)] p-6 sm:p-7">
+            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-300">Compare plans</p>
+            <h2 className="mt-2 text-2xl font-semibold text-slate-950 dark:text-white">Choose by access, proof, and support.</h2>
           </div>
-        ))}
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] text-left text-sm">
+              <thead className="bg-black/[0.025] text-slate-700 dark:bg-white/[0.04] dark:text-slate-200">
+                <tr>
+                  {['Feature', 'Starter', 'Pro Learner', 'Institution'].map((heading) => (
+                    <th key={heading} className="px-6 py-4 font-semibold">{heading}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border-color)] text-slate-600 dark:text-slate-300">
+                {comparisons.map((row) => (
+                  <tr key={row[0]}>
+                    {row.map((cell, index) => (
+                      <td key={cell} className={`px-6 py-4 ${index === 0 ? 'font-semibold text-slate-950 dark:text-white' : ''}`}>{cell}</td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-[var(--border-color)] bg-slate-950 p-6 text-white shadow-glow sm:p-8">
+          <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-200">Need help deciding?</p>
+              <h2 className="mt-3 text-2xl font-semibold">Talk to support or browse the live course catalog.</h2>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+                Every pricing action now opens a working route, so learners can register, compare courses, or contact the team without hitting a dead button.
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Button variant="secondary" onClick={() => navigate('/contact')} className="border-white/20 bg-white/10 text-white hover:bg-white/15">
+                Contact Support
+              </Button>
+              <Button onClick={() => navigate('/explore')}>Browse Courses</Button>
+            </div>
+          </div>
+        </section>
       </div>
     </Shell>
   )
@@ -1006,12 +1430,48 @@ export function PricingPage() {
 
 export function PolicyPage({ type = 'privacy' }) {
   const terms = type === 'terms'
+  const sections = terms
+    ? [
+      ['Account responsibility', 'Use accurate account information, protect your credentials, and follow role-based access rules for learner, instructor, and admin areas.'],
+      ['Learning access', 'Course access, assessments, certificates, and premium features are provided according to the plan, enrollment, or institution agreement selected.'],
+      ['Platform conduct', 'Respect instructors, learners, content ownership, and community spaces. Misuse can limit access or require administrative review.'],
+    ]
+    : [
+      ['Data we protect', 'Profile details, authentication data, course progress, assessment records, certificates, settings, and support conversations are treated as private account data.'],
+      ['How it is used', 'Data powers secure login, protected dashboards, course recommendations, certificate verification, learner support, and platform reporting.'],
+      ['Security controls', 'Role-based access, JWT-backed sessions, restricted API flows, and environment-managed secrets support responsible platform operation.'],
+    ]
+
+  return (
+    <Shell eyebrow={terms ? 'Terms' : 'Privacy'} title={terms ? 'Clear Terms for Learning Access' : 'Privacy Built Around Learner Trust'} description={terms ? 'Understand the expectations that keep UptoSkills fair, secure, and useful for every role.' : 'A polished privacy summary for the account, progress, certificate, and support data handled by UptoSkills.'}>
+      <div className="space-y-8">
+        <section className="grid gap-5 md:grid-cols-3">
+          {sections.map(([title, text], index) => (
+            <FeatureTile
+              key={title}
+              icon={index === 0 ? LockKeyhole : index === 1 ? ShieldCheck : FileQuestion}
+              title={title}
+              text={text}
+              tone={index === 0 ? 'from-cyan-500 to-teal-600' : index === 1 ? 'from-emerald-500 to-teal-600' : 'from-orange-500 to-amber-500'}
+            />
+          ))}
+        </section>
+        <section className="rounded-xl border border-[var(--border-color)] bg-white/75 p-6 shadow-soft dark:bg-slate-950/45 sm:p-8">
+          <h2 className="text-2xl font-semibold text-slate-950 dark:text-white">Production-ready note</h2>
+          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+            This page is written as a premium product summary. Before public launch, the final legal version should be reviewed against the exact billing, data retention, and institution contract terms in use.
+          </p>
+        </section>
+      </div>
+    </Shell>
+  )
+
   return (
     <Shell eyebrow={terms ? 'Terms' : 'Privacy'} title={terms ? 'Terms and Conditions' : 'Privacy Policy'} description="Production policy pages for platform trust, compliance, and customer readiness.">
       <div className="glass-card space-y-4 p-8 text-slate-600 shadow-soft dark:text-slate-300">
         <p>We protect account, profile, learning progress, settings, and contact information using role-based API access.</p>
         <p>Use environment variables for secrets, JWT signing keys, PostgreSQL credentials, and production origins.</p>
-        <p>Replace placeholder legal text with reviewed policy content before public launch.</p>
+        <p>Review final legal language against live billing, data retention, and institution contract terms before public launch.</p>
       </div>
     </Shell>
   )
@@ -1023,9 +1483,28 @@ export function ContactPage() {
 
 export function CommunityTopicPage() {
   const { topicId } = useParams()
+  const title = topicId?.replaceAll('-', ' ') || 'Community topic'
+  return (
+    <Shell eyebrow="Community" title={title} description="A focused discussion space for announcements, peer help, and learning decisions around this topic.">
+      <div className="space-y-6">
+        <section className="grid gap-5 md:grid-cols-3">
+          <FeatureTile icon={MessageSquare} title="Discussion threads" text="Questions and replies are organized around the topic so learners can follow context quickly." tone="from-cyan-500 to-teal-600" />
+          <FeatureTile icon={Users} title="Peer answers" text="Learners can compare approaches, share resources, and keep study momentum visible." tone="from-emerald-500 to-teal-600" />
+          <FeatureTile icon={Bell} title="Topic updates" text="Announcements, deadlines, and live-session prompts can be attached to the topic." tone="from-orange-500 to-amber-500" />
+        </section>
+        <section className="rounded-xl border border-[var(--border-color)] bg-white/75 p-6 shadow-soft dark:bg-slate-950/45 sm:p-8">
+          <h2 className="text-2xl font-semibold text-slate-950 dark:text-white">Conversation-ready layout</h2>
+          <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+            This topic surface is prepared for threaded comments, moderation, and notification-backed community activity while still looking intentional before those live feeds are connected.
+          </p>
+        </section>
+      </div>
+    </Shell>
+  )
+
   return (
     <Shell eyebrow="Community" title={topicId?.replaceAll('-', ' ') || 'Topic'} description="A dedicated topic page for discussions, announcements, and replies.">
-      <div className="glass-card p-8 shadow-soft">Discussion threads are ready for backend comments integration.</div>
+      <div className="glass-card p-8 shadow-soft">Discussion threads, announcements, and moderation flows can be connected here.</div>
     </Shell>
   )
 }
@@ -1317,6 +1796,24 @@ export function AdminAddLearnerPage({ initialRole = 'intern' }) {
         </div>
 
         {isInstructor ? (
+          <div className="mt-6 rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-4">
+            <p className="text-sm font-semibold text-[var(--text-primary)]">Instructor onboarding checklist</p>
+            <div className="mt-3 grid gap-2 text-sm text-[var(--text-secondary)] md:grid-cols-3">
+              {[
+                ['Profile image', Boolean(form.avatarUrl)],
+                ['Expertise added', Boolean(form.expertise)],
+                ['Course assignment ready', Boolean(form.assignCourseId) || courses.length > 0],
+              ].map(([label, done]) => (
+                <span key={label} className="inline-flex items-center gap-2">
+                  <CheckCircle2 className={done ? 'text-emerald-500' : 'text-[var(--text-muted)]'} size={16} />
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {isInstructor ? (
           <div className="mt-6 grid gap-5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4 lg:grid-cols-[180px_1fr]">
             <div>
               <div className="grid aspect-square place-items-center overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-elevated)]">
@@ -1537,6 +2034,21 @@ export function AdminGenerateCertificatePage() {
       <div className="grid gap-6 xl:grid-cols-[0.45fr_1fr]">
         <form onSubmit={generateCertificate} className="admin-panel grid gap-4 p-5 sm:p-6">
           {status.message ? <AdminNotice type={status.type}>{status.message}</AdminNotice> : null}
+          <div className="rounded-lg border border-cyan-500/20 bg-cyan-500/10 p-4">
+            <p className="text-sm font-semibold text-[var(--text-primary)]">Issue checklist</p>
+            <div className="mt-3 grid gap-2 text-sm text-[var(--text-secondary)]">
+              {[
+                ['Learner selected', Boolean(certificate.userId)],
+                ['Course selected', Boolean(certificate.courseId)],
+                ['Certificate ID ready', Boolean(certificate.certificateNo)],
+              ].map(([label, done]) => (
+                <span key={label} className="inline-flex items-center gap-2">
+                  <CheckCircle2 className={done ? 'text-emerald-500' : 'text-[var(--text-muted)]'} size={16} />
+                  {label}
+                </span>
+              ))}
+            </div>
+          </div>
           <label className="admin-label">
             Select learner
             <select className="admin-input" value={certificate.userId} onChange={(event) => selectLearner(event.target.value)}>

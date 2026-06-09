@@ -1,4 +1,4 @@
-import { AlertCircle, CheckCircle2, Loader2, SearchX, X } from 'lucide-react'
+import { AlertCircle, ArrowRight, CheckCircle2, ClipboardCheck, Loader2, SearchX, X } from 'lucide-react'
 
 export function AdminPageHeader({ eyebrow, title, description, actions }) {
   return (
@@ -154,13 +154,18 @@ export function AdminToastStack({ toasts, onDismiss }) {
   )
 }
 
-export function AdminEmptyState({ title = 'No records found', message = 'Try changing filters or creating a new record.' }) {
+export function AdminEmptyState({ title = 'No records found', message = 'Try changing filters or creating a new record.', actionLabel, onAction }) {
   return (
     <div className="grid min-h-[180px] place-items-center rounded-lg border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] p-6 text-center">
       <div>
         <SearchX className="mx-auto text-[var(--text-muted)]" size={30} />
         <p className="mt-3 font-semibold text-[var(--text-primary)]">{title}</p>
         <p className="mt-1 text-sm text-[var(--text-secondary)]">{message}</p>
+        {actionLabel && onAction ? (
+          <button type="button" onClick={onAction} className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-[var(--brand-gradient)] px-4 text-sm font-semibold text-white shadow-soft transition active:scale-[0.98]">
+            {actionLabel} <ArrowRight size={16} />
+          </button>
+        ) : null}
       </div>
     </div>
   )
@@ -169,4 +174,62 @@ export function AdminEmptyState({ title = 'No records found', message = 'Try cha
 export function FieldError({ children }) {
   if (!children) return null
   return <span className="text-xs font-medium text-red-600 dark:text-red-200">{children}</span>
+}
+
+export function AdminStatusBadge({ value }) {
+  const label = String(value ?? '').trim()
+  const normalized = label.toUpperCase()
+  const tone = normalized.includes('APPROVED') || normalized.includes('PAID') || normalized.includes('PASSED') || normalized.includes('ISSUED') || normalized === 'YES' || normalized === 'TRUE'
+    ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-100'
+    : normalized.includes('PENDING') || normalized.includes('DUE') || normalized.includes('REVIEW')
+      ? 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-100'
+      : normalized.includes('REJECT') || normalized.includes('SUSPEND') || normalized.includes('FAILED') || normalized.includes('NO') || normalized === 'FALSE'
+        ? 'border-red-500/25 bg-red-500/10 text-red-700 dark:text-red-100'
+        : 'border-cyan-500/25 bg-cyan-500/10 text-cyan-700 dark:text-cyan-100'
+
+  return (
+    <span className={`inline-flex min-h-7 items-center rounded-full border px-2.5 text-xs font-semibold uppercase tracking-[0.08em] ${tone}`}>
+      {label || 'Unknown'}
+    </span>
+  )
+}
+
+export function AdminInsightStrip({ items = [] }) {
+  if (!items.length) return null
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {items.map((item) => {
+        const Icon = item.icon || ClipboardCheck
+        return (
+          <div key={item.label} className="admin-panel p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">{item.label}</p>
+              <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">
+                <Icon size={17} />
+              </span>
+            </div>
+            <p className="mt-3 text-xl font-semibold text-[var(--text-primary)]">{item.value}</p>
+            {item.detail ? <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{item.detail}</p> : null}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+export function AdminGuidancePanel({ title, items = [] }) {
+  if (!items.length) return null
+  return (
+    <div className="admin-panel p-4">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">{title}</p>
+      <div className="mt-3 grid gap-2 md:grid-cols-3">
+        {items.map((item) => (
+          <div key={item} className="theme-subcard flex items-start gap-2 rounded-lg p-3 text-sm text-[var(--text-secondary)]">
+            <CheckCircle2 className="mt-0.5 shrink-0 text-emerald-500" size={16} />
+            <span>{item}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate, Outlet } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchMe } from '../api/api.js'
 import { login, logout } from '../store/slices/authSlice.js'
@@ -7,8 +7,10 @@ import { login, logout } from '../store/slices/authSlice.js'
 export default function ProtectedRoute({ allowedRoles, redirectTo = '/login' }) {
   const auth = useSelector((state) => state.auth)
   const dispatch = useDispatch()
+  const location = useLocation()
   const [status, setStatus] = useState(auth.token ? 'checking' : 'guest')
   const rolesKey = allowedRoles?.join('|') || ''
+  const loginPath = `${redirectTo}?next=${encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)}`
 
   useEffect(() => {
     let active = true
@@ -46,11 +48,11 @@ export default function ProtectedRoute({ allowedRoles, redirectTo = '/login' }) 
   }, [auth.token, dispatch, rolesKey])
 
   if (!auth.user || !auth.token) {
-    return <Navigate to={redirectTo} replace />
+    return <Navigate to={loginPath} replace />
   }
 
   if (allowedRoles && !allowedRoles.includes(auth.role)) {
-    return <Navigate to={redirectTo} replace />
+    return <Navigate to={loginPath} replace />
   }
 
   if (status !== 'verified') {

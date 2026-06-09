@@ -3,14 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import {
   BarChart3,
-  BookOpenCheck,
   Brain,
   Check,
   ChevronDown,
   Cloud,
   Code2,
   Database,
-  GraduationCap,
   Grid2X2,
   Layers3,
   Search,
@@ -196,7 +194,7 @@ export default function ExploreCoursesPage() {
 
   const activeFilterCount = [query.trim(), selectedCategory !== 'All', selectedLevel !== 'All', selectedPrice !== 'All', minimumRating > 0].filter(Boolean).length
   const filterPanel = (
-    <div className="enterprise-glass-panel space-y-5 rounded-none border-0 p-5 shadow-none xl:min-h-full xl:rounded-xl xl:border xl:border-[var(--border-color)] xl:shadow-soft">
+    <div className="course-filter-panel enterprise-glass-panel space-y-5 rounded-none border-0 p-5 shadow-none xl:min-h-full xl:rounded-xl xl:border xl:border-[var(--border-color)] xl:shadow-soft">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">Filters</p>
         <button type="button" onClick={resetFilters} className="text-xs font-semibold text-[var(--accent-primary)]">Clear all</button>
@@ -258,10 +256,10 @@ export default function ExploreCoursesPage() {
   )
 
   return (
-    <motion.section className="h-full min-h-0 overflow-hidden" variants={fadeInUp} initial="hidden" animate="visible">
+    <motion.section className="courses-page h-full min-h-0 overflow-hidden" variants={fadeInUp} initial="hidden" animate="visible">
       <div className="grid h-full min-h-0 overflow-hidden xl:grid-cols-[17.5rem_minmax(0,1fr)]">
-        <aside className="hidden h-full min-h-0 overflow-hidden border-r border-[var(--border-color)] bg-[var(--bg-secondary)] p-3 xl:block">
-          <div className="h-full overflow-y-auto overscroll-contain pr-1">
+        <aside className="hidden h-full min-h-0 flex-col overflow-hidden border-r border-[var(--border-color)] bg-[var(--bg-secondary)] p-3 xl:flex">
+          <div className="admin-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">
             {filterPanel}
           </div>
         </aside>
@@ -283,8 +281,8 @@ export default function ExploreCoursesPage() {
         <div className="h-full min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-4 sm:px-5 lg:px-6">
           <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_18rem] 2xl:grid-cols-[minmax(0,1fr)_20rem]">
             <div className="min-w-0 space-y-5">
-          <section className="enterprise-mesh-panel rounded-xl border border-[var(--border-color)] p-5 shadow-soft sm:p-6">
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:items-center">
+          <section className="course-hero-panel enterprise-mesh-panel rounded-xl border border-[var(--border-color)] p-5 shadow-soft sm:p-6">
+            <div className="grid gap-6">
               <div>
                 <p className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-[var(--accent-primary)]">
                   <Sparkles size={14} /> Explore courses
@@ -305,17 +303,6 @@ export default function ExploreCoursesPage() {
                   />
                 </label>
               </div>
-              <div className="enterprise-orbit-visual hidden h-52 place-items-center rounded-xl lg:grid">
-                <div className="relative grid h-32 w-32 place-items-center rounded-3xl bg-[var(--bg-card)] shadow-soft">
-                  <GraduationCap size={56} className="text-[var(--accent-primary)]" />
-                  <span className="absolute -right-4 top-7 rounded-2xl bg-[var(--accent-soft)] p-3 text-[var(--accent-primary)] shadow-soft">
-                    <BookOpenCheck size={20} />
-                  </span>
-                  <span className="absolute -bottom-4 left-4 rounded-2xl bg-[var(--accent-soft)] p-3 text-[var(--accent-primary)] shadow-soft">
-                    <Sparkles size={18} />
-                  </span>
-                </div>
-              </div>
             </div>
 
             <div className="mt-6 grid gap-3 sm:grid-cols-4">
@@ -329,9 +316,9 @@ export default function ExploreCoursesPage() {
           {notice ? <p className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-100">{notice}</p> : null}
           {error ? <p className="rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-100">{error}</p> : null}
 
-          <section className="enterprise-glass-panel rounded-xl p-4 shadow-soft">
-            <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-              <div className="flex flex-wrap items-center gap-2">
+          <section className="course-toolbar-panel enterprise-glass-panel rounded-xl p-4 shadow-soft">
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
                 <span className="mr-2 text-xs font-bold text-[var(--text-primary)]">Trending Searches:</span>
                 {trendingSearches.map((tag) => (
                   <button
@@ -344,22 +331,29 @@ export default function ExploreCoursesPage() {
                   </button>
                 ))}
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex shrink-0 items-center gap-2">
                 <Button variant="secondary" onClick={() => setFiltersOpen((value) => !value)} className="xl:hidden">
                   {filtersOpen ? <X size={16} className="mr-2" /> : <SlidersHorizontal size={16} className="mr-2" />}
                   Filters {activeFilterCount ? `(${activeFilterCount})` : ''}
                 </Button>
-                <label className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] px-3 text-xs font-semibold text-[var(--text-primary)]">
-                  Sort by:
-                  <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="min-h-0 border-0 bg-transparent p-0 text-xs outline-none">
-                    <option value="popular">Most Popular</option>
-                    <option value="rating">Highest Rated</option>
-                    <option value="price-low">Lowest Price</option>
-                    <option value="newest">Newest</option>
-                  </select>
-                  <ChevronDown size={14} />
-                </label>
-                <span className="hidden rounded-lg bg-[var(--accent-soft)] p-2 text-[var(--accent-primary)] sm:grid">
+                <div className="flex min-h-10 items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] px-3 shadow-sm">
+                  <span className="whitespace-nowrap text-xs font-semibold text-[var(--text-muted)]">Sort by</span>
+                  <label className="relative">
+                    <span className="sr-only">Sort courses by</span>
+                    <select
+                      value={sortBy}
+                      onChange={(event) => setSortBy(event.target.value)}
+                      className="min-h-0 w-32 appearance-none border-0 bg-transparent py-1 pl-0 pr-6 text-sm font-semibold text-[var(--text-primary)] outline-none"
+                    >
+                      <option value="popular">Most Popular</option>
+                      <option value="rating">Highest Rated</option>
+                      <option value="price-low">Lowest Price</option>
+                      <option value="newest">Newest</option>
+                    </select>
+                    <ChevronDown className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={15} />
+                  </label>
+                </div>
+                <span className="hidden h-10 w-10 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)] sm:grid">
                   <Grid2X2 size={18} />
                 </span>
               </div>
@@ -395,7 +389,7 @@ export default function ExploreCoursesPage() {
         </div>
 
         <aside className="hidden xl:block">
-          <section className="enterprise-glass-panel sticky top-0 grid gap-4 rounded-xl p-4 shadow-soft">
+          <section className="course-right-rail enterprise-glass-panel sticky top-0 grid gap-4 rounded-xl p-4 shadow-soft">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-bold text-[var(--text-primary)]">Popular Areas</p>
@@ -424,7 +418,7 @@ export default function ExploreCoursesPage() {
                 )
               })}
             </div>
-            <div className="grid gap-3 rounded-xl bg-[var(--bg-subtle)] p-4">
+            <div className="course-paths-promo grid gap-3 rounded-xl bg-[var(--bg-subtle)] p-4">
               <div>
                 <p className="text-xs text-[var(--text-secondary)]">Become job-ready with</p>
                 <p className="text-lg font-bold text-[var(--text-primary)]">skill paths</p>

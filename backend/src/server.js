@@ -89,10 +89,44 @@ app.use('/uploads', express.static(uploadsDir, {
     if (!filePath.endsWith('.html')) return
     res.setHeader(
       'Content-Security-Policy',
-      "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; media-src 'self' data: blob:; frame-ancestors 'self' http://localhost:4000 http://localhost:5173",
+      "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; media-src 'self' data: blob:; frame-ancestors 'self' http://localhost:4000 http://localhost:5173 http://localhost:5174",
     )
   },
 }))
+
+app.get('/uploads/:fileName', async (req, res, next) => {
+  try {
+    const fileName = String(req.params.fileName || '')
+    if (!/^ai-video-[a-z0-9-]+\.html$/i.test(fileName)) return next()
+
+    const uploadUrl = `/uploads/${fileName}`
+    let lesson = await prisma.lesson.findFirst({
+      where: { videoUrl: uploadUrl },
+      include: { course: { select: { title: true, thumbnailUrl: true, createdBy: { select: { name: true } } } } },
+    })
+
+    if (!lesson) {
+      const aiLessons = await prisma.lesson.findMany({
+        include: { course: { select: { title: true, thumbnailUrl: true, createdBy: { select: { name: true } } } } },
+        take: 500,
+      })
+      lesson = aiLessons.find((item) => {
+        const variants = item.quizJson?.aiVideo?.instructorVideos
+        return Array.isArray(variants) && variants.some((variant) => variant?.videoUrl === uploadUrl)
+      })
+    }
+
+    if (!lesson) return next()
+
+    res.setHeader(
+      'Content-Security-Policy',
+      "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; media-src 'self' data: blob:; frame-ancestors 'self' http://localhost:4000 http://localhost:5173 http://localhost:5174",
+    )
+    res.type('html').send(renderAiLessonFallbackHtml(lesson, uploadUrl))
+  } catch (error) {
+    next(error)
+  }
+})
 app.use(requestLogger)
 app.use('/api/auth', rateLimit({
   windowMs: rateLimitWindowMs,
@@ -213,6 +247,87 @@ app.post('/api/contact', async (req, res, next) => {
     next(error)
   }
 })
+
+function escapeHtml(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+function renderAiLessonFallbackHtml(lesson, uploadUrl) {
+  const aiVideo = lesson.quizJson?.aiVideo || {}
+  const variants = Array.isArray(aiVideo.instructorVideos) ? aiVideo.instructorVideos : []
+  const activeVariant = variants.find((variant) => variant?.videoUrl === uploadUrl) || variants[0] || {}
+  const title = lesson.title || 'AI narrated lesson'
+  const courseTitle = lesson.course?.title || 'Course lesson'
+  const instructorName = activeVariant.instructorName || lesson.course?.createdBy?.name || 'Generated narrator'
+  const script = aiVideo.script || lesson.description || 'Narration script is not available for this generated lesson.'
+  const imageUrl = activeVariant.imageUrl || lesson.course?.thumbnailUrl || '/favicon.svg'
+  const payload = JSON.stringify({ title, courseTitle, instructorName, script }).replace(/</g, '\\u003c')
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>${escapeHtml(title)}</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: #020617; color: #f8fafc; display: grid; place-items: center; }
+    main { width: min(100vw, 1280px); aspect-ratio: 16 / 9; overflow: hidden; background: radial-gradient(circle at 16% 10%, rgba(6,182,212,.24), transparent 30%), #020617; display: grid; grid-template-columns: minmax(0, .82fr) minmax(20rem, .5fr); }
+    .stage { position: relative; display: grid; place-items: center; padding: 48px; }
+    .avatar { width: min(34vw, 320px); aspect-ratio: 1; overflow: hidden; border-radius: 28px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.06); box-shadow: 0 24px 80px rgba(8,145,178,.24); }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .panel { border-left: 1px solid rgba(255,255,255,.12); background: rgba(15,23,42,.86); padding: 34px; display: flex; flex-direction: column; justify-content: center; }
+    .eyebrow { color: #67e8f9; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; font-weight: 900; }
+    h1 { margin: 12px 0 0; font-size: clamp(24px, 3vw, 42px); line-height: 1.06; }
+    .course { margin-top: 12px; color: rgba(248,250,252,.72); font-size: 14px; line-height: 1.6; }
+    .script { margin-top: 22px; max-height: 170px; overflow: auto; color: rgba(248,250,252,.78); font-size: 14px; line-height: 1.7; }
+    button { margin-top: 24px; width: fit-content; border: 0; border-radius: 12px; background: #f8fafc; color: #020617; padding: 12px 16px; font-weight: 900; cursor: pointer; }
+    .status { min-height: 18px; margin-top: 12px; color: rgba(248,250,252,.56); font-size: 12px; }
+    @media (max-width: 820px) {
+      main { min-height: 100vh; aspect-ratio: auto; grid-template-columns: 1fr; }
+      .panel { border-left: 0; border-top: 1px solid rgba(255,255,255,.12); }
+      .avatar { width: min(58vw, 280px); }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="stage">
+      <div class="avatar"><img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(instructorName)}" /></div>
+    </section>
+    <section class="panel">
+      <p class="eyebrow">${escapeHtml(instructorName)} narration</p>
+      <h1>${escapeHtml(title)}</h1>
+      <p class="course">${escapeHtml(courseTitle)}</p>
+      <div class="script">${escapeHtml(script)}</div>
+      <button type="button" id="play">Preview narration</button>
+      <p class="status" id="status">Generated lesson fallback loaded from saved course metadata.</p>
+    </section>
+  </main>
+  <script>
+    const lesson = ${payload};
+    document.getElementById('play').addEventListener('click', () => {
+      if (!('speechSynthesis' in window)) {
+        document.getElementById('status').textContent = 'Speech preview is not available in this browser.';
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(lesson.script);
+      utterance.rate = 1;
+      utterance.pitch = 1.02;
+      document.getElementById('status').textContent = 'Preview narration playing.';
+      window.speechSynthesis.speak(utterance);
+    });
+  </script>
+</body>
+</html>`
+}
 
 app.get('/api/learner/dashboard', requireAuth, async (req, res, next) => {
   try {

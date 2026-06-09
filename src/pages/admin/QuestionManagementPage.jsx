@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Edit3, Plus, Search, Trash2, Upload } from 'lucide-react'
+import { BarChart3, ClipboardCheck, Edit3, Plus, Search, Tags, Trash2, Upload } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
-import { AdminEmptyState, AdminLoadingState, AdminNotice, AdminPageHeader, FieldError } from '../../components/admin/AdminUI.jsx'
+import { AdminEmptyState, AdminGuidancePanel, AdminInsightStrip, AdminLoadingState, AdminNotice, AdminPageHeader, FieldError } from '../../components/admin/AdminUI.jsx'
 import { QuestionPreview } from '../../components/questions/QuestionRenderer.jsx'
 import { DIFFICULTY_LABELS, QUESTION_TYPE_LABELS, emptyQuestion, normalizeQuestionForForm } from '../../components/questions/questionUtils.js'
 import { bulkImportQuestions, createQuestion, deleteQuestion, fetchAdminCourses, fetchQuestions, updateQuestion } from '../../api/api.js'
@@ -23,6 +23,7 @@ export default function QuestionManagementPage() {
   const [showImport, setShowImport] = useState(false)
   const [importText, setImportText] = useState('')
   const [importCourseId, setImportCourseId] = useState('')
+  const [selectedQuestionIds, setSelectedQuestionIds] = useState([])
 
   const selectedFilterCourseId = filters.courseId !== 'ALL' ? filters.courseId : ''
   const newDraft = (courseId = selectedFilterCourseId) => ({ ...emptyQuestion(), courseId })
@@ -67,6 +68,18 @@ export default function QuestionManagementPage() {
   }, [filters.search, filters.type, filters.difficulty, filters.courseId, filters.page, filters.pageSize])
 
   const previewQuestion = useMemo(() => normalizeQuestionForForm(form), [form])
+  const questionMetrics = useMemo(() => {
+    const descriptive = questions.filter((question) => question.type === 'DESCRIPTIVE').length
+    const mcq = questions.filter((question) => String(question.type).includes('MCQ')).length
+    const hard = questions.filter((question) => question.difficulty === 'HARD').length
+    const courseCoverage = new Set(questions.map((question) => question.course?.id || question.courseId).filter(Boolean)).size
+    return [
+      { label: 'Visible questions', value: questions.length, detail: `${pagination.total} total in filter`, icon: ClipboardCheck },
+      { label: 'MCQ coverage', value: mcq, detail: 'auto-gradable items', icon: BarChart3 },
+      { label: 'Manual review', value: descriptive, detail: 'descriptive questions', icon: Edit3 },
+      { label: 'Hard questions', value: hard, detail: `${courseCoverage} course${courseCoverage === 1 ? '' : 's'} covered`, icon: Tags },
+    ]
+  }, [pagination.total, questions])
 
   function update(key, value) {
     if (key === 'type') {
@@ -165,6 +178,15 @@ export default function QuestionManagementPage() {
     await loadQuestions()
   }
 
+  async function bulkRemoveSelected() {
+    if (!selectedQuestionIds.length) return
+    if (!window.confirm(`Delete ${selectedQuestionIds.length} selected question${selectedQuestionIds.length === 1 ? '' : 's'}?`)) return
+    await Promise.all(selectedQuestionIds.map((id) => deleteQuestion(id)))
+    setSelectedQuestionIds([])
+    setNotice({ type: 'success', message: 'Selected questions deleted.' })
+    await loadQuestions()
+  }
+
   async function importQuestions() {
     try {
       if (!importCourseId) {
@@ -197,6 +219,16 @@ export default function QuestionManagementPage() {
         actions={<Button variant="secondary" onClick={() => setShowImport((current) => !current)}><Upload size={16} /> Bulk Import</Button>}
       />
       <AdminNotice type={notice.type || 'info'}>{notice.message}</AdminNotice>
+
+      <AdminInsightStrip items={questionMetrics} />
+      <AdminGuidancePanel
+        title="Assessment bank workflow"
+        items={[
+          'Use course, type, and difficulty filters before bulk operations.',
+          'Preview every question before publishing it into assessments.',
+          'Keep a balanced mix of easy, medium, and hard questions per course.',
+        ]}
+      />
 
       {showImport ? (
         <div className="admin-panel p-5">
@@ -356,6 +388,15 @@ export default function QuestionManagementPage() {
                 {difficulties.map((difficulty) => <option key={difficulty} value={difficulty}>{DIFFICULTY_LABELS[difficulty]}</option>)}
               </select>
             </div>
+            {selectedQuestionIds.length ? (
+              <div className="mt-4 flex flex-col gap-3 rounded-lg border border-orange-400/30 bg-orange-500/10 p-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-sm font-semibold text-[var(--text-primary)]">{selectedQuestionIds.length} question{selectedQuestionIds.length === 1 ? '' : 's'} selected for bulk action</p>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="secondary" onClick={() => setSelectedQuestionIds([])}>Clear</Button>
+                  <Button type="button" variant="secondary" onClick={bulkRemoveSelected}><Trash2 size={16} /> Delete selected</Button>
+                </div>
+              </div>
+            ) : null}
           </div>
 
           {loading ? <AdminLoadingState label="Loading questions..." /> : null}
@@ -367,6 +408,14 @@ export default function QuestionManagementPage() {
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap gap-2 text-xs">
+                      <label className="inline-flex items-center gap-2 rounded-lg bg-[var(--bg-subtle)] px-2 py-1 text-[var(--text-muted)]">
+                        <input
+                          type="checkbox"
+                          checked={selectedQuestionIds.includes(question.id)}
+                          onChange={(event) => setSelectedQuestionIds((current) => event.target.checked ? [...new Set([...current, question.id])] : current.filter((id) => id !== question.id))}
+                        />
+                        Select
+                      </label>
                       <span className="rounded-lg bg-cyan-400/10 px-2 py-1 font-semibold text-cyan-700 dark:text-cyan-200">{QUESTION_TYPE_LABELS[question.type]}</span>
                       <span className="rounded-lg bg-blue-500/10 px-2 py-1 font-semibold text-blue-700 dark:text-blue-200">{question.course?.title || 'No course'}</span>
                       <span className="rounded-lg bg-[var(--bg-subtle)] px-2 py-1 text-[var(--text-muted)]">{DIFFICULTY_LABELS[question.difficulty]}</span>

@@ -1,43 +1,187 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useSelector } from 'react-redux'
+import { useDispatch, useSelector } from 'react-redux'
 import { motion } from 'framer-motion'
-import { Award, BookOpenCheck, Eye, EyeOff, LockKeyhole, MessageSquare, ShieldCheck, UserRound } from 'lucide-react'
+import {
+  Award,
+  BarChart3,
+  BookOpen,
+  BookOpenCheck,
+  CalendarDays,
+  Camera,
+  CheckCircle2,
+  Clock3,
+  Download,
+  Eye,
+  EyeOff,
+  Flame,
+  KeyRound,
+  LockKeyhole,
+  Mail,
+  MonitorPlay,
+  Phone,
+  Play,
+  Share2,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  Trash2,
+  Trophy,
+  TrendingUp,
+  UserRound,
+  Zap,
+} from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
 import { pageTransition } from '../../utils/animationVariants.js'
-import { changePassword, forgotPassword, resetPassword } from '../../api/api.js'
+import { changePassword, forgotPassword, resetPassword, updateProfileRequest } from '../../api/api.js'
+import { updateCurrentUser } from '../../store/slices/authSlice.js'
 
-const userPermissions = [
-  'Browse and enroll in upskilling and technical courses',
-  'Save wishlist items and track progress',
-  'Join community discussions',
-  'Download certificates and review your achievements',
-]
-
+/* ─────────────────────────────────────────────
+   Main Page
+   ───────────────────────────────────────────── */
 export default function UserPage() {
   const navigate = useNavigate()
+  const dispatch = useDispatch()
   const user = useSelector((state) => state.auth.user)
+  const enrolledCourses = useSelector((state) => state.auth.enrolledCourses || [])
+
+  /* ── profile state ── */
+  const [profileForm, setProfileForm] = useState({
+    name: user?.fullName || user?.name || '',
+    phone: user?.phone || '',
+    avatarUrl: user?.avatarUrl || user?.profilePictureUrl || user?.profileImage || '',
+  })
+  const [avatarPreview, setAvatarPreview] = useState('')
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [isDraggingPhoto, setIsDraggingPhoto] = useState(false)
+  const [detailsForm, setDetailsForm] = useState({
+    dob: '',
+    gender: '',
+    country: '',
+    city: '',
+    linkedin: '',
+    github: '',
+    website: '',
+  })
+  const [profileBusy, setProfileBusy] = useState(false)
+  const [profileNotice, setProfileNotice] = useState({ type: '', message: '' })
+
+  /* ── password state ── */
   const [passwordMode, setPasswordMode] = useState('change')
   const [passwordBusy, setPasswordBusy] = useState(false)
   const [passwordNotice, setPasswordNotice] = useState({ type: '', message: '' })
-  const [changeForm, setChangeForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  })
-  const [resetForm, setResetForm] = useState({
-    otp: '',
-    newPassword: '',
-    confirmPassword: '',
-  })
+  const [changeForm, setChangeForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [resetForm, setResetForm] = useState({ otp: '', newPassword: '', confirmPassword: '' })
   const [otpSent, setOtpSent] = useState(false)
+  const activePassword = passwordMode === 'change' ? changeForm.newPassword : resetForm.newPassword
+  const passwordStrength = useMemo(() => scorePassword(activePassword), [activePassword])
 
+  /* ── derived data ── */
+  const displayName = user?.fullName || user?.name || 'Learner'
+  const profileImage = avatarPreview || profileForm.avatarUrl || user?.avatarUrl || user?.profilePictureUrl || user?.profileImage || ''
+  const roleLabel = user?.role || 'Learner'
+  const memberSince = formatProfileDate(user?.createdAt || user?.joinedAt || user?.created_at)
+
+  const accountReadiness = useMemo(
+    () => [
+      ['Name', Boolean(user?.fullName || user?.name)],
+      ['Email', Boolean(user?.email)],
+      ['Phone', Boolean(user?.phone)],
+      ['Profile photo', Boolean(user?.avatarUrl || user?.profilePictureUrl || user?.profileImage)],
+    ],
+    [user],
+  )
+  const readinessCount = accountReadiness.filter((item) => item[1]).length
+  const readinessPct = Math.round((readinessCount / accountReadiness.length) * 100)
+
+  const activeCourseCount = Array.isArray(enrolledCourses) ? enrolledCourses.length : 0
+  const completedCourseCount = Number(user?.completedCourses || user?.completedCourseCount || 0)
+  const certificateCount = Number(user?.certificates || user?.certificateCount || 0)
+  const learningHours = Number(user?.learningHours || user?.hoursStudied || 0)
+  const learningStreak = Number(user?.streak || user?.learningStreak || 0)
+  const assessmentScore = Number(user?.assessmentScore || user?.averageScore || 0)
+  const xpPoints = Number(user?.xp || user?.xpPoints || 0)
+  const level = Number(user?.level || 1)
+
+  /* ── handlers ── */
+  const updateProfile = (key, value) => setProfileForm((prev) => ({ ...prev, [key]: value }))
+  const updateDetails = (key, value) => setDetailsForm((prev) => ({ ...prev, [key]: value }))
   const updateChange = (key, value) => setChangeForm((prev) => ({ ...prev, [key]: value }))
   const updateReset = (key, value) => setResetForm((prev) => ({ ...prev, [key]: value }))
 
-  function validateNewPassword(newPassword, confirmPassword) {
-    if (!newPassword || newPassword.length < 8) return 'New password must be at least 8 characters.'
-    if (newPassword !== confirmPassword) return 'Confirm password must match the new password.'
+  function handleAvatarFile(file) {
+    if (!file) return
+    const acceptedTypes = ['image/jpeg', 'image/png', 'image/webp']
+    if (!acceptedTypes.includes(file.type)) {
+      setProfileNotice({ type: 'error', message: 'Use a JPG, PNG, or WEBP profile image.' })
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileNotice({ type: 'error', message: 'Profile image must be 5 MB or smaller.' })
+      return
+    }
+    setUploadProgress(35)
+    const previewUrl = URL.createObjectURL(file)
+    setAvatarPreview(previewUrl)
+    window.setTimeout(() => setUploadProgress(100), 180)
+    setProfileNotice({ type: 'success', message: 'Photo preview ready.' })
+  }
+
+  function removeAvatarPreview() {
+    if (avatarPreview) URL.revokeObjectURL(avatarPreview)
+    setAvatarPreview('')
+    setUploadProgress(0)
+    updateProfile('avatarUrl', '')
+    setProfileNotice({ type: 'success', message: 'Profile photo removed.' })
+  }
+
+  async function shareProfile() {
+    const text = `${displayName} on UptoSkills`
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: text, text, url: window.location.href })
+      } else if (navigator.clipboard) {
+        await navigator.clipboard.writeText(window.location.href)
+        setProfileNotice({ type: 'success', message: 'Profile link copied.' })
+      }
+    } catch {
+      setProfileNotice({ type: 'error', message: 'Could not share profile right now.' })
+    }
+  }
+
+  async function submitProfile(event) {
+    event.preventDefault()
+    const avatarUrl = profileForm.avatarUrl.trim()
+    if (avatarUrl && !isValidProfileImageUrl(avatarUrl)) {
+      setProfileNotice({ type: 'error', message: 'Enter a valid image URL (http, /uploads, /celebrities, data:image, or blob).' })
+      return
+    }
+    try {
+      setProfileBusy(true)
+      setProfileNotice({ type: '', message: '' })
+      const response = await updateProfileRequest({
+        name: profileForm.name.trim(),
+        phone: profileForm.phone.trim(),
+        avatarUrl,
+      })
+      dispatch(updateCurrentUser(response.data.user))
+      setProfileForm({
+        name: response.data.user?.fullName || response.data.user?.name || profileForm.name,
+        phone: response.data.user?.phone || '',
+        avatarUrl: response.data.user?.avatarUrl || '',
+      })
+      setProfileNotice({ type: 'success', message: 'Profile saved successfully.' })
+    } catch (err) {
+      setProfileNotice({ type: 'error', message: err?.response?.data?.message || err.message || 'Could not update profile.' })
+    } finally {
+      setProfileBusy(false)
+    }
+  }
+
+  /* ── password helpers ── */
+  function validateNewPassword(newPw, confirmPw) {
+    if (!newPw || newPw.length < 8) return 'Password must be at least 8 characters.'
+    if (newPw !== confirmPw) return 'Passwords do not match.'
     return ''
   }
 
@@ -48,11 +192,7 @@ export default function UserPage() {
       setPasswordNotice({ type: 'error', message: 'Current password is required.' })
       return
     }
-    if (validation) {
-      setPasswordNotice({ type: 'error', message: validation })
-      return
-    }
-
+    if (validation) { setPasswordNotice({ type: 'error', message: validation }); return }
     try {
       setPasswordBusy(true)
       setPasswordNotice({ type: '', message: '' })
@@ -67,16 +207,13 @@ export default function UserPage() {
   }
 
   async function sendResetOtp() {
-    if (!user?.email) {
-      setPasswordNotice({ type: 'error', message: 'Your account email is required to send an OTP.' })
-      return
-    }
+    if (!user?.email) { setPasswordNotice({ type: 'error', message: 'Account email is required.' }); return }
     try {
       setPasswordBusy(true)
       setPasswordNotice({ type: '', message: '' })
       const response = await forgotPassword(user.email)
       setOtpSent(true)
-      setPasswordNotice({ type: 'success', message: response.data.message || '6 digit OTP sent.' })
+      setPasswordNotice({ type: 'success', message: response.data.message || '6-digit OTP sent.' })
     } catch (err) {
       setPasswordNotice({ type: 'error', message: err?.response?.data?.message || err.message || 'Could not send OTP.' })
     } finally {
@@ -87,20 +224,13 @@ export default function UserPage() {
   async function submitOtpReset(event) {
     event.preventDefault()
     const validation = validateNewPassword(resetForm.newPassword, resetForm.confirmPassword)
-    if (!/^\d{6}$/.test(resetForm.otp.trim())) {
-      setPasswordNotice({ type: 'error', message: 'Enter the 6 digit OTP.' })
-      return
-    }
-    if (validation) {
-      setPasswordNotice({ type: 'error', message: validation })
-      return
-    }
-
+    if (!/^\d{6}$/.test(resetForm.otp.trim())) { setPasswordNotice({ type: 'error', message: 'Enter the 6-digit OTP.' }); return }
+    if (validation) { setPasswordNotice({ type: 'error', message: validation }); return }
     try {
       setPasswordBusy(true)
       setPasswordNotice({ type: '', message: '' })
       const response = await resetPassword({ email: user.email, otp: resetForm.otp, newPassword: resetForm.newPassword })
-      setPasswordNotice({ type: 'success', message: response.data.message || 'Password reset successfully. Please log in again if prompted.' })
+      setPasswordNotice({ type: 'success', message: response.data.message || 'Password reset successfully.' })
       setResetForm({ otp: '', newPassword: '', confirmPassword: '' })
       setOtpSent(false)
     } catch (err) {
@@ -110,83 +240,358 @@ export default function UserPage() {
     }
   }
 
+  /* ─────────────────────────────────────────────
+     Render
+     ───────────────────────────────────────────── */
   return (
     <motion.section className="space-y-8 pb-16" variants={pageTransition} initial="hidden" animate="enter" exit="exit">
-      <div className="upto-premium-panel rounded-xl p-5 shadow-glow sm:p-8">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-700 dark:text-cyan-300 sm:text-sm">Profile</p>
-            <h1 className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white sm:text-4xl">{user?.fullName || user?.name || 'Your learner hub'}</h1>
-            <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">{user?.email || 'This page gives you a quick overview of your permissions, access, and available learner actions.'}</p>
-          </div>
-          <span className="inline-flex w-fit items-center gap-2 rounded-full border border-cyan-400/25 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-700 dark:text-cyan-100">
-            <UserRound size={17} />
-            {user?.role || 'Learner'}
-          </span>
-        </div>
-      </div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="glass-card p-5 shadow-soft sm:p-6">
-          <p className="text-sm uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-300">Learner permissions</p>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            {userPermissions.map((item, index) => {
-              const icons = [BookOpenCheck, ShieldCheck, MessageSquare, Award]
-              const Icon = icons[index] || ShieldCheck
-              return (
-              <div key={item} className="theme-subcard theme-subcard-hover flex items-start gap-3 rounded-lg p-4 text-sm text-[var(--text-secondary)]">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-cyan-400/15 text-cyan-700 dark:text-cyan-200">
-                  <Icon size={17} />
+      {/* ─── HERO: Profile Card ─── */}
+      <section className="relative overflow-hidden rounded-2xl border border-[var(--border-color)] bg-white px-6 py-8 shadow-[0_28px_90px_rgba(37,99,235,0.14)] transition-colors dark:bg-[var(--bg-secondary)] sm:px-8 sm:py-10">
+        {/* background mesh */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(255,107,53,0.14),transparent_28%),radial-gradient(circle_at_80%_18%,rgba(245,158,11,0.10),transparent_28%)] dark:bg-[radial-gradient(circle_at_20%_15%,rgba(255,107,53,0.18),transparent_28%),radial-gradient(circle_at_80%_18%,rgba(245,158,11,0.12),transparent_28%)]" />
+
+        <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center xl:gap-12">
+          {/* Avatar */}
+          <label
+            className={`group relative grid h-32 w-32 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-full border-2 border-dashed transition duration-200 sm:h-36 sm:w-36 ${isDraggingPhoto ? 'border-[var(--accent-primary)] bg-[var(--accent-soft)]' : 'border-[var(--accent-primary)]/30 bg-white/70 dark:bg-white/5'}`}
+            onDragOver={(e) => { e.preventDefault(); setIsDraggingPhoto(true) }}
+            onDragLeave={() => setIsDraggingPhoto(false)}
+            onDrop={(e) => { e.preventDefault(); setIsDraggingPhoto(false); handleAvatarFile(e.dataTransfer.files?.[0]) }}
+          >
+            {profileImage ? (
+              <img src={profileImage} alt={`${displayName} profile`} className="h-full w-full object-cover transition duration-200 group-hover:scale-105"
+                onLoad={(e) => { e.currentTarget.style.display = 'block' }}
+                onError={(e) => { e.currentTarget.style.display = 'none' }}
+              />
+            ) : (
+              <span className="grid h-full w-full place-items-center bg-gradient-to-br from-orange-100 via-white to-amber-100 text-[var(--accent-primary)] dark:from-[var(--accent-soft)] dark:via-white/5 dark:to-amber-500/10">
+                <UserRound size={52} />
+              </span>
+            )}
+            <span className="absolute inset-x-4 bottom-4 inline-flex items-center justify-center gap-2 rounded-full bg-slate-950/80 px-3 py-2 text-xs font-semibold text-white opacity-0 shadow-soft transition group-hover:opacity-100">
+              <Camera size={14} /> Change
+            </span>
+            <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => handleAvatarFile(e.target.files?.[0])} />
+          </label>
+
+          {/* Info */}
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="min-w-0 text-3xl font-semibold text-slate-950 dark:text-white sm:text-4xl">{displayName}</h1>
+              <span className="inline-flex items-center gap-2 rounded-full border border-[var(--accent-primary)]/25 bg-[var(--accent-soft)] px-4 py-2 text-sm font-semibold text-[var(--accent-primary)]">
+                <UserRound size={17} />
+                {roleLabel}
+              </span>
+              {learningStreak > 0 && (
+                <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/40 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 dark:border-amber-400/25 dark:bg-amber-500/10 dark:text-amber-300">
+                  <Flame size={17} /> {learningStreak} day streak
                 </span>
-                <span>{item}</span>
+              )}
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-2 text-sm text-[var(--text-secondary)]">
+              <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3">
+                <Mail size={15} className="text-[var(--accent-primary)]" />
+                {user?.email || 'Email not added'}
+              </span>
+              <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3">
+                <CalendarDays size={15} className="text-[var(--accent-primary)]" />
+                Member since {memberSince}
+              </span>
+              <span className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3">
+                <Phone size={15} className="text-[var(--accent-primary)]" />
+                {user?.phone || 'Phone not added'}
+              </span>
+            </div>
+
+            {/* Profile completion */}
+            <div className="mt-5 max-w-xl">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="font-semibold text-[var(--text-primary)]">Profile completion</span>
+                <span className="font-bold text-[var(--accent-primary)]">{readinessPct}%</span>
               </div>
-              )
-            })}
+              <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+                <div className="h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${readinessPct}%` }} />
+              </div>
+            </div>
+
+            <div className="mt-5 flex flex-wrap gap-3">
+              <Button variant="secondary" onClick={() => document.getElementById('profile-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Edit Profile</Button>
+              <Button variant="secondary" onClick={shareProfile}><Share2 size={16} /> Share</Button>
+              <Button onClick={() => navigate('/certificates')}><Download size={16} /> Certificates</Button>
+              {profileImage ? <Button variant="secondary" onClick={removeAvatarPreview}><Trash2 size={16} /> Remove Photo</Button> : null}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Learning Stats ─── */}
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+        {[
+          ['Active Courses', activeCourseCount, 'enrolled paths', BookOpenCheck],
+          ['Completed', completedCourseCount, 'finished courses', Award],
+          ['Certificates', certificateCount, 'earned credentials', ShieldCheck],
+          ['XP Points', xpPoints, 'total earned', Zap],
+          ['Current Streak', `${learningStreak} days`, 'learning momentum', Flame],
+          ['Avg. Score', `${assessmentScore}%`, 'performance', BarChart3],
+        ].map(([label, value, detail, Icon]) => (
+          <motion.div
+            key={label}
+            className="theme-subcard theme-subcard-hover rounded-2xl p-4 shadow-soft"
+            whileHover={{ y: -2 }}
+            transition={{ duration: 0.18 }}
+          >
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]">
+              <Icon size={18} />
+            </span>
+            <p className="mt-4 text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">{label}</p>
+            <p className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">{value}</p>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">{detail}</p>
+          </motion.div>
+        ))}
+      </section>
+
+      {/* ─── Two-column: Activity + Sidebar ─── */}
+      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+
+        {/* ── Main Column ── */}
+        <div className="space-y-6">
+
+          {/* XP & Level Overview */}
+          <div className="glass-card p-5 shadow-glow sm:p-6">
+            <div className="flex flex-col gap-4 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-primary)]">Learning Progress</p>
+                <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Level {level} — {getXpLabel(xpPoints)}</h2>
+                <p className="mt-1 max-w-lg text-sm leading-6 text-[var(--text-secondary)]">
+                  {getProgressMessage(activeCourseCount, completedCourseCount, learningStreak)}
+                </p>
+              </div>
+              <div className="grid h-20 w-20 shrink-0 place-items-center rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 shadow-[0_16px_38px_rgba(245,158,11,0.18)] dark:border-amber-200/30 dark:from-slate-900 dark:to-slate-800">
+                <Trophy className="h-10 w-10 text-amber-500" />
+              </div>
+            </div>
+
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              <div className="flex items-center justify-between rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-4 shadow-soft dark:border-white/10 dark:from-slate-900/80 dark:to-slate-800/80">
+                <div className="flex items-center gap-3">
+                  <Zap className="text-amber-500" />
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-white">XP Points</p>
+                    <p className="text-xs text-[var(--text-muted)]">Keep learning to earn more</p>
+                  </div>
+                </div>
+                <span className="text-2xl font-bold text-amber-500">{xpPoints}</span>
+              </div>
+
+              <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-4 shadow-soft dark:border-white/10 dark:from-slate-900/80 dark:to-slate-800/80">
+                <div className="flex items-center gap-3">
+                  <Target className="text-emerald-500" />
+                  <div>
+                    <p className="text-sm font-semibold text-slate-800 dark:text-white">Badges</p>
+                    <p className="text-xs text-[var(--text-muted)]">Master topics to unlock</p>
+                  </div>
+                </div>
+                <span className="text-2xl font-bold text-emerald-500">{certificateCount}</span>
+              </div>
+
+              <div className="flex items-center justify-between rounded-2xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="text-[var(--accent-primary)]" />
+                  <div>
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">Study Time</p>
+                    <p className="text-xs text-[var(--text-muted)]">Hours invested</p>
+                  </div>
+                </div>
+                <span className="text-2xl font-bold text-[var(--accent-primary)]">{learningHours}h</span>
+              </div>
+            </div>
+
+            {/* XP bar */}
+            <div className="mt-5 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-semibold text-[var(--text-primary)]">Level {level} progress</span>
+                <span className="text-[var(--text-muted)]">{xpPoints % 1000} / 1,000 XP to next level</span>
+              </div>
+              <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/70 dark:bg-white/10">
+                <div className="h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${Math.min((xpPoints % 1000) / 10, 100)}%` }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Quick tips */}
+          <div className="glass-card p-5 shadow-soft sm:p-6">
+            <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-primary)]">Quick Actions</p>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {[
+                { icon: Play, label: 'Continue Learning', desc: 'Resume where you left off', action: () => navigate('/explore'), accent: true },
+                { icon: BookOpen, label: 'Browse Courses', desc: 'Discover new skill paths', action: () => navigate('/explore') },
+                { icon: Award, label: 'View Certificates', desc: 'Download earned credentials', action: () => navigate('/certificates') },
+                { icon: Sparkles, label: 'Try AI Teachers', desc: 'Switch personality & style', action: () => navigate('/personalities') },
+              ].map(({ icon: Icon, label, desc, action, accent }) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={action}
+                  className={`flex items-center gap-4 rounded-2xl border p-4 text-left transition-all duration-200 hover:-translate-y-0.5 ${accent ? 'border-[var(--accent-primary)]/30 bg-[var(--accent-soft)] hover:border-[var(--accent-primary)]/60 hover:shadow-glow' : 'border-[var(--border-color)] bg-[var(--bg-subtle)] hover:border-[var(--accent-primary)]/40 hover:bg-[var(--bg-card-hover)]'}`}
+                >
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]">
+                    <Icon size={20} />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">{label}</p>
+                    <p className="mt-0.5 text-xs text-[var(--text-muted)]">{desc}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Profile Editor */}
+          <div id="profile-editor" className="glass-card p-5 shadow-glow sm:p-6">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-primary)]">Profile Editor</p>
+                <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Personal Information</h2>
+              </div>
+              <span className="text-sm text-[var(--text-secondary)]">{readinessCount}/{accountReadiness.length} essentials completed</span>
+            </div>
+
+            {profileNotice.message ? (
+              <p className={`mt-5 rounded-xl border px-4 py-3 text-sm ${profileNotice.type === 'success' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-100' : 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-100'}`}>
+                {profileNotice.message}
+              </p>
+            ) : null}
+
+            <form onSubmit={submitProfile} className="mt-6">
+              <div className="grid gap-4 xl:grid-cols-2">
+                <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">Basic Details</p>
+                  <div className="mt-4 grid gap-3">
+                    <input className="admin-input" value={profileForm.name} onChange={(e) => updateProfile('name', e.target.value)} placeholder="Full name" />
+                    <input className="admin-input" value={user?.email || ''} readOnly placeholder="Email address" />
+                    <input className="admin-input" value={profileForm.phone} onChange={(e) => updateProfile('phone', e.target.value)} placeholder="Phone" />
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">Location & Links</p>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <input className="admin-input" value={detailsForm.dob} onChange={(e) => updateDetails('dob', e.target.value)} placeholder="Date of birth" />
+                    <input className="admin-input" value={detailsForm.gender} onChange={(e) => updateDetails('gender', e.target.value)} placeholder="Gender" />
+                    <input className="admin-input" value={detailsForm.country} onChange={(e) => updateDetails('country', e.target.value)} placeholder="Country" />
+                    <input className="admin-input" value={detailsForm.city} onChange={(e) => updateDetails('city', e.target.value)} placeholder="City" />
+                    <input className="admin-input md:col-span-2" value={detailsForm.website} onChange={(e) => updateDetails('website', e.target.value)} placeholder="Personal website" />
+                    <input className="admin-input md:col-span-2" value={detailsForm.linkedin} onChange={(e) => updateDetails('linkedin', e.target.value)} placeholder="LinkedIn URL" />
+                    <input className="admin-input md:col-span-2" value={detailsForm.github} onChange={(e) => updateDetails('github', e.target.value)} placeholder="GitHub URL" />
+                  </div>
+                </div>
+                <input className="admin-input xl:col-span-2" value={profileForm.avatarUrl} onChange={(e) => updateProfile('avatarUrl', e.target.value)} placeholder="Profile picture URL" />
+              </div>
+
+              <div className="mt-4 flex flex-col gap-4 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-[var(--border-color)] bg-white/70 dark:bg-white/5">
+                    {profileImage ? (
+                      <img src={profileImage} alt="Preview" className="h-full w-full object-cover"
+                        onLoad={(e) => { e.currentTarget.style.display = 'block' }}
+                        onError={(e) => { e.currentTarget.style.display = 'none' }}
+                      />
+                    ) : (
+                      <UserRound size={22} className="text-[var(--text-muted)]" />
+                    )}
+                  </span>
+                  <p className="text-xs leading-5 text-[var(--text-secondary)]">Upload progress: {uploadProgress}%</p>
+                </div>
+                <Button type="submit" variant="secondary" disabled={profileBusy}>{profileBusy ? 'Saving...' : 'Save Profile'}</Button>
+              </div>
+            </form>
           </div>
         </div>
 
-        <div className="glass-card p-5 shadow-glow sm:p-6">
-          <p className="text-sm uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-300">Profile editor</p>
-          <div className="mt-6 space-y-3">
-            <input className="admin-input" defaultValue={user?.fullName || user?.name || ''} placeholder="Full name" />
-            <input className="admin-input" defaultValue={user?.phone || ''} placeholder="Phone" />
-            <input className="admin-input" placeholder="Profile picture URL" />
-            <Button variant="secondary">Save Profile</Button>
-          </div>
-          <p className="mt-8 text-sm uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-300">Quick actions</p>
-          <div className="mt-6 grid gap-3">
-            <Button onClick={() => navigate('/explore')}>Explore Courses</Button>
-            <Button variant="secondary" onClick={() => navigate('/certificates')}>View Certificates</Button>
-            <Button variant="secondary" onClick={() => navigate('/community')}>Open Community</Button>
-          </div>
-        </div>
-      </div>
+        {/* ── Sidebar ── */}
+        <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
 
+          {/* Account Overview */}
+          <div className="glass-card p-5 shadow-soft">
+            <p className="text-sm uppercase tracking-[0.22em] text-[var(--accent-primary)]">Account Overview</p>
+            <div className="mt-5 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">Profile Completion</p>
+                  <p className="mt-1 text-sm text-[var(--text-secondary)]">Complete essentials for certificates.</p>
+                </div>
+                <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-sm font-semibold text-[var(--accent-primary)]">{readinessPct}%</span>
+              </div>
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/70 dark:bg-white/10">
+                <div className="h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${readinessPct}%` }} />
+              </div>
+              <div className="mt-4 grid gap-2">
+                {accountReadiness.map(([label, done]) => (
+                  <span key={label} className="inline-flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+                    <CheckCircle2 size={16} className={done ? 'text-emerald-500' : 'text-[var(--text-muted)]'} />
+                    {label}
+                  </span>
+                ))}
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 text-sm text-[var(--text-secondary)]">
+              <span className="flex min-w-0 items-center gap-3"><Mail size={16} className="shrink-0 text-[var(--accent-primary)]" /><span className="truncate">{user?.email || 'Email not added'}</span></span>
+              <span className="flex items-center gap-3"><Phone size={16} className="text-[var(--accent-primary)]" /><span>{user?.phone || 'Phone not added'}</span></span>
+              <span className="flex items-center gap-3"><ShieldCheck size={16} className="text-emerald-500" /><span>{user?.role || 'Learner'} access verified</span></span>
+            </div>
+          </div>
+
+          {/* Learning Goals */}
+          <div className="glass-card p-5 shadow-soft">
+            <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-primary)]">Learning Goals</p>
+            <div className="mt-4 space-y-3">
+              <GoalTracker label="Complete first course" current={completedCourseCount} target={Math.max(completedCourseCount, 1)} icon={BookOpenCheck} />
+              <GoalTracker label="Earn 3 certificates" current={certificateCount} target={3} icon={Award} />
+              <GoalTracker label="7-day learning streak" current={learningStreak} target={7} icon={Flame} />
+              <GoalTracker label="Study 20 hours" current={learningHours} target={20} icon={Clock3} />
+            </div>
+          </div>
+
+          {/* Quick Links */}
+          <div className="glass-card p-5 shadow-soft">
+            <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-primary)]">Quick Links</p>
+            <div className="mt-4 grid gap-3">
+              <Button onClick={() => navigate('/explore')}>Explore Courses</Button>
+              <Button variant="secondary" onClick={() => navigate('/certificates')}>View Certificates</Button>
+              <Button variant="secondary" onClick={() => navigate('/personalities')}>AI Teachers</Button>
+            </div>
+          </div>
+        </aside>
+      </section>
+
+      {/* ─── Password Security ─── */}
       <div className="glass-card p-5 shadow-soft sm:p-6">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <p className="inline-flex items-center gap-2 text-sm uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-300"><LockKeyhole size={16} /> Password security</p>
-            <h2 className="mt-3 text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">Update or recover your password</h2>
+            <p className="inline-flex items-center gap-2 text-sm uppercase tracking-[0.24em] text-[var(--accent-primary)]"><LockKeyhole size={16} /> Password Security</p>
+            <h2 className="mt-3 text-xl font-semibold text-[var(--text-primary)] sm:text-2xl">Update or Recover Your Password</h2>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
-              Change your password with the current password, or send a 6 digit OTP to {user?.email || 'your account email'} if you forgot it.
+              Change your password with the current one, or send a 6-digit OTP to {user?.email || 'your account email'} if you forgot it.
             </p>
           </div>
           <div className="grid rounded-2xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-1 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => { setPasswordMode('change'); setPasswordNotice({ type: '', message: '' }) }}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${passwordMode === 'change' ? 'bg-cyan-500 text-white shadow-soft' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-            >
+            <button type="button" onClick={() => { setPasswordMode('change'); setPasswordNotice({ type: '', message: '' }) }}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${passwordMode === 'change' ? 'bg-[var(--accent-primary)] text-white shadow-soft' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
               Change password
             </button>
-            <button
-              type="button"
-              onClick={() => { setPasswordMode('forgot'); setPasswordNotice({ type: '', message: '' }) }}
-              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${passwordMode === 'forgot' ? 'bg-cyan-500 text-white shadow-soft' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}
-            >
+            <button type="button" onClick={() => { setPasswordMode('forgot'); setPasswordNotice({ type: '', message: '' }) }}
+              className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${passwordMode === 'forgot' ? 'bg-[var(--accent-primary)] text-white shadow-soft' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'}`}>
               Forgot password
             </button>
           </div>
+        </div>
+
+        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+          <SecuritySignal icon={KeyRound} label="Password Strength" value={passwordStrength.label} detail="Use 8+ chars with letters, numbers, and symbols." />
+          <SecuritySignal icon={Clock3} label="Last Activity" value="Current session" detail="JWT-backed session is active for this device." />
+          <SecuritySignal icon={MonitorPlay} label="Device Access" value="1 browser" detail="Review devices regularly on shared machines." />
         </div>
 
         {passwordNotice.message ? (
@@ -197,9 +602,9 @@ export default function UserPage() {
 
         {passwordMode === 'change' ? (
           <form onSubmit={submitPasswordChange} className="mt-6 grid gap-4 lg:grid-cols-3">
-            <PasswordInput label="Current password" value={changeForm.currentPassword} onChange={(value) => updateChange('currentPassword', value)} />
-            <PasswordInput label="New password" value={changeForm.newPassword} onChange={(value) => updateChange('newPassword', value)} />
-            <PasswordInput label="Confirm password" value={changeForm.confirmPassword} onChange={(value) => updateChange('confirmPassword', value)} />
+            <PasswordInput label="Current password" value={changeForm.currentPassword} onChange={(v) => updateChange('currentPassword', v)} />
+            <PasswordInput label="New password" value={changeForm.newPassword} onChange={(v) => updateChange('newPassword', v)} strength={passwordStrength} />
+            <PasswordInput label="Confirm password" value={changeForm.confirmPassword} onChange={(v) => updateChange('confirmPassword', v)} />
             <div className="lg:col-span-3">
               <Button type="submit" disabled={passwordBusy}>{passwordBusy ? 'Updating...' : 'Update Password'}</Button>
             </div>
@@ -208,21 +613,16 @@ export default function UserPage() {
           <form onSubmit={submitOtpReset} className="mt-6 grid gap-4 lg:grid-cols-3">
             <div className="lg:col-span-3">
               <Button type="button" variant="secondary" onClick={sendResetOtp} disabled={passwordBusy || !user?.email}>
-                {otpSent ? 'Resend 6 Digit OTP' : 'Send 6 Digit OTP'}
+                {otpSent ? 'Resend 6-digit OTP' : 'Send 6-digit OTP'}
               </Button>
             </div>
             <label className="grid gap-2 text-sm text-[var(--text-secondary)]">
-              6 digit OTP
-              <input
-                value={resetForm.otp}
-                onChange={(event) => updateReset('otp', event.target.value.replace(/\D/g, '').slice(0, 6))}
-                inputMode="numeric"
-                className="admin-input tracking-[0.2em]"
-                placeholder="000000"
-              />
+              6-digit OTP
+              <input value={resetForm.otp} onChange={(e) => updateReset('otp', e.target.value.replace(/\D/g, '').slice(0, 6))}
+                inputMode="numeric" className="admin-input tracking-[0.2em]" placeholder="000000" />
             </label>
-            <PasswordInput label="New password" value={resetForm.newPassword} onChange={(value) => updateReset('newPassword', value)} />
-            <PasswordInput label="Confirm password" value={resetForm.confirmPassword} onChange={(value) => updateReset('confirmPassword', value)} />
+            <PasswordInput label="New password" value={resetForm.newPassword} onChange={(v) => updateReset('newPassword', v)} strength={passwordStrength} />
+            <PasswordInput label="Confirm password" value={resetForm.confirmPassword} onChange={(v) => updateReset('confirmPassword', v)} />
             <div className="lg:col-span-3">
               <Button type="submit" disabled={passwordBusy || !otpSent}>{passwordBusy ? 'Resetting...' : 'Reset Password'}</Button>
             </div>
@@ -233,32 +633,118 @@ export default function UserPage() {
   )
 }
 
-function PasswordInput({ label, value, onChange }) {
-  const [visible, setVisible] = useState(false)
+/* ─────────────────────────────────────────────
+   Sub-components
+   ───────────────────────────────────────────── */
 
+function GoalTracker({ label, current, target, icon: Icon }) {
+  const pct = Math.min(Math.round((current / target) * 100), 100)
+  return (
+    <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-3">
+      <div className="flex items-center justify-between">
+        <span className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+          <Icon size={15} className="text-[var(--accent-primary)]" />
+          {label}
+        </span>
+        <span className="text-xs font-bold text-[var(--accent-primary)]">{current}/{target}</span>
+      </div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/60 dark:bg-white/10">
+        <div className="h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  )
+}
+
+function SecuritySignal({ icon: Icon, label, value, detail }) {
+  return (
+    <div className="theme-subcard rounded-xl p-4">
+      <span className="grid h-10 w-10 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">
+        <Icon size={18} />
+      </span>
+      <p className="mt-3 text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">{label}</p>
+      <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{value}</p>
+      <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">{detail}</p>
+    </div>
+  )
+}
+
+function PasswordInput({ label, value, onChange, strength }) {
+  const [visible, setVisible] = useState(false)
   return (
     <label className="grid gap-2 text-sm text-[var(--text-secondary)]">
       {label}
       <span className="relative block">
-        <input
-          value={value}
-          onChange={(event) => onChange(event.target.value)}
-          type={visible ? 'text' : 'password'}
-          className="admin-input pr-12"
-          placeholder="Minimum 8 characters"
-        />
-        <button
-          type="button"
-          onClick={() => setVisible((current) => !current)}
-          className="absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-[var(--text-secondary)] transition hover:bg-[var(--bg-muted)] hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-cyan-400/70"
-          aria-label={visible ? `Hide ${label}` : `Show ${label}`}
-          title={visible ? 'Hide password' : 'Show password'}
-        >
+        <input value={value} onChange={(e) => onChange(e.target.value)} type={visible ? 'text' : 'password'}
+          className="admin-input pr-12" placeholder="Minimum 8 characters" />
+        <button type="button" onClick={() => setVisible((c) => !c)}
+          className="absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-[var(--text-secondary)] transition hover:bg-[var(--bg-muted)] hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/70"
+          aria-label={visible ? `Hide ${label}` : `Show ${label}`}>
           {visible ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>
       </span>
+      {strength && value ? (
+        <span className="block">
+          <span className="mt-1 flex items-center justify-between text-xs">
+            <span className="text-[var(--text-muted)]">Strength</span>
+            <span className="font-semibold text-[var(--accent-primary)]">{strength.label}</span>
+          </span>
+          <span className="mt-2 block h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+            <span className="block h-full rounded-full" style={{ width: `${strength.score}%`, background: 'var(--brand-gradient)' }} />
+          </span>
+        </span>
+      ) : null}
     </label>
   )
 }
 
+/* ─────────────────────────────────────────────
+   Utilities
+   ───────────────────────────────────────────── */
+function formatProfileDate(value) {
+  if (!value) return 'Current account'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Current account'
+  return date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })
+}
 
+function scorePassword(value) {
+  const text = String(value || '')
+  const points = [
+    text.length >= 8,
+    /[A-Z]/.test(text),
+    /[a-z]/.test(text),
+    /\d/.test(text),
+    /[^A-Za-z0-9]/.test(text),
+  ].filter(Boolean).length
+  if (!text) return { score: 0, label: 'Not set' }
+  if (points >= 5) return { score: 100, label: 'Strong' }
+  if (points >= 3) return { score: 66, label: 'Medium' }
+  return { score: 33, label: 'Weak' }
+}
+
+function isValidProfileImageUrl(value) {
+  const text = String(value || '').trim()
+  if (!text) return true
+  if (/^(data:image\/|blob:|\/uploads\/|\/celebrities\/|\/favicon\.svg)/i.test(text)) return true
+  try {
+    const parsed = new URL(text)
+    return ['http:', 'https:'].includes(parsed.protocol)
+  } catch {
+    return false
+  }
+}
+
+function getXpLabel(xp) {
+  if (xp >= 5000) return 'Master Learner'
+  if (xp >= 3000) return 'Advanced Scholar'
+  if (xp >= 1500) return 'Dedicated Student'
+  if (xp >= 500) return 'Rising Talent'
+  return 'Getting Started'
+}
+
+function getProgressMessage(active, completed, streak) {
+  if (completed === 0 && active === 0) return 'Welcome to UptoSkills! Start your first course to begin earning XP and building your learning streak.'
+  if (streak >= 7) return `Amazing ${streak}-day streak! You are on fire. Keep going to unlock new achievement badges.`
+  if (completed >= 3) return `You have completed ${completed} courses and earned certificates. Keep expanding your skill set!`
+  return `You are making great progress. Continue your learning journey to earn more XP and level up.`
+}

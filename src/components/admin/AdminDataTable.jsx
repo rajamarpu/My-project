@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import Button from '../common/Button/Button.jsx'
 import { cn } from '../../utils/classNames.js'
+import { AdminStatusBadge } from './AdminUI.jsx'
 
 function rowKey(row, index) {
   return String(row?.id ?? row?.certificateNo ?? `${index}`)
@@ -60,6 +61,13 @@ function highlightedText(value, query) {
       {text.slice(index + needle.length)}
     </>
   )
+}
+
+const statusColumns = new Set(['status', 'approvalStatus', 'isActive', 'isPublished', 'isRead'])
+
+function renderCellValue(column, value, query) {
+  if (statusColumns.has(column)) return <AdminStatusBadge value={value} />
+  return highlightedText(value, query)
 }
 
 export default function AdminDataTable({
@@ -127,6 +135,14 @@ export default function AdminDataTable({
   const pageKeys = pageRows.map(rowKey)
   const allPageSelected = pageKeys.length > 0 && pageKeys.every((key) => selected.includes(key))
   const hasFilters = query.trim() || Object.values(filters).some((items) => items?.length)
+  const activeFilterChips = useMemo(() => {
+    const chips = []
+    if (query.trim()) chips.push({ key: 'query', label: 'Search', value: query.trim() })
+    Object.entries(filters).forEach(([column, values]) => {
+      values.forEach((value) => chips.push({ key: `${column}:${value}`, column, label: columnLabel(column), value }))
+    })
+    return chips
+  }, [filters, query])
 
   function toggleSort(column) {
     setSort((current) => ({
@@ -147,6 +163,18 @@ export default function AdminDataTable({
     setQuery('')
     setFilters({})
     setOpenFilter('')
+    setPage(1)
+  }
+
+  function removeFilterChip(chip) {
+    if (chip.key === 'query') {
+      setQuery('')
+    } else {
+      setFilters((current) => ({
+        ...current,
+        [chip.column]: (current[chip.column] || []).filter((value) => value !== chip.value),
+      }))
+    }
     setPage(1)
   }
 
@@ -200,10 +228,29 @@ export default function AdminDataTable({
             />
           </label>
           <div className="flex flex-wrap gap-2">
+            <span className="inline-flex min-h-11 items-center rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">
+              {visibleRows.length}/{rows.length} visible
+            </span>
             {hasFilters ? <Button variant="secondary" onClick={clearFilters}><X size={16} /> Clear Filters</Button> : null}
             <Button variant="secondary" onClick={() => handleExport()}><Download size={16} /> Export</Button>
           </div>
         </div>
+        {activeFilterChips.length ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {activeFilterChips.map((chip) => (
+              <button
+                key={chip.key}
+                type="button"
+                onClick={() => removeFilterChip(chip)}
+                className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#FF6B35]/30 bg-[#FFF5F0] px-3 text-xs font-semibold text-[#9A3412] transition hover:border-[#FF6B35] hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-[#FF6B35] dark:bg-orange-500/10 dark:text-orange-100"
+                aria-label={`Remove ${chip.label} filter ${chip.value}`}
+              >
+                <span>{chip.label}: {chip.value}</span>
+                <X size={14} />
+              </button>
+            ))}
+          </div>
+        ) : null}
       </div>
 
       {selected.length ? (
@@ -223,7 +270,7 @@ export default function AdminDataTable({
         <>
           <div className="admin-table-card hidden md:block">
             <div className="admin-scrollbar overflow-x-auto">
-              <table className="min-w-full text-sm">
+              <table className="admin-premium-table min-w-full text-sm">
                 <thead>
                   <tr>
                     <th className="w-12 px-4 py-3">
@@ -273,7 +320,7 @@ export default function AdminDataTable({
                         </td>
                         {columns.map((column) => (
                           <td key={column} className="max-w-xs whitespace-nowrap px-4 py-3 text-[var(--text-primary)]">
-                            <span>{highlightedText(valueFor(row, column), query)}</span>
+                            <span>{renderCellValue(column, valueFor(row, column), query)}</span>
                           </td>
                         ))}
                         <td className="px-4 py-3 text-right">
@@ -319,7 +366,7 @@ export default function AdminDataTable({
                     {columns.map((column) => (
                       <div key={column} className="grid grid-cols-1 items-start gap-1 border-b border-[var(--border-color)] pb-2 min-[420px]:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] min-[420px]:gap-3 last:border-0 last:pb-0">
                         <span className="min-w-0 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">{columnLabel(column)}</span>
-                        <span className="min-w-0 whitespace-normal break-words text-left text-sm font-medium text-[var(--text-primary)] min-[420px]:text-right">{highlightedText(valueFor(row, column), query)}</span>
+                        <span className="min-w-0 whitespace-normal break-words text-left text-sm font-medium text-[var(--text-primary)] min-[420px]:text-right">{renderCellValue(column, valueFor(row, column), query)}</span>
                       </div>
                     ))}
                   </div>
@@ -371,7 +418,8 @@ function RowMenu({ open, onOpen, onView, onEdit, onDelete, onArchive }) {
     ['Edit', Edit, onEdit],
     ['Archive', Archive, onArchive],
     ['Delete', Trash2, onDelete],
-  ]
+  ].filter(([, , handler]) => Boolean(handler))
+  if (!items.length) return null
   return (
     <span className="relative ml-2 inline-flex">
       <button type="button" onClick={onOpen} className="grid h-10 w-10 place-items-center rounded-lg border border-[var(--border-color)] hover:bg-[#FFF5F0] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]" aria-label="Open row actions">
@@ -422,13 +470,29 @@ function Pagination({ currentPage, totalPages, pageSize, totalRows, onPageChange
 
 function AdminTableSkeleton({ columns }) {
   return (
-    <div className="admin-table-card overflow-hidden">
-      <div className="grid gap-3 p-4">
+    <div className="admin-table-card overflow-hidden p-4">
+      <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <span className="skeleton h-11 w-full rounded-lg lg:max-w-xl" />
+        <span className="skeleton h-11 w-40 rounded-lg" />
+      </div>
+      <div className="hidden overflow-hidden rounded-lg border border-[var(--border-color)] md:block">
+        <div className="grid gap-3 border-b border-[var(--border-color)] bg-[var(--bg-subtle)] p-4" style={{ gridTemplateColumns: `repeat(${Math.min(columns, 6)}, minmax(0, 1fr))` }}>
+          {Array.from({ length: Math.min(columns, 6) }).map((_, column) => <span key={column} className="skeleton h-5 rounded" />)}
+        </div>
         {Array.from({ length: 5 }).map((_, row) => (
-          <div key={row} className="grid gap-3 md:grid-cols-6">
+          <div key={row} className="grid gap-3 border-b border-[var(--border-color)] p-4 last:border-0" style={{ gridTemplateColumns: `repeat(${Math.min(columns, 6)}, minmax(0, 1fr))` }}>
             {Array.from({ length: Math.min(columns, 6) }).map((__, column) => (
-              <span key={column} className="skeleton h-10 rounded-lg" />
+              <span key={column} className="skeleton h-6 rounded-lg" />
             ))}
+          </div>
+        ))}
+      </div>
+      <div className="grid gap-3 md:hidden">
+        {Array.from({ length: 5 }).map((_, row) => (
+          <div key={row} className="rounded-lg border border-[var(--border-color)] p-4">
+            <span className="skeleton block h-5 w-36 rounded" />
+            <span className="skeleton mt-4 block h-4 w-full rounded" />
+            <span className="skeleton mt-3 block h-4 w-4/5 rounded" />
           </div>
         ))}
       </div>

@@ -137,10 +137,10 @@ export default function CourseDetailPage() {
   }
 
   return (
-    <section className="space-y-10 pb-16">
-      <div className="upto-hero-panel overflow-hidden rounded-3xl p-6 sm:p-8">
-        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:items-start">
-          <div className="space-y-5">
+    <section className="space-y-6 pb-16">
+      <div className="upto-hero-panel overflow-hidden rounded-2xl p-4 sm:p-5">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(24rem,0.85fr)] lg:items-start">
+          <div className="space-y-4">
             <p className="text-sm uppercase tracking-[0.3em] text-[var(--accent-primary)]">Course detail</p>
             <h1 className="text-4xl font-semibold text-[var(--text-primary)]">{course.title}</h1>
             <p className="max-w-2xl text-[var(--text-secondary)]">{course.description}</p>
@@ -163,22 +163,22 @@ export default function CourseDetailPage() {
               </span>
             </div>
 
-            <div className="grid gap-3 pt-2 sm:grid-cols-3">
-              <div className="rounded-2xl border border-[var(--border-color)] bg-white/78 p-4 shadow-sm dark:bg-slate-950/42">
+            <div className="grid gap-3 pt-1 sm:grid-cols-3">
+              <div className="rounded-xl border border-[var(--border-color)] bg-white/78 p-4 shadow-sm dark:bg-slate-950/42">
                 <p className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
                   <BarChart3 size={16} className="text-[var(--accent-primary)]" />
                   Practical Skills
                 </p>
                 <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Analytics, visualization, and decision-ready data workflows.</p>
               </div>
-              <div className="rounded-2xl border border-[var(--border-color)] bg-white/78 p-4 shadow-sm dark:bg-slate-950/42">
+              <div className="rounded-xl border border-[var(--border-color)] bg-white/78 p-4 shadow-sm dark:bg-slate-950/42">
                 <p className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
                   <ClipboardList size={16} className="text-[var(--accent-primary)]" />
                   Assignments
                 </p>
                 <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{isEnrolled ? `${assignments.length} unlocked for this course.` : 'Available after enrollment.'}</p>
               </div>
-              <div className="rounded-2xl border border-[var(--border-color)] bg-white/78 p-4 shadow-sm dark:bg-slate-950/42">
+              <div className="rounded-xl border border-[var(--border-color)] bg-white/78 p-4 shadow-sm dark:bg-slate-950/42">
                 <p className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
                   <Users size={16} className="text-[var(--accent-primary)]" />
                   Guided Learning
@@ -186,10 +186,43 @@ export default function CourseDetailPage() {
                 <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Learn with {displayInstructor.name || 'your selected instructor'}.</p>
               </div>
             </div>
+
+            <div className="grid gap-3 pt-1 xl:grid-cols-[minmax(0,1fr)_18rem]">
+              <div className="rounded-xl border border-orange-200/70 bg-orange-50/70 p-4 shadow-sm dark:border-orange-400/20 dark:bg-orange-500/10">
+                <p className="text-sm font-semibold text-[var(--text-primary)]">What you will practice</p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {[
+                    course.category || 'Programming fundamentals',
+                    `${course.level || 'Beginner'} concepts`,
+                    assignments.length ? `${assignments.length} assignment${assignments.length === 1 ? '' : 's'}` : 'Practice checkpoints',
+                    `${lessons.length || 1} guided lesson${(lessons.length || 1) === 1 ? '' : 's'}`,
+                  ].map((item) => (
+                    <span key={item} className="rounded-full border border-orange-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-orange-800 dark:border-orange-300/20 dark:bg-white/5 dark:text-orange-100">
+                      {item}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">
+                  Build confidence through syntax basics, guided examples, lesson resources, and assignment-backed progress.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-[var(--border-color)] bg-white/78 p-4 shadow-sm dark:bg-slate-950/42">
+                <p className="text-sm font-semibold text-[var(--text-primary)]">Course path</p>
+                <div className="mt-3 space-y-2 text-sm text-[var(--text-secondary)]">
+                  {['Start lesson', 'Practice assignment', 'Unlock certificate'].map((step, index) => (
+                    <div key={step} className="flex items-center gap-2">
+                      <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--accent-soft)] text-xs font-bold text-[var(--accent-primary)]">{index + 1}</span>
+                      <span>{step}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-4 rounded-[2rem] border border-[var(--border-color)] bg-white/92 p-6 shadow-soft dark:bg-slate-950/70">
-            <div className="aspect-[16/9] overflow-hidden rounded-3xl bg-slate-900 relative">
+          <div className="space-y-3 rounded-2xl border border-[var(--border-color)] bg-white/92 p-4 shadow-soft dark:bg-slate-950/70">
+            <div className="aspect-[16/9] overflow-hidden rounded-xl bg-slate-900 relative">
               <img src={cover} alt={course.title} className={`h-full w-full ${isSubjectArtwork ? 'object-contain' : 'object-cover'}`} />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
               <div className="absolute bottom-4 left-4 flex items-center gap-3">
@@ -226,8 +259,8 @@ export default function CourseDetailPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[0.7fr_0.3fr]">
-        <div className="space-y-6 rounded-[2rem] border border-[var(--border-color)] bg-white/92 p-8 shadow-soft dark:bg-slate-950/72">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,0.42fr)] xl:items-start">
+        <div className="space-y-5 rounded-2xl border border-[var(--border-color)] bg-white/92 p-5 shadow-soft dark:bg-slate-950/72 sm:p-6">
           <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--text-secondary)]">
             {['Overview', 'Lessons', 'Resources'].map((tab) => (
               <button
@@ -258,12 +291,12 @@ export default function CourseDetailPage() {
 
           {activeTab === 'overview' && (
             <div className="space-y-6 text-[var(--text-secondary)]">
-              <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]">
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
                 <div>
                   <h2 className="text-2xl font-semibold text-[var(--text-primary)]">What you will learn</h2>
                   <p className="mt-3 leading-7">{course.description}</p>
                 </div>
-                <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-5">
+                <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
                   <p className="text-sm font-semibold text-[var(--text-primary)]">Your learning setup</p>
                   <div className="mt-4 grid gap-3 text-sm">
                     <span className="flex items-center justify-between gap-3">
@@ -282,14 +315,14 @@ export default function CourseDetailPage() {
                 </div>
               </div>
 
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {[
                   [BarChart3, 'Skill outcome', course.category || 'Career-ready skills'],
                   [Clock, 'Course pace', durationText],
                   [ClipboardList, 'Practice mode', assignments.length ? `${assignments.length} assignments` : 'Practice checkpoints'],
                   [Users, 'Learning style', `Guided by ${displayInstructor.name || 'mentor'}`],
                 ].map(([Icon, title, text]) => (
-                  <div key={title} className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 shadow-sm">
+                  <div key={title} className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 shadow-sm">
                     <Icon size={18} className="text-[var(--accent-primary)]" />
                     <p className="mt-3 text-sm font-semibold text-[var(--text-primary)]">{title}</p>
                     <p className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">{text}</p>
@@ -297,8 +330,8 @@ export default function CourseDetailPage() {
                 ))}
               </div>
 
-              <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_20rem]">
-                <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5">
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
+                <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="font-semibold text-[var(--text-primary)]">Learning path preview</h3>
                     <button type="button" onClick={() => setActiveTab('lessons')} className="text-sm font-semibold text-[var(--accent-primary)]">
@@ -311,7 +344,7 @@ export default function CourseDetailPage() {
                       { id: 'practice', title: 'Guided practice checkpoint', type: 'Practice' },
                       { id: 'project', title: 'Apply the concept in a project', type: 'Project' },
                     ]).map((lesson, index) => (
-                      <div key={lesson.id || lesson.title} className="flex items-start gap-3 rounded-xl bg-[var(--bg-subtle)] p-3">
+                      <div key={lesson.id || lesson.title} className="flex items-start gap-3 rounded-lg bg-[var(--bg-subtle)] p-3">
                         <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-sm font-semibold text-[var(--accent-primary)]">
                           {index + 1}
                         </span>
@@ -326,7 +359,7 @@ export default function CourseDetailPage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5">
+                <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
                   <h3 className="font-semibold text-[var(--text-primary)]">Recommended next step</h3>
                   <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
                     {isEnrolled
@@ -384,7 +417,7 @@ export default function CourseDetailPage() {
           )}
         </div>
 
-        <aside className="space-y-6 rounded-[2rem] border border-[var(--border-color)] bg-white/92 p-8 shadow-soft dark:bg-slate-950/72">
+        <aside className="space-y-4 rounded-2xl border border-[var(--border-color)] bg-white/92 p-5 shadow-soft dark:bg-slate-950/72 sm:p-6">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-[var(--accent-primary)]">Course summary</p>
             <ul className="mt-5 space-y-3 text-[var(--text-secondary)]">
@@ -396,8 +429,8 @@ export default function CourseDetailPage() {
             </ul>
           </div>
 
-          <div className="overflow-hidden rounded-3xl border border-[var(--border-color)] bg-white/92 dark:bg-slate-900/72">
-            <div className="p-5">
+          <div className="overflow-hidden rounded-xl border border-[var(--border-color)] bg-white/92 dark:bg-slate-900/72">
+            <div className="p-4">
               <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Choose celebrity instructor</p>
               <div className="mt-4 flex items-center gap-4">
                 <img src={displayInstructor.avatarUrl || cover} alt={displayInstructor.name} className="h-16 w-16 rounded-2xl object-cover" />

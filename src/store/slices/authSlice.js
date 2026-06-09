@@ -71,12 +71,20 @@ const authSlice = createSlice({
         notification.id === action.payload ? { ...notification, read: true } : notification,
       )
     },
+    updateCurrentUser(state, action) {
+      state.user = { ...(state.user || {}), ...(action.payload || {}) }
+      if (typeof window !== 'undefined') {
+        const payload = JSON.stringify(state.user)
+        if (window.localStorage.getItem('lms-user')) window.localStorage.setItem('lms-user', payload)
+        if (window.sessionStorage.getItem('lms-user')) window.sessionStorage.setItem('lms-user', payload)
+      }
+    },
     setTheme(state, action) {
       state.theme = action.payload
     },
   },
 })
 
-export const { login, logout, toggleWishlist, enrollCourse, unenrollCourse, markNotificationRead, setTheme } = authSlice.actions
+export const { login, logout, toggleWishlist, enrollCourse, unenrollCourse, markNotificationRead, updateCurrentUser, setTheme } = authSlice.actions
 export default authSlice.reducer
 

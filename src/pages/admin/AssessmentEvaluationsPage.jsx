@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Download, Eye, RotateCcw, Save, Search } from 'lucide-react'
+import { ClipboardCheck, Download, Eye, RotateCcw, Save, Search, Sparkles } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
-import { AdminEmptyState, AdminLoadingState, AdminNotice, AdminPageHeader } from '../../components/admin/AdminUI.jsx'
+import { AdminEmptyState, AdminGuidancePanel, AdminLoadingState, AdminNotice, AdminPageHeader } from '../../components/admin/AdminUI.jsx'
 import { downloadAssessmentSubmissionUrl, evaluateAssessmentSubmission, fetchAdminAssessmentSubmissions, grantAssessmentRetake } from '../../api/api.js'
 
 const statusOptions = [
@@ -49,6 +49,7 @@ export default function AssessmentEvaluationsPage() {
     pending: submissions.filter((submission) => submission.status === 'PENDING_EVALUATION').length,
     passed: submissions.filter((submission) => submission.status === 'PASSED').length,
     failed: submissions.filter((submission) => submission.status === 'FAILED').length,
+    averageScore: submissions.length ? Math.round(submissions.reduce((sum, submission) => sum + Number(submission.percentage || 0), 0) / submissions.length) : 0,
   }), [submissions])
 
   function selectSubmission(submission) {
@@ -112,6 +113,14 @@ export default function AssessmentEvaluationsPage() {
         description="View assignment submissions, inspect answers, evaluate descriptive responses, publish marks, and download submission records."
       />
       <AdminNotice type={notice.type || 'info'}>{notice.message}</AdminNotice>
+      <AdminGuidancePanel
+        title="Evaluation workflow"
+        items={[
+          'Open pending submissions first, then grade descriptive answers question by question.',
+          'Use reusable remarks for consistent learner feedback.',
+          'Compare student answers with model answers before saving final marks.',
+        ]}
+      />
       {retakeTarget ? (
         <div className="admin-panel border-amber-400/30 bg-amber-500/10 p-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -131,11 +140,12 @@ export default function AssessmentEvaluationsPage() {
         </div>
       ) : null}
 
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-5">
         <Metric label="Total submissions" value={metrics.total} />
         <Metric label="Pending" value={metrics.pending} />
         <Metric label="Passed" value={metrics.passed} />
         <Metric label="Failed" value={metrics.failed} />
+        <Metric label="Avg score" value={`${metrics.averageScore}%`} />
       </div>
 
       <div className="admin-panel grid gap-3 p-4 lg:grid-cols-[1fr_190px_160px_150px_150px_150px]">
@@ -195,10 +205,11 @@ export default function AssessmentEvaluationsPage() {
                 <Button type="button" onClick={saveEvaluation} disabled={saving}><Save size={16} /> {saving ? 'Saving...' : 'Save Evaluation'}</Button>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-3">
+              <div className="grid gap-3 sm:grid-cols-4">
                 <Metric label="Score" value={`${selected.obtainedMarks}/${selected.totalMarks}`} compact />
                 <Metric label="Percentage" value={`${selected.percentage}%`} compact />
                 <Metric label="Status" value={selected.status.replaceAll('_', ' ')} compact />
+                <Metric label="Manual items" value={(selected.questionReviews || []).filter((review) => review.needsManualEvaluation || review.questionType === 'DESCRIPTIVE').length} compact />
               </div>
 
               <div className="grid gap-4">
@@ -226,7 +237,10 @@ function Metric({ label, value, compact }) {
   return (
     <div className={`admin-panel ${compact ? 'p-3' : 'p-4'}`}>
       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">{label}</p>
-      <p className={`${compact ? 'text-lg' : 'text-2xl'} mt-2 font-semibold text-[var(--text-primary)]`}>{value}</p>
+      <div className="mt-2 flex items-center gap-2">
+        {label === 'Pending' ? <ClipboardCheck className="text-amber-500" size={17} /> : null}
+        <p className={`${compact ? 'text-lg' : 'text-2xl'} font-semibold text-[var(--text-primary)]`}>{value}</p>
+      </div>
     </div>
   )
 }
@@ -276,6 +290,22 @@ function ReviewEditor({ review, index, draft, onChange }) {
                 className="admin-input min-h-24"
                 placeholder="Add evaluation remarks"
               />
+              <div className="mt-2 flex flex-wrap gap-2">
+                {[
+                  'Good answer. Add one more practical example next time.',
+                  'Partially correct. Review the model answer and retry the concept.',
+                  'Strong response with clear reasoning.',
+                ].map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => onChange({ ...draft, adminRemarks: suggestion })}
+                    className="inline-flex min-h-8 items-center gap-1 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 text-xs font-semibold text-cyan-700 dark:text-cyan-100"
+                  >
+                    <Sparkles size={12} /> {suggestion.split('.')[0]}
+                  </button>
+                ))}
+              </div>
             </label>
           </div>
         ) : (

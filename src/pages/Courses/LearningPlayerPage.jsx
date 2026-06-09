@@ -226,56 +226,6 @@ export default function LearningPlayerPage() {
                   No course lessons have been added yet.
                 </div>
               )}
-              {activeLesson?.description ? (
-                <div className="mt-5 whitespace-pre-line rounded-lg border border-[var(--border-color)] bg-black/[0.025] p-4 text-sm leading-7 text-slate-700 dark:bg-white/5 dark:text-slate-300">
-                  {activeLesson.description}
-                </div>
-              ) : null}
-              {activeOutcomes.length ? (
-                <div className="mt-5 rounded-lg border border-[var(--border-color)] bg-black/[0.025] p-4 dark:bg-white/5">
-                  <p className="text-sm font-semibold text-slate-950 dark:text-slate-100">Learning outcomes</p>
-                  <ul className="mt-3 grid gap-2 text-sm text-slate-700 dark:text-slate-300">
-                    {activeOutcomes.map((outcome) => <li key={outcome}>- {outcome}</li>)}
-                  </ul>
-                </div>
-              ) : null}
-              {activeResources.length ? (
-                <div className="mt-5 rounded-lg border border-[var(--border-color)] bg-white/70 p-4 dark:bg-slate-950/40">
-                  <p className="text-sm font-semibold text-slate-950 dark:text-slate-100">Attached files</p>
-                  <div className="mt-3 grid gap-2">
-                    {activeResources.map((resource, index) => (
-                      <a
-                        key={`${resource.url}-${index}`}
-                        href={resource.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border-color)] bg-black/[0.025] px-3 py-2 text-sm text-cyan-700 transition hover:border-cyan-400/50 dark:bg-white/5 dark:text-cyan-200"
-                      >
-                        <span className="min-w-0 flex-1 truncate font-medium">{resource.name || resource.url}</span>
-                        <span className="text-xs text-slate-500 dark:text-slate-400">{resource.mimeType || 'file'}</span>
-                      </a>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-              <div className="mt-5 flex flex-wrap items-center gap-3">
-                <Button onClick={markComplete} disabled={!auth.user}>Mark complete</Button>
-                <Button variant="secondary" onClick={() => setActiveLessonIndex((index) => Math.min(index + 1, lessons.length - 1))} disabled={activeLessonIndex >= lessons.length - 1}>
-                  Next lesson
-                </Button>
-                <Button variant="secondary" onClick={() => navigate(`/course/${course.id}/assessments`)}>
-                  View assignments{assignments.length ? ` (${assignments.length})` : ''}
-                </Button>
-              </div>
-              <label className="mt-5 block rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
-                <span className="text-sm font-bold text-[var(--text-primary)]">My lesson notes</span>
-                <textarea
-                  className="mt-3 min-h-28 w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] p-3 text-sm text-[var(--text-primary)] outline-none"
-                  value={lessonNotes}
-                  onChange={(event) => setLessonNotes(event.target.value)}
-                  placeholder="Take private notes while watching this lesson."
-                />
-              </label>
             </div>
           </div>
 
@@ -448,6 +398,59 @@ export default function LearningPlayerPage() {
             ) : null}
 
           </aside>
+
+          <div className="space-y-5 lg:col-span-2">
+            {activeLesson?.description ? (
+              <div className="whitespace-pre-line rounded-lg border border-[var(--border-color)] bg-black/[0.025] p-4 text-sm leading-7 text-slate-700 dark:bg-white/5 dark:text-slate-300">
+                {activeLesson.description}
+              </div>
+            ) : null}
+            {activeOutcomes.length ? (
+              <div className="rounded-lg border border-[var(--border-color)] bg-black/[0.025] p-4 dark:bg-white/5">
+                <p className="text-sm font-semibold text-slate-950 dark:text-slate-100">Learning outcomes</p>
+                <ul className="mt-3 grid gap-2 text-sm text-slate-700 dark:text-slate-300">
+                  {activeOutcomes.map((outcome) => <li key={outcome}>- {outcome}</li>)}
+                </ul>
+              </div>
+            ) : null}
+            {activeResources.length ? (
+              <div className="rounded-lg border border-[var(--border-color)] bg-white/70 p-4 dark:bg-slate-950/40">
+                <p className="text-sm font-semibold text-slate-950 dark:text-slate-100">Attached files</p>
+                <div className="mt-3 grid gap-2">
+                  {activeResources.map((resource, index) => (
+                    <a
+                      key={`${resource.url}-${index}`}
+                      href={resource.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border-color)] bg-black/[0.025] px-3 py-2 text-sm text-cyan-700 transition hover:border-cyan-400/50 dark:bg-white/5 dark:text-cyan-200"
+                    >
+                      <span className="min-w-0 flex-1 truncate font-medium">{resource.name || resource.url}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">{resource.mimeType || 'file'}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <div className="flex flex-wrap items-center gap-3">
+              <Button onClick={markComplete} disabled={!auth.user}>Mark complete</Button>
+              <Button variant="secondary" onClick={() => setActiveLessonIndex((index) => Math.min(index + 1, lessons.length - 1))} disabled={activeLessonIndex >= lessons.length - 1}>
+                Next lesson
+              </Button>
+              <Button variant="secondary" onClick={() => navigate(`/course/${course.id}/assessments`)}>
+                View assignments{assignments.length ? ` (${assignments.length})` : ''}
+              </Button>
+            </div>
+            <label className="block rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+              <span className="text-sm font-bold text-[var(--text-primary)]">My lesson notes</span>
+              <textarea
+                className="mt-3 min-h-28 w-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] p-3 text-sm text-[var(--text-primary)] outline-none"
+                value={lessonNotes}
+                onChange={(event) => setLessonNotes(event.target.value)}
+                placeholder="Take private notes while watching this lesson."
+              />
+            </label>
+          </div>
         </div>
       </div>
 

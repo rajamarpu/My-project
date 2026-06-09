@@ -65,7 +65,7 @@ export default function AdminLayout({ children }) {
 
   return (
     <div className="admin-shell min-h-screen text-[var(--text-primary)]">
-      <div className="grid min-h-screen lg:grid-cols-[288px_1fr]">
+      <div className="min-h-screen lg:block">
         <div className="sticky top-0 z-30 border-b border-[var(--border-color)] bg-[var(--bg-elevated)]/95 p-4 backdrop-blur lg:hidden">
           <div className="flex items-center justify-between gap-3">
             <Logo to="/admin" admin />
@@ -85,15 +85,15 @@ export default function AdminLayout({ children }) {
 
         {navOpen ? <button type="button" aria-label="Close admin menu overlay" onClick={() => setNavOpen(false)} className="fixed inset-0 z-30 bg-slate-950/40 backdrop-blur-sm lg:hidden" /> : null}
 
-        <aside className={`${navOpen ? 'block animate-upto-fade-slide' : 'hidden'} fixed inset-x-3 top-20 z-40 max-h-[calc(100dvh-6rem)] overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-3 shadow-soft backdrop-blur-xl sm:inset-x-4 sm:p-4 lg:sticky lg:top-0 lg:block lg:h-screen lg:max-h-none lg:rounded-none lg:border-x-0 lg:border-y-0 lg:border-r lg:p-5 lg:shadow-none`}>
-          <div className="flex items-center justify-between gap-3">
+        <aside className={`${navOpen ? 'flex animate-upto-fade-slide' : 'hidden'} fixed inset-x-3 top-20 z-40 max-h-[calc(100dvh-6rem)] flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-3 shadow-soft backdrop-blur-xl sm:inset-x-4 sm:p-4 lg:inset-y-0 lg:left-0 lg:top-0 lg:flex lg:h-screen lg:w-[288px] lg:max-h-none lg:rounded-none lg:border-x-0 lg:border-y-0 lg:border-r lg:p-5 lg:shadow-none`}>
+          <div className="shrink-0 flex items-center justify-between gap-3">
             <Logo to="/admin" admin />
             <div className="hidden lg:block">
               <ThemeToggleButton />
             </div>
           </div>
 
-          <nav className="admin-scrollbar mt-7 max-h-[calc(100vh-190px)] space-y-6 overflow-y-auto pr-1" aria-label="Admin navigation">
+          <nav className="admin-scrollbar mt-7 min-h-0 flex-1 space-y-6 overflow-y-auto pr-1 lg:mt-5 lg:space-y-4" aria-label="Admin navigation">
             {adminNavSections.map((section) => (
               <div key={section.label}>
                 <p className="px-3 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">{section.label}</p>
@@ -130,14 +130,14 @@ export default function AdminLayout({ children }) {
               dispatch(logout())
               navigate('/admin-login')
             }}
-            className="mt-5 flex w-full items-center gap-3 rounded-xl border border-red-500/20 px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-500/10 dark:text-red-200"
+            className="mt-5 shrink-0 flex w-full items-center gap-3 rounded-xl border border-red-500/20 px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-500/10 dark:text-red-200"
           >
             <LogOut size={18} />
             Logout
           </button>
         </aside>
 
-        <main key={location.pathname} className="admin-main min-w-0 animate-upto-page-enter px-3 py-4 sm:px-5 sm:py-6 lg:px-5 lg:py-5 xl:px-6">
+        <main key={location.pathname} className="admin-main min-w-0 max-w-full animate-upto-page-enter px-3 py-4 sm:px-5 sm:py-6 lg:ml-[288px] lg:w-[calc(100%-288px)] lg:px-5 lg:py-5 xl:px-6">
           {children}
         </main>
       </div>

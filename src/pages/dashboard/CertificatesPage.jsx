@@ -1,6 +1,6 @@
 import Button from '../../components/common/Button/Button.jsx'
 import { useEffect, useState } from 'react'
-import { Award } from 'lucide-react'
+import { Award, BookOpenCheck, CheckCircle2, ShieldCheck } from 'lucide-react'
 import { fetchCertificates } from '../../api/api.js'
 
 export default function CertificatesPage() {
@@ -47,6 +47,12 @@ export default function CertificatesPage() {
       ) : null}
       {error ? <div className="mt-6 rounded-3xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-700 dark:text-red-100">{error}</div> : null}
 
+      <div className="mt-6 grid gap-4 sm:grid-cols-3">
+        <CertificateMetric icon={Award} label="Certificates" value={certificates.length} />
+        <CertificateMetric icon={ShieldCheck} label="Verification ready" value={certificates.filter((item) => String(item.status || 'ISSUED').toUpperCase() === 'ISSUED').length} />
+        <CertificateMetric icon={BookOpenCheck} label="Courses represented" value={new Set(certificates.map((item) => item.course?.id || item.course?.title).filter(Boolean)).size} />
+      </div>
+
       <div className="mt-10 grid gap-6 lg:grid-cols-2">
         {loading ? (
           <div className="col-span-full rounded-lg border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] p-8 text-center text-[var(--text-muted)]">Loading certificates...</div>
@@ -78,6 +84,15 @@ export default function CertificatesPage() {
                 <p><strong>Certificate ID:</strong> {item.certificateNo}</p>
               </div>
             </div>
+            <div className="mt-4 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4">
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="mt-0.5 shrink-0 text-emerald-600" size={18} />
+                <div>
+                  <p className="text-sm font-semibold text-[var(--text-primary)]">Verification status</p>
+                  <p className="mt-1 text-sm text-[var(--text-secondary)]">This certificate can be verified using certificate ID {item.certificateNo}.</p>
+                </div>
+              </div>
+            </div>
             <div className="mt-6 grid gap-3 sm:grid-cols-3">
               <Button variant="secondary" onClick={() => window.print()}>Print</Button>
               <Button onClick={() => setActiveCertificate(`${courseName} certificate is ready to share. Certificate ID: ${item.certificateNo}`)}>Share LinkedIn</Button>
@@ -94,6 +109,16 @@ export default function CertificatesPage() {
         )}
       </div>
     </section>
+  )
+}
+
+function CertificateMetric({ icon: Icon, label, value }) {
+  return (
+    <div className="glass-card rounded-xl p-5 shadow-soft">
+      <span className="grid h-10 w-10 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]"><Icon size={18} /></span>
+      <p className="mt-3 text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">{label}</p>
+      <p className="mt-2 text-2xl font-black text-[var(--text-primary)]">{value}</p>
+    </div>
   )
 }
 
