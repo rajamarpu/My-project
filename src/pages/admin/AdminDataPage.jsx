@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Activity, Award, Ban, BarChart3, BookOpenCheck, CheckCircle2, Clock3, CreditCard, FolderTree, GraduationCap, ShieldCheck, Trash2, TrendingUp, UserCheck, Users, XCircle } from 'lucide-react'
+import { Activity, AlertTriangle, Award, Ban, BarChart3, BookOpenCheck, CheckCircle2, Clock3, CreditCard, FileText, FolderTree, Gauge, GraduationCap, ShieldCheck, Target, Trash2, TrendingUp, UserCheck, Users, XCircle, Zap } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
 import AdminDataTable from '../../components/admin/AdminDataTable.jsx'
 import { AdminEmptyState, AdminGuidancePanel, AdminInsightStrip, AdminModal, AdminNotice, AdminPageHeader, AdminStatusBadge, AdminToastStack } from '../../components/admin/AdminUI.jsx'
@@ -182,6 +182,7 @@ export default function AdminDataPage({ resource }) {
   const hasActions = config.actions || ['users', 'learners', 'instructors', 'categories'].includes(resource)
   const insights = buildInsights(resource, rows)
   const guidance = buildGuidance(resource)
+  const enterpriseSignals = buildEnterpriseSignals(resource, rows)
 
   function toast(type, message) {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -364,6 +365,7 @@ export default function AdminDataPage({ resource }) {
       <AdminNotice type={notice.type || 'info'}>{notice.message}</AdminNotice>
 
       <AdminInsightStrip items={insights} />
+      <EnterpriseOperationsPanel resource={resource} signals={enterpriseSignals} />
       <AdminGuidancePanel title="Productivity workflow" items={guidance} />
 
       <AdminDataTable
@@ -445,6 +447,218 @@ export default function AdminDataPage({ resource }) {
 
     return null
   }
+}
+
+function EnterpriseOperationsPanel({ resource, signals }) {
+  if (!signals) return null
+  const toneClass = {
+    excellent: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-100',
+    good: 'border-blue-500/25 bg-blue-500/10 text-blue-700 dark:text-blue-100',
+    watch: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-100',
+    risk: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-100',
+  }[signals.tone] || 'border-[var(--border-color)] bg-[var(--bg-subtle)] text-[var(--text-primary)]'
+
+  return (
+    <div className="admin-panel overflow-hidden p-0">
+      <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_24rem]">
+        <div className="p-4 sm:p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent-primary)]">Enterprise command layer</p>
+              <h2 className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{signals.title}</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">{signals.summary}</p>
+            </div>
+            <div className={`min-w-[11rem] rounded-lg border px-4 py-3 ${toneClass}`}>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-xs font-bold uppercase tracking-[0.14em]">Health</span>
+                <Gauge size={18} />
+              </div>
+              <p className="mt-2 text-2xl font-black">{signals.score}/10</p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {signals.cards.map((card) => {
+              const Icon = card.icon
+              return (
+                <div key={card.label} className="theme-subcard rounded-lg p-4">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">{card.label}</p>
+                    <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--bg-card)] text-[var(--accent-primary)]">
+                      <Icon size={17} />
+                    </span>
+                  </div>
+                  <p className="mt-3 text-xl font-bold text-[var(--text-primary)]">{card.value}</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{card.detail}</p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="border-t border-[var(--border-color)] bg-[var(--bg-subtle)] p-4 sm:p-5 xl:border-l xl:border-t-0">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">Next best action</p>
+          <div className="mt-4 space-y-3">
+            <SignalRow icon={Target} label="Priority" text={signals.priority} />
+            <SignalRow icon={AlertTriangle} label="Risk" text={signals.risk} />
+            <SignalRow icon={Zap} label="Automation" text={signals.automation} />
+            <SignalRow icon={FileText} label="Review" text={signals.review} />
+          </div>
+          <p className="mt-4 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-3 text-xs leading-5 text-[var(--text-secondary)]">
+            This layer is generated from the current {resource.replace('-', ' ')} rows and does not change backend logic.
+          </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SignalRow({ icon: Icon, label, text }) {
+  return (
+    <div className="flex items-start gap-3 rounded-lg bg-[var(--bg-card)] p-3">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">
+        <Icon size={16} />
+      </span>
+      <span>
+        <span className="block text-xs font-bold uppercase tracking-[0.13em] text-[var(--text-muted)]">{label}</span>
+        <span className="mt-1 block text-sm leading-5 text-[var(--text-primary)]">{text}</span>
+      </span>
+    </div>
+  )
+}
+
+function buildEnterpriseSignals(resource, rows) {
+  const total = rows.length
+  const base = {
+    title: 'Operational readiness',
+    summary: 'Use this view to spot work queues, reduce manual checking, and keep the platform moving cleanly.',
+    score: total ? 8 : 6,
+    tone: total ? 'good' : 'watch',
+    priority: 'Review the newest records, then export filtered rows for team follow-up.',
+    risk: total ? 'No severe pattern detected from this table view.' : 'No live rows are available, so the admin team has limited operational visibility.',
+    automation: 'Use filters and bulk actions to reduce repeated one-row admin work.',
+    review: 'Open quick view before editing or deleting records.',
+    cards: [
+      { label: 'Rows monitored', value: total, detail: 'records loaded into this module', icon: BarChart3 },
+      { label: 'Productivity', value: total > 25 ? 'High' : 'Normal', detail: 'table tools are ready for sorting, filtering, and export', icon: Zap },
+      { label: 'Governance', value: 'Tracked', detail: 'quick view and export support admin review', icon: ShieldCheck },
+    ],
+  }
+
+  if (peopleResources.has(resource)) {
+    const approved = rows.filter((row) => String(row.approvalStatus || 'APPROVED').toUpperCase() === 'APPROVED').length
+    const pending = rows.filter((row) => String(row.approvalStatus || '').toUpperCase() === 'PENDING').length
+    const suspended = rows.filter((row) => row.isActive === false || String(row.approvalStatus || '').toUpperCase() === 'SUSPENDED').length
+    const score = total ? Math.max(5, Math.min(10, Math.round(((approved - suspended) / Math.max(total, 1)) * 10))) : 6
+    return {
+      ...base,
+      title: 'People operations health',
+      summary: 'Account moderation, approval status, and access risk are summarized before admins enter the table.',
+      score,
+      tone: suspended ? 'risk' : pending ? 'watch' : 'good',
+      priority: pending ? `Review ${pending} pending account${pending === 1 ? '' : 's'} before onboarding slows down.` : 'Keep the approved directory current and remove stale access quickly.',
+      risk: suspended ? `${suspended} account${suspended === 1 ? '' : 's'} need access-state review.` : 'No suspended access state is visible in this module.',
+      automation: 'Use filtered exports for weekly onboarding, approval, and learner success queues.',
+      review: 'Check quick view before approve, suspend, reject, or delete actions.',
+      cards: [
+        { label: 'Approved rate', value: `${total ? Math.round((approved / total) * 100) : 0}%`, detail: `${approved}/${total} accounts approved`, icon: UserCheck },
+        { label: 'Pending queue', value: pending, detail: 'accounts awaiting admin decision', icon: Clock3 },
+        { label: 'Access risk', value: suspended, detail: 'inactive or suspended records', icon: AlertTriangle },
+      ],
+    }
+  }
+
+  if (resource === 'courses') {
+    const published = rows.filter((row) => row.isPublished).length
+    const drafts = Math.max(0, total - published)
+    const enrollments = rows.reduce((sum, row) => sum + Number(row._count?.enrollments ?? row.enrollments ?? 0), 0)
+    const score = total ? Math.max(5, Math.min(10, Math.round((published / total) * 10))) : 6
+    return {
+      ...base,
+      title: 'Catalog quality command center',
+      summary: 'Publishing quality, catalog depth, and demand signals are highlighted so admins can protect learner trust.',
+      score,
+      tone: drafts > published ? 'watch' : 'good',
+      priority: drafts ? `Move ${drafts} draft course${drafts === 1 ? '' : 's'} through quality review or archive stale drafts.` : 'Keep published courses fresh with lessons, assessments, and certificate paths.',
+      risk: drafts > published ? 'Draft volume is higher than published catalog depth.' : 'Catalog publishing ratio looks healthy from this view.',
+      automation: 'Use saved filtered exports for draft review, published catalog QA, and high-demand course planning.',
+      review: 'Before publishing, check title, category, thumbnail, lessons, assignments, and certificate readiness.',
+      cards: [
+        { label: 'Publish rate', value: `${total ? Math.round((published / total) * 100) : 0}%`, detail: `${published}/${total} courses visible`, icon: CheckCircle2 },
+        { label: 'Demand', value: enrollments, detail: 'enrollments across visible rows', icon: TrendingUp },
+        { label: 'Draft risk', value: drafts, detail: 'courses not yet published', icon: Clock3 },
+      ],
+    }
+  }
+
+  if (resource === 'enrollments') {
+    const completed = rows.filter((row) => Number(row.completionPct || 0) >= 100).length
+    const atRisk = rows.filter((row) => Number(row.completionPct || 0) < 25).length
+    const avg = total ? Math.round(rows.reduce((sum, row) => sum + Number(row.completionPct || 0), 0) / total) : 0
+    return {
+      ...base,
+      title: 'Learner success intervention center',
+      summary: 'Completion risk and progress health are surfaced so admins can improve course completion rates.',
+      score: total ? Math.max(4, Math.min(10, Math.round(avg / 10))) : 6,
+      tone: atRisk ? 'risk' : avg >= 70 ? 'excellent' : 'watch',
+      priority: atRisk ? `Prioritize outreach to ${atRisk} low-progress enrollment${atRisk === 1 ? '' : 's'}.` : 'Keep learners moving with reminders and assessment nudges.',
+      risk: atRisk ? 'Learners below 25% progress may churn without intervention.' : 'No low-progress enrollment is visible in this table.',
+      automation: 'Export at-risk cohorts for reminder campaigns or mentor follow-up.',
+      review: 'Compare completion percentage, hours studied, and instructor assignment before intervention.',
+      cards: [
+        { label: 'Average progress', value: `${avg}%`, detail: 'mean completion across rows', icon: Gauge },
+        { label: 'Completed', value: completed, detail: 'enrollments at 100%', icon: Award },
+        { label: 'At risk', value: atRisk, detail: 'below 25% progress', icon: AlertTriangle },
+      ],
+    }
+  }
+
+  if (resource === 'payments' || resource === 'revenue') {
+    const paid = rows.filter((row) => String(row.status || '').toUpperCase() === 'PAID')
+    const pending = rows.filter((row) => String(row.status || '').toUpperCase() === 'PENDING')
+    const failed = rows.filter((row) => String(row.status || '').toUpperCase() === 'FAILED')
+    const revenue = paid.reduce((sum, row) => sum + Number(row.amountCents || 0), 0)
+    return {
+      ...base,
+      title: 'Billing operations snapshot',
+      summary: 'Revenue quality and payment exceptions are separated so finance review is faster and cleaner.',
+      score: failed.length ? 7 : paid.length ? 9 : 6,
+      tone: failed.length ? 'risk' : pending.length ? 'watch' : 'good',
+      priority: failed.length ? `Investigate ${failed.length} failed payment${failed.length === 1 ? '' : 's'} before reconciliation.` : 'Export paid rows for finance reporting.',
+      risk: pending.length ? `${pending.length} pending payment${pending.length === 1 ? '' : 's'} may need support follow-up.` : 'No pending payment state is visible in this module.',
+      automation: 'Create filtered finance exports for paid, pending, and failed payment queues.',
+      review: 'Confirm learner, course, amount, and status before refund or revenue reporting decisions.',
+      cards: [
+        { label: 'Paid revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'from paid rows only', icon: CreditCard },
+        { label: 'Pending', value: pending.length, detail: 'payments awaiting closure', icon: Clock3 },
+        { label: 'Failed', value: failed.length, detail: 'payment exceptions', icon: AlertTriangle },
+      ],
+    }
+  }
+
+  if (resource === 'analytics' || resource === 'reports' || resource === 'activity-logs') {
+    const actors = new Set(rows.map((row) => row.user?.id || row.user?.email).filter(Boolean)).size
+    const modules = new Set(rows.map((row) => row.entityType || row.action).filter(Boolean)).size
+    const loginEvents = rows.filter((row) => String(row.action || '').toLowerCase().includes('login')).length
+    return {
+      ...base,
+      title: resource === 'reports' ? 'Executive report readiness' : 'Platform activity intelligence',
+      summary: 'Audit events are translated into governance, security, and operating signals for faster admin decisions.',
+      score: total ? 8 : 6,
+      tone: loginEvents > Math.max(12, total * 0.5) ? 'watch' : 'good',
+      priority: total ? 'Filter by module or actor to turn audit rows into a focused investigation or report.' : 'Connect more activity data so leadership reports have stronger signal.',
+      risk: loginEvents ? `${loginEvents} login-related event${loginEvents === 1 ? '' : 's'} should be reviewed during security checks.` : 'No login-related event is visible in this slice.',
+      automation: 'Export module-specific audit rows for weekly security, support, and operations reviews.',
+      review: 'Use actor, module, IP address, and timestamp together before drawing conclusions.',
+      cards: [
+        { label: 'Audit events', value: total, detail: 'records available for review', icon: Activity },
+        { label: 'Actors', value: actors, detail: 'unique users represented', icon: Users },
+        { label: 'Modules', value: modules, detail: 'platform areas touched', icon: ShieldCheck },
+      ],
+    }
+  }
+
+  return base
 }
 
 function buildInsights(resource, rows) {

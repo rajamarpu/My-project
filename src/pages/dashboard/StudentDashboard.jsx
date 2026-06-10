@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Sparkles,
   Target,
+  TrendingUp,
   Trophy,
 } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -145,6 +146,15 @@ export default function StudentDashboard() {
     { label: 'Pass a practice set', done: analytics.quiz > 0 },
     { label: 'Earn certificate', done: analytics.certificates > 0 },
   ]
+  const completionPlan = buildCompletionPlan({
+    activeCourse,
+    atRiskCourses,
+    averageProgress,
+    weeklyGoalPct,
+    streak: analytics.streak,
+    quiz: analytics.quiz,
+    certificates: analytics.certificates,
+  })
 
   function goTo(path, fallbackMessage = '') {
     if (!path) {
@@ -258,6 +268,8 @@ export default function StudentDashboard() {
         <LearningGoalCard label="Learning streak" value={`${analytics.streak} days`} progress={Math.min(100, analytics.streak * 14)} detail={analytics.streak ? 'Keep the streak alive with one lesson today.' : 'Open a lesson today to start a streak.'} icon={Sparkles} />
         <LearningGoalCard label="Attention needed" value={atRiskCourses.length} progress={courses.length ? Math.round(((courses.length - atRiskCourses.length) / courses.length) * 100) : 0} detail={atRiskCourses.length ? 'Resume low-progress courses before they stall.' : 'No low-progress courses right now.'} icon={AlertCircle} />
       </section>
+
+      <CompletionAccelerator plan={completionPlan} onPrimary={resumeLearning} onPractice={() => goTo('/questions')} onCertificates={() => goTo('/certificates')} />
 
       <div className="learner-insights-v2 grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(25rem,0.9fr)] xl:items-start">
         <section className="learner-activity-card glass-card self-start rounded-xl p-5 shadow-soft sm:p-6">
@@ -439,6 +451,119 @@ function LearningGoalCard({ icon: Icon, label, value, progress, detail }) {
       <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">{detail}</p>
     </div>
   )
+}
+
+function CompletionAccelerator({ plan, onPrimary, onPractice, onCertificates }) {
+  return (
+    <section className="glass-card rounded-xl p-5 shadow-soft sm:p-6">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-stretch">
+        <div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">Completion accelerator</p>
+              <h2 className="mt-2 text-xl font-bold text-[var(--text-primary)]">{plan.title}</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">{plan.summary}</p>
+            </div>
+            <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] px-4 py-3 text-right">
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">Momentum</p>
+              <p className="mt-1 text-2xl font-black text-[var(--accent-primary)]">{plan.momentum}%</p>
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 md:grid-cols-3">
+            {plan.cards.map((card) => {
+              const Icon = card.icon
+              return (
+                <div key={card.label} className="theme-subcard rounded-lg p-4">
+                  <span className="theme-icon-badge grid h-10 w-10 place-items-center rounded-lg"><Icon size={18} /></span>
+                  <p className="mt-3 text-sm font-bold text-[var(--text-primary)]">{card.label}</p>
+                  <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{card.text}</p>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">Today</p>
+          <p className="mt-3 text-lg font-black text-[var(--text-primary)]">{plan.action}</p>
+          <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{plan.reason}</p>
+          <div className="mt-5 grid gap-2">
+            <Button onClick={onPrimary}><PlayCircle size={17} /> {plan.primaryLabel}</Button>
+            <Button variant="secondary" onClick={onPractice}><Target size={17} /> Practice questions</Button>
+            <Button variant="secondary" onClick={onCertificates}><Award size={17} /> Certificates</Button>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function buildCompletionPlan({ activeCourse, atRiskCourses, averageProgress, weeklyGoalPct, streak, quiz, certificates }) {
+  const courseProgress = Math.min(100, normalizeNumber(activeCourse?.progress ?? averageProgress))
+  const momentum = Math.min(100, Math.round((courseProgress * 0.45) + (weeklyGoalPct * 0.25) + (Math.min(7, normalizeNumber(streak)) * 4) + (normalizeNumber(quiz) ? 8 : 0) + (normalizeNumber(certificates) ? 8 : 0)))
+
+  if (!activeCourse) {
+    return {
+      title: 'Start with one focused course',
+      summary: 'Choose a course, complete the first lesson, and your personalized progress plan will become more useful.',
+      momentum,
+      action: 'Pick a course to begin',
+      reason: 'A first enrollment unlocks progress tracking, weekly goals, practice, and certificate milestones.',
+      primaryLabel: 'Start learning',
+      cards: [
+        { label: 'First step', text: 'Enroll in a course that matches your current goal.', icon: Compass },
+        { label: 'Learning habit', text: 'Finish one short lesson to start building momentum.', icon: Sparkles },
+        { label: 'Proof of skill', text: 'Assessments and certificates appear after course activity.', icon: Award },
+      ],
+    }
+  }
+
+  if (atRiskCourses.length) {
+    return {
+      title: 'Rescue low-progress courses',
+      summary: `${atRiskCourses.length} enrolled course${atRiskCourses.length === 1 ? '' : 's'} need attention before momentum drops.`,
+      momentum,
+      action: 'Complete one lesson today',
+      reason: `${activeCourse.title} is the fastest path back into a consistent learning rhythm.`,
+      primaryLabel: 'Resume course',
+      cards: [
+        { label: 'At-risk focus', text: 'Courses below 25% progress should be resumed first.', icon: AlertCircle },
+        { label: 'Micro goal', text: 'One completed lesson is enough to restart your streak.', icon: CheckCircle2 },
+        { label: 'Next checkpoint', text: 'Use practice questions after the lesson to reinforce retention.', icon: Target },
+      ],
+    }
+  }
+
+  if (courseProgress >= 80) {
+    return {
+      title: 'Finish strong and unlock proof',
+      summary: `${activeCourse.title} is close to completion. Prioritize final lessons, assessments, and certificate readiness.`,
+      momentum,
+      action: 'Finish the certificate path',
+      reason: 'High progress is the best moment to convert learning into a credential.',
+      primaryLabel: 'Continue course',
+      cards: [
+        { label: 'Final push', text: `${Math.max(0, 100 - courseProgress)}% progress remains on your active course.`, icon: Trophy },
+        { label: 'Assessment', text: 'Practice and submit required work while the material is fresh.', icon: Target },
+        { label: 'Credential', text: 'Check certificate status once lessons and assessments are complete.', icon: Award },
+      ],
+    }
+  }
+
+  return {
+    title: 'Keep a steady weekly rhythm',
+    summary: `${activeCourse.title} is active. Short, repeated sessions will improve retention and completion probability.`,
+    momentum,
+    action: 'Continue your current lesson',
+    reason: weeklyGoalPct >= 100 ? 'You have met the weekly goal, so keep momentum with a light review.' : 'You can still close the weekly goal with one focused session.',
+    primaryLabel: 'Continue course',
+    cards: [
+      { label: 'Current course', text: `${courseProgress}% complete across the active learning path.`, icon: BookOpenCheck },
+      { label: 'Weekly goal', text: `${weeklyGoalPct}% of this week completed.`, icon: TrendingUp },
+      { label: 'Retention', text: 'Use practice after lessons to turn progress into recall.', icon: Target },
+    ],
+  }
 }
 
 function ProgressSnapshot({ label, value, detail }) {
