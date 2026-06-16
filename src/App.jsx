@@ -16,6 +16,7 @@ import CourseDetailPage from './pages/Courses/CourseDetailPage.jsx'
 import StudentDashboard from './pages/Dashboard/StudentDashboard.jsx'
 import AdminDashboard from './pages/Admin/AdminDashboard.jsx'
 import AdminDataPage from './pages/Admin/AdminDataPage.jsx'
+import AnalyticsPage from './pages/Admin/AnalyticsPage.jsx'
 import AdminCourseFormPage from './pages/Admin/AdminCourseFormPage.jsx'
 import AdminCategoryFormPage from './pages/Admin/AdminCategoryFormPage.jsx'
 import QuestionManagementPage from './pages/Admin/QuestionManagementPage.jsx'
@@ -193,7 +194,7 @@ function AnimatedRoutes() {
             <Route path="/admin/categories" element={<AdminLayout><AdminDataPage resource="categories" /></AdminLayout>} />
             <Route path="/admin/create-category" element={<AdminLayout><AdminCategoryFormPage /></AdminLayout>} />
             <Route path="/admin/edit-category/:categoryId" element={<AdminLayout><AdminCategoryFormPage mode="edit" /></AdminLayout>} />
-            <Route path="/admin/analytics" element={<AdminLayout><AdminDataPage resource="analytics" /></AdminLayout>} />
+            <Route path="/admin/analytics" element={<AdminLayout><AnalyticsPage /></AdminLayout>} />
             <Route path="/admin/revenue" element={<AdminLayout><AdminDataPage resource="revenue" /></AdminLayout>} />
             <Route path="/admin/certificates" element={<AdminLayout><AdminDataPage resource="certificates" /></AdminLayout>} />
             <Route path="/admin/notifications" element={<AdminLayout><AdminDataPage resource="notifications" /></AdminLayout>} />

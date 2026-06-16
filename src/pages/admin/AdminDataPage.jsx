@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Activity, AlertTriangle, Award, Ban, BarChart3, BookOpenCheck, CheckCircle2, Clock3, CreditCard, FileText, FolderTree, Gauge, GraduationCap, ShieldCheck, Target, Trash2, TrendingUp, UserCheck, Users, XCircle, Zap } from 'lucide-react'
+import { Activity, AlertTriangle, Award, Ban, BarChart3, BookOpenCheck, CheckCircle2, Clock3, CreditCard, FolderTree, Gauge, GraduationCap, ShieldCheck, Trash2, TrendingUp, UserCheck, Users, XCircle, Zap } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
 import AdminDataTable from '../../components/admin/AdminDataTable.jsx'
 import { AdminEmptyState, AdminGuidancePanel, AdminInsightStrip, AdminModal, AdminNotice, AdminPageHeader, AdminStatusBadge, AdminToastStack } from '../../components/admin/AdminUI.jsx'
@@ -19,6 +19,7 @@ import {
   fetchAdminInstructors,
   fetchAdminLearners,
   fetchAdminNotifications,
+  fetchAdminOverview,
   fetchAdminPayments,
   fetchAdminUsers,
   rejectAdminUser,
@@ -129,10 +130,10 @@ const resources = {
   analytics: {
     eyebrow: 'Analytics',
     title: 'Analytics',
-    description: 'Use the dashboard charts for real event trends, and reports for tabular operations.',
-    load: fetchAdminActivityLogs,
-    rows: (data) => data.activityLogs || [],
-    columns: ['action', 'user', 'entityType', 'ipAddress', 'createdAt'],
+    description: 'Platform growth, learning activity, user moderation actions, completions, and revenue signals.',
+    load: fetchAdminOverview,
+    rows: (data) => data.analytics?.growth || [],
+    columns: ['date', 'registrations', 'userCreations', 'userApprovals', 'userRejections', 'userSuspensions', 'userDeletions', 'enrollments', 'completions', 'revenueCents'],
   },
   reports: {
     eyebrow: 'Reports',
@@ -161,6 +162,7 @@ function valueFor(row, column) {
   if (column === 'enrollments') return row._count?.enrollments ?? 0
   if (column === 'priceCents') return formatRupeesFromPaise(row.priceCents)
   if (column === 'amount') return new Intl.NumberFormat('en-IN', { style: 'currency', currency: row.currency || 'INR' }).format((row.amountCents || 0) / 100)
+  if (column === 'revenueCents') return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format((row.revenueCents || 0) / 100)
   const value = row[column]
   if (typeof value === 'boolean') return value ? 'Yes' : 'No'
   if (dateColumns.has(column) && value) return new Date(value).toLocaleString()
@@ -365,7 +367,7 @@ export default function AdminDataPage({ resource }) {
       <AdminNotice type={notice.type || 'info'}>{notice.message}</AdminNotice>
 
       <AdminInsightStrip items={insights} />
-      <EnterpriseOperationsPanel resource={resource} signals={enterpriseSignals} />
+      <EnterpriseOperationsPanel signals={enterpriseSignals} />
       <AdminGuidancePanel title="Productivity workflow" items={guidance} />
 
       <AdminDataTable
@@ -449,80 +451,34 @@ export default function AdminDataPage({ resource }) {
   }
 }
 
-function EnterpriseOperationsPanel({ resource, signals }) {
+function EnterpriseOperationsPanel({ signals }) {
   if (!signals) return null
-  const toneClass = {
-    excellent: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-100',
-    good: 'border-blue-500/25 bg-blue-500/10 text-blue-700 dark:text-blue-100',
-    watch: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-100',
-    risk: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-100',
-  }[signals.tone] || 'border-[var(--border-color)] bg-[var(--bg-subtle)] text-[var(--text-primary)]'
-
   return (
-    <div className="admin-panel overflow-hidden p-0">
-      <div className="grid gap-0 xl:grid-cols-[minmax(0,1fr)_24rem]">
-        <div className="p-4 sm:p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent-primary)]">Enterprise command layer</p>
-              <h2 className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{signals.title}</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">{signals.summary}</p>
-            </div>
-            <div className={`min-w-[11rem] rounded-lg border px-4 py-3 ${toneClass}`}>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-xs font-bold uppercase tracking-[0.14em]">Health</span>
-                <Gauge size={18} />
-              </div>
-              <p className="mt-2 text-2xl font-black">{signals.score}/10</p>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            {signals.cards.map((card) => {
-              const Icon = card.icon
-              return (
-                <div key={card.label} className="theme-subcard rounded-lg p-4">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">{card.label}</p>
-                    <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--bg-card)] text-[var(--accent-primary)]">
-                      <Icon size={17} />
-                    </span>
-                  </div>
-                  <p className="mt-3 text-xl font-bold text-[var(--text-primary)]">{card.value}</p>
-                  <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{card.detail}</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="border-t border-[var(--border-color)] bg-[var(--bg-subtle)] p-4 sm:p-5 xl:border-l xl:border-t-0">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]">Next best action</p>
-          <div className="mt-4 space-y-3">
-            <SignalRow icon={Target} label="Priority" text={signals.priority} />
-            <SignalRow icon={AlertTriangle} label="Risk" text={signals.risk} />
-            <SignalRow icon={Zap} label="Automation" text={signals.automation} />
-            <SignalRow icon={FileText} label="Review" text={signals.review} />
-          </div>
-          <p className="mt-4 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-3 text-xs leading-5 text-[var(--text-secondary)]">
-            This layer is generated from the current {resource.replace('-', ' ')} rows and does not change backend logic.
-          </p>
-        </div>
+    <div className="admin-panel p-4 sm:p-5">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent-primary)]">Enterprise command layer</p>
+        <h2 className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{signals.title}</h2>
+        <p className="mt-2 max-w-4xl text-sm leading-6 text-[var(--text-secondary)]">{signals.summary}</p>
       </div>
-    </div>
-  )
-}
 
-function SignalRow({ icon: Icon, label, text }) {
-  return (
-    <div className="flex items-start gap-3 rounded-lg bg-[var(--bg-card)] p-3">
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">
-        <Icon size={16} />
-      </span>
-      <span>
-        <span className="block text-xs font-bold uppercase tracking-[0.13em] text-[var(--text-muted)]">{label}</span>
-        <span className="mt-1 block text-sm leading-5 text-[var(--text-primary)]">{text}</span>
-      </span>
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
+        {signals.cards.map((card) => {
+          const Icon = card.icon
+          return (
+            <div key={card.label} className="theme-subcard rounded-lg p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">{card.label}</p>
+                <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--bg-card)] text-[var(--accent-primary)]">
+                  <Icon size={17} />
+                </span>
+              </div>
+              <p className="mt-3 text-xl font-bold text-[var(--text-primary)]">{card.value}</p>
+              <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{card.detail}</p>
+            </div>
+          )
+        })}
+      </div>
+
     </div>
   )
 }
@@ -636,7 +592,34 @@ function buildEnterpriseSignals(resource, rows) {
     }
   }
 
-  if (resource === 'analytics' || resource === 'reports' || resource === 'activity-logs') {
+  if (resource === 'analytics') {
+    const registrations = rows.reduce((sum, row) => sum + Number(row.registrations || 0), 0)
+    const userActions = rows.reduce((sum, row) => sum + Number(row.userCreations || 0) + Number(row.userApprovals || 0) + Number(row.userRejections || 0) + Number(row.userSuspensions || 0) + Number(row.userDeletions || 0), 0)
+    const enrollments = rows.reduce((sum, row) => sum + Number(row.enrollments || 0), 0)
+    const completions = rows.reduce((sum, row) => sum + Number(row.completions || 0), 0)
+    const revenue = rows.reduce((sum, row) => sum + Number(row.revenueCents || 0), 0)
+    const activeDays = rows.filter((row) => Number(row.registrations || 0) || Number(row.userCreations || 0) || Number(row.userApprovals || 0) || Number(row.userRejections || 0) || Number(row.userSuspensions || 0) || Number(row.userDeletions || 0) || Number(row.enrollments || 0) || Number(row.completions || 0) || Number(row.revenueCents || 0)).length
+    return {
+      ...base,
+      title: 'Platform growth intelligence',
+      summary: 'Today-onward growth rows show whether learner acquisition, enrollment demand, completion momentum, and paid revenue are moving together.',
+      score: activeDays ? Math.max(6, Math.min(10, Math.round((activeDays / Math.max(total, 1)) * 10))) : 5,
+      tone: completions || revenue ? 'good' : enrollments ? 'watch' : 'risk',
+      priority: enrollments ? 'Compare enrollment spikes with completions to find courses that need learner support.' : 'Create enrollment momentum so analytics has enough signal for trend review.',
+      risk: registrations > enrollments ? 'Registrations are ahead of enrollments; review onboarding and course discovery.' : 'No major acquisition-to-enrollment gap is visible in this window.',
+      automation: 'Export weekly growth rows for leadership trend reviews and course demand planning.',
+      review: 'Read registrations, enrollments, completions, and revenue together before making catalog decisions.',
+      cards: [
+        { label: 'Registrations', value: registrations, detail: 'new users in this window', icon: Users },
+        { label: 'User actions', value: userActions, detail: 'admin moderation events', icon: ShieldCheck },
+        { label: 'Enrollments', value: enrollments, detail: 'course starts tracked daily', icon: GraduationCap },
+        { label: 'Completions', value: completions, detail: 'learning outcomes recorded', icon: Award },
+        { label: 'Revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'paid revenue by day', icon: CreditCard },
+      ],
+    }
+  }
+
+  if (resource === 'reports' || resource === 'activity-logs') {
     const actors = new Set(rows.map((row) => row.user?.id || row.user?.email).filter(Boolean)).size
     const modules = new Set(rows.map((row) => row.entityType || row.action).filter(Boolean)).size
     const loginEvents = rows.filter((row) => String(row.action || '').toLowerCase().includes('login')).length
@@ -722,7 +705,21 @@ function buildInsights(resource, rows) {
       { label: 'Learners certified', value: new Set(rows.map((row) => row.user?.id || row.user?.email).filter(Boolean)).size, detail: 'unique recipients', icon: Users },
     ]
   }
-  if (resource === 'activity-logs' || resource === 'analytics' || resource === 'reports') {
+  if (resource === 'analytics') {
+    const registrations = rows.reduce((sum, row) => sum + Number(row.registrations || 0), 0)
+    const userActions = rows.reduce((sum, row) => sum + Number(row.userCreations || 0) + Number(row.userApprovals || 0) + Number(row.userRejections || 0) + Number(row.userSuspensions || 0) + Number(row.userDeletions || 0), 0)
+    const enrollments = rows.reduce((sum, row) => sum + Number(row.enrollments || 0), 0)
+    const completions = rows.reduce((sum, row) => sum + Number(row.completions || 0), 0)
+    const revenue = rows.reduce((sum, row) => sum + Number(row.revenueCents || 0), 0)
+    return [
+      { label: 'Registrations', value: registrations, detail: 'new users in this window', icon: Users },
+      { label: 'User actions', value: userActions, detail: 'admin actions from users pages', icon: ShieldCheck },
+      { label: 'Enrollments', value: enrollments, detail: 'course starts in this window', icon: GraduationCap },
+      { label: 'Completions', value: completions, detail: 'finished courses', icon: Award },
+      { label: 'Revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'paid revenue', icon: TrendingUp },
+    ]
+  }
+  if (resource === 'activity-logs' || resource === 'reports') {
     return [
       { label: 'Log events', value: total, detail: 'audit records in view', icon: Activity },
       { label: 'Actors', value: new Set(rows.map((row) => row.user?.id || row.user?.email).filter(Boolean)).size, detail: 'unique users', icon: Users },
@@ -753,6 +750,8 @@ function buildGuidance(resource) {
     payments: ['Filter failed or pending transactions daily.', 'Use quick view for transaction context.', 'Export rows before refund reconciliation.'],
     certificates: ['Verify learner and course before reissuing.', 'Use certificate ID for support requests.', 'Track course coverage for credential quality.'],
     notifications: ['Separate urgent learning reminders from general updates.', 'Check read status before resending.', 'Use categories for learner relevance.'],
+    analytics: ['Compare registrations with enrollments before changing campaigns.', 'Review completion trend before adding more courses.', 'Use revenue by day for leadership snapshots.'],
+    reports: ['Filter by actor, module, or date before exporting.', 'Use audit rows for weekly operations reviews.', 'Compare reports with analytics before leadership decisions.'],
     'activity-logs': ['Filter by actor for investigations.', 'Review login and password events first.', 'Export audit trails for security reviews.'],
   }
   return map[resource] || ['Use filters to narrow the operational view.', 'Open quick view before taking action.', 'Export rows for offline review when needed.']
@@ -803,6 +802,8 @@ function quickViewRecommendation(resource, row) {
   if (resource === 'enrollments') return 'Use progress and hours studied to decide whether this learner needs outreach.'
   if (resource === 'payments' || resource === 'revenue') return 'Confirm payment status and course context before finance export or support follow-up.'
   if (resource === 'certificates') return 'Verify certificate ID, learner, and course before sharing or reissuing.'
+  if (resource === 'analytics') return 'Compare this day with nearby days before treating it as a trend.'
+  if (resource === 'reports') return 'Correlate actor, module, IP address, and timestamp before using this report row.'
   if (resource === 'activity-logs') return 'Correlate actor, IP address, and action before treating this as a security event.'
   return 'Use this quick view to confirm context before editing, deleting, or exporting records.'
 }

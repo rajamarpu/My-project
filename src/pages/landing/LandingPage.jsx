@@ -9,7 +9,6 @@ import { fetchCourses, fetchPlatformSummary } from '../../api/api.js'
 import { aiPersonalities } from '../../constants/aiPersonalities.js'
 import Button from '../../components/common/Button/Button.jsx'
 import { pageTransition } from '../../utils/animationVariants.js'
-import { cn } from '../../utils/classNames.js'
 
 function generateParticlePositions(count) {
   return Array.from({ length: count }, (_, index) => ({
@@ -26,22 +25,6 @@ const faqs = [
   ['Is this ready for real backend APIs?', 'The frontend is structured around protected routes, JWT storage, Axios services, and role-based views.'],
   ['How is this different from a generic course marketplace?', 'The core experience is the Indian celebrity-inspired AI teacher layer: personality, voice style, teaching style, mentor suggestions, and adaptive recommendations.'],
 ]
-
-function OwlMascot() {
-  return (
-    <svg viewBox="0 0 96 96" className="h-16 w-16" aria-hidden="true">
-      <path d="M22 45c0-18 11-30 26-30s26 12 26 30c0 21-11 35-26 35S22 66 22 45Z" fill="#f8fbff" stroke="#2563eb" strokeWidth="3" />
-      <path d="M18 31 48 16l30 15-30 14-30-14Z" fill="#2563eb" />
-      <path d="M70 33v13" stroke="#f97316" strokeWidth="4" strokeLinecap="round" />
-      <circle cx="38" cy="45" r="10" fill="#e0f2fe" stroke="#06b6d4" strokeWidth="3" />
-      <circle cx="58" cy="45" r="10" fill="#e0f2fe" stroke="#06b6d4" strokeWidth="3" />
-      <circle cx="38" cy="45" r="4" fill="#1f2937" />
-      <circle cx="58" cy="45" r="4" fill="#1f2937" />
-      <path d="M48 50 42 59h12l-6-9Z" fill="#f97316" />
-      <path d="M36 66c7 5 17 5 24 0" stroke="#db2777" strokeWidth="4" strokeLinecap="round" />
-    </svg>
-  )
-}
 
 export default function LandingPage() {
   const navigate = useNavigate()
@@ -169,9 +152,9 @@ export default function LandingPage() {
             <div className="relative rounded-xl border border-[var(--border-color)] bg-white/88 p-4 shadow-2xl backdrop-blur-xl dark:bg-white/[0.08] sm:rounded-[2rem] sm:p-5">
               <div className="flex flex-col gap-4 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.24em] text-cyan-700 dark:text-cyan-200">Your skill journey</p>
-                  <h2 className="mt-2 text-2xl font-semibold text-slate-800 dark:text-white">Track your progress</h2>
-                  <p className="mt-1 text-sm text-[var(--text-secondary)] dark:text-slate-300">Earn XP, unlock badges, and climb the leaderboard as you learn.</p>
+                  <p className="text-sm uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-200">Career-ready progress</p>
+                  <h2 className="mt-2 text-2xl font-semibold text-slate-800 dark:text-white">Build proof as you learn</h2>
+                  <p className="mt-1 text-sm text-[var(--text-secondary)] dark:text-slate-300">Turn lessons into XP, badges, and visible milestones recruiters can understand.</p>
                 </div>
                 <div className="grid h-20 w-20 shrink-0 place-items-center rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 shadow-[0_16px_38px_rgba(245,158,11,0.18)] dark:border-amber-200/30 dark:from-slate-900 dark:to-slate-800">
                   <Trophy className="h-10 w-10 text-amber-500" />
