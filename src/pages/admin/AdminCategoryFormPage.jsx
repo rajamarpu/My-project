@@ -91,7 +91,7 @@ export default function AdminCategoryFormPage({ mode = 'create' }) {
         <AdminNotice type="error">{error}</AdminNotice>
         <AdminNotice type="success">{success}</AdminNotice>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Button type="submit" disabled={saving || loading}>{saving ? 'Saving...' : 'Save Category'}</Button>
+          <Button type="submit" disabled={loading} loading={saving} loadingLabel="Saving...">Save Category</Button>
           <Button type="button" variant="secondary" onClick={() => navigate('/admin/categories')}>Cancel</Button>
         </div>
       </form>

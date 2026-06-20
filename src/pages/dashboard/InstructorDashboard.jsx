@@ -86,7 +86,7 @@ export default function InstructorDashboard() {
                 Your allowed actions
               </h2>
             </div>
-            <Button variant="secondary" onClick={() => navigate('/courses')}>Manage courses</Button>
+            <Button variant="secondary" onClick={() => navigate('/instructor/courses')}>Manage courses</Button>
           </div>
 
           <div className="mt-8 grid gap-3 text-[var(--text-secondary)]">
@@ -122,7 +122,7 @@ export default function InstructorDashboard() {
           </p>
 
           <div className="mt-8 grid gap-4">
-            <Button onClick={() => navigate('/courses')}>Explore Course Catalog</Button>
+            <Button onClick={() => navigate('/instructor/courses')}>Manage Courses</Button>
             <Button variant="secondary" onClick={() => navigate('/support')}>Review student feedback</Button>
           </div>
         </div>

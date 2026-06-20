@@ -6,6 +6,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#2563eb" />
     <title>demo-project</title>
+    <script>
+      (() => {
+        let preference = 'light'
+        try {
+          const stored = localStorage.getItem('uptoskills-theme')
+          if (stored === 'light' || stored === 'dark') preference = stored
+          else if (stored === 'system') preference = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        } catch { /* Storage can be unavailable in privacy-restricted contexts. */ }
+        const theme = preference
+        document.documentElement.dataset.theme = theme
+        document.documentElement.dataset.themePreference = preference
+        document.documentElement.style.colorScheme = theme
+        document.documentElement.classList.add(theme)
+        document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#0f172a' : '#ffffff'
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

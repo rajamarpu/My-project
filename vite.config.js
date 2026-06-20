@@ -17,6 +17,17 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: resolve(rootDir, 'dist'),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return undefined
+          if (id.includes('recharts') || id.includes('d3-')) return 'charts'
+          if (id.includes('framer-motion')) return 'motion'
+          if (id.includes('react') || id.includes('redux')) return 'react-vendor'
+          return 'vendor'
+        },
+      },
+    },
   },
     server: {
       host: 'localhost',

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import { motion } from 'framer-motion'
@@ -33,8 +33,35 @@ import {
 } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
 import { pageTransition } from '../../utils/animationVariants.js'
-import { changePassword, forgotPassword, resetPassword, updateProfileRequest } from '../../api/api.js'
+import { changePassword, fetchCertificates, fetchUserAnalytics, forgotPassword, resetPassword, updateProfileRequest } from '../../api/api.js'
 import { updateCurrentUser } from '../../store/slices/authSlice.js'
+
+const GENDER_OPTIONS = ['Male', 'Female', 'Non-binary', 'Prefer not to say', 'Other']
+const COUNTRY_OPTIONS = [
+  'India',
+  'United States',
+  'United Kingdom',
+  'Canada',
+  'Australia',
+  'United Arab Emirates',
+  'Singapore',
+  'Germany',
+  'France',
+  'Japan',
+  'Other',
+]
+const CITY_OPTIONS = {
+  India: ['New Delhi', 'Mumbai', 'Bengaluru', 'Hyderabad', 'Chennai', 'Kolkata', 'Pune', 'Ahmedabad', 'Jaipur', 'Lucknow', 'Chandigarh', 'Other'],
+  'United States': ['New York', 'Los Angeles', 'Chicago', 'Houston', 'San Francisco', 'Seattle', 'Boston', 'Other'],
+  'United Kingdom': ['London', 'Manchester', 'Birmingham', 'Edinburgh', 'Glasgow', 'Other'],
+  Canada: ['Toronto', 'Vancouver', 'Montreal', 'Calgary', 'Ottawa', 'Other'],
+  Australia: ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide', 'Other'],
+  'United Arab Emirates': ['Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Other'],
+  Singapore: ['Singapore'],
+  Germany: ['Berlin', 'Munich', 'Hamburg', 'Frankfurt', 'Cologne', 'Other'],
+  France: ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Nice', 'Other'],
+  Japan: ['Tokyo', 'Osaka', 'Kyoto', 'Yokohama', 'Nagoya', 'Other'],
+}
 
 /* ─────────────────────────────────────────────
    Main Page
@@ -54,17 +81,14 @@ export default function UserPage() {
   const [avatarPreview, setAvatarPreview] = useState('')
   const [uploadProgress, setUploadProgress] = useState(0)
   const [isDraggingPhoto, setIsDraggingPhoto] = useState(false)
-  const [detailsForm, setDetailsForm] = useState({
-    dob: '',
-    gender: '',
-    country: '',
-    city: '',
-    linkedin: '',
-    github: '',
-    website: '',
+  const [detailsForm, setDetailsForm] = useState(() => {
+    const defaults = { dob: '', gender: '', country: '', city: '', linkedin: '', github: '', website: '' }
+    try { return { ...defaults, ...JSON.parse(window.localStorage.getItem('uptoskills-profile-details') || '{}') } } catch { return defaults }
   })
   const [profileBusy, setProfileBusy] = useState(false)
   const [profileNotice, setProfileNotice] = useState({ type: '', message: '' })
+  const [learningData, setLearningData] = useState({ certificates: [], analytics: null })
+  const [profileDataLoading, setProfileDataLoading] = useState(true)
 
   /* ── password state ── */
   const [passwordMode, setPasswordMode] = useState('change')
@@ -80,6 +104,10 @@ export default function UserPage() {
   const displayName = user?.fullName || user?.name || 'Learner'
   const profileImage = avatarPreview || profileForm.avatarUrl || user?.avatarUrl || user?.profilePictureUrl || user?.profileImage || ''
   const roleLabel = user?.role || 'Learner'
+  const isAdminProfile = String(user?.role || '').toLowerCase() === 'admin'
+  // Keep learner profiles focused on identity and account management. Course
+  // summaries and shortcuts already belong to the learner dashboard.
+  const showLearnerDashboardCards = false
   const memberSince = formatProfileDate(user?.createdAt || user?.joinedAt || user?.created_at)
 
   const accountReadiness = useMemo(
@@ -96,12 +124,43 @@ export default function UserPage() {
 
   const activeCourseCount = Array.isArray(enrolledCourses) ? enrolledCourses.length : 0
   const completedCourseCount = Number(user?.completedCourses || user?.completedCourseCount || 0)
-  const certificateCount = Number(user?.certificates || user?.certificateCount || 0)
-  const learningHours = Number(user?.learningHours || user?.hoursStudied || 0)
-  const learningStreak = Number(user?.streak || user?.learningStreak || 0)
-  const assessmentScore = Number(user?.assessmentScore || user?.averageScore || 0)
+  const certificatesForProfile = learningData.certificates.filter((certificate) => !isAdminProfile || Number(certificate.user?.id || certificate.userId) === Number(user?.id))
+  const certificateCount = Number(learningData.analytics?.certificates ?? certificatesForProfile.length ?? user?.certificates ?? user?.certificateCount ?? 0)
+  const learningHours = Number(learningData.analytics?.hoursStudied ?? user?.learningHours ?? user?.hoursStudied ?? 0)
+  const learningStreak = Number(learningData.analytics?.streak ?? user?.streak ?? user?.learningStreak ?? 0)
+  const assessmentScore = Number(learningData.analytics?.quiz ?? user?.assessmentScore ?? user?.averageScore ?? 0)
   const xpPoints = Number(user?.xp || user?.xpPoints || 0)
   const level = Number(user?.level || 1)
+  const profileStats = isAdminProfile
+    ? [
+      ['Access Role', roleLabel, 'platform privileges', ShieldCheck],
+      ['Profile Ready', `${readinessPct}%`, 'identity completeness', UserRound],
+      ['Security', passwordStrength.label, 'password status', KeyRound],
+      ['Session', 'Active', 'current browser', MonitorPlay],
+    ]
+    : [
+      ['Active Courses', activeCourseCount, 'enrolled paths', BookOpenCheck],
+      ['Completed', completedCourseCount, 'finished courses', Award],
+      ['Certificates', certificateCount, 'earned credentials', ShieldCheck],
+      ['XP Points', xpPoints, 'total earned', Zap],
+      ['Current Streak', `${learningStreak} days`, 'learning momentum', Flame],
+      ['Avg. Score', `${assessmentScore}%`, 'performance', BarChart3],
+    ]
+
+  useEffect(() => {
+    let active = true
+    Promise.all([
+      fetchCertificates().catch(() => ({ data: { certificates: [] } })),
+      fetchUserAnalytics().catch(() => ({ data: { analytics: null } })),
+    ]).then(([certificateResponse, analyticsResponse]) => {
+      if (!active) return
+      setLearningData({
+        certificates: certificateResponse.data?.certificates || [],
+        analytics: analyticsResponse.data?.analytics || null,
+      })
+    }).finally(() => { if (active) setProfileDataLoading(false) })
+    return () => { active = false }
+  }, [])
 
   /* ── handlers ── */
   const updateProfile = (key, value) => setProfileForm((prev) => ({ ...prev, [key]: value }))
@@ -121,14 +180,22 @@ export default function UserPage() {
       return
     }
     setUploadProgress(35)
-    const previewUrl = URL.createObjectURL(file)
-    setAvatarPreview(previewUrl)
-    window.setTimeout(() => setUploadProgress(100), 180)
-    setProfileNotice({ type: 'success', message: 'Photo preview ready.' })
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = String(reader.result || '')
+      setAvatarPreview(dataUrl)
+      updateProfile('avatarUrl', dataUrl)
+      setUploadProgress(100)
+      setProfileNotice({ type: 'success', message: 'Photo ready. Save your profile to upload it.' })
+    }
+    reader.onerror = () => {
+      setUploadProgress(0)
+      setProfileNotice({ type: 'error', message: 'Could not read that image.' })
+    }
+    reader.readAsDataURL(file)
   }
 
   function removeAvatarPreview() {
-    if (avatarPreview) URL.revokeObjectURL(avatarPreview)
     setAvatarPreview('')
     setUploadProgress(0)
     updateProfile('avatarUrl', '')
@@ -136,14 +203,27 @@ export default function UserPage() {
   }
 
   async function shareProfile() {
-    const text = `${displayName} on UptoSkills`
     try {
-      if (navigator.share) {
-        await navigator.share({ title: text, text, url: window.location.href })
-      } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(window.location.href)
-        setProfileNotice({ type: 'success', message: 'Profile link copied.' })
+      let copied = false
+      if (navigator.clipboard?.writeText) {
+        copied = await Promise.race([
+          navigator.clipboard.writeText(window.location.href).then(() => true).catch(() => false),
+          new Promise((resolve) => window.setTimeout(() => resolve(false), 600)),
+        ])
       }
+      if (!copied) {
+        const temporaryInput = document.createElement('textarea')
+        temporaryInput.value = window.location.href
+        temporaryInput.setAttribute('readonly', '')
+        temporaryInput.style.position = 'fixed'
+        temporaryInput.style.opacity = '0'
+        document.body.appendChild(temporaryInput)
+        temporaryInput.select()
+        copied = document.execCommand('copy')
+        temporaryInput.remove()
+        if (!copied) throw new Error('Copy command was unavailable')
+      }
+      setProfileNotice({ type: 'success', message: 'Profile link copied.' })
     } catch {
       setProfileNotice({ type: 'error', message: 'Could not share profile right now.' })
     }
@@ -165,6 +245,7 @@ export default function UserPage() {
         avatarUrl,
       })
       dispatch(updateCurrentUser(response.data.user))
+      window.localStorage.setItem('uptoskills-profile-details', JSON.stringify(detailsForm))
       setProfileForm({
         name: response.data.user?.fullName || response.data.user?.name || profileForm.name,
         phone: response.data.user?.phone || '',
@@ -245,16 +326,17 @@ export default function UserPage() {
      ───────────────────────────────────────────── */
   return (
     <motion.section className="space-y-8 pb-16" variants={pageTransition} initial="hidden" animate="enter" exit="exit">
+      <div className={isAdminProfile ? 'contents' : 'glass-card overflow-hidden rounded-2xl shadow-[0_28px_90px_rgba(37,99,235,0.12)]'}>
 
       {/* ─── HERO: Profile Card ─── */}
-      <section className="relative overflow-hidden rounded-2xl border border-[var(--border-color)] bg-white px-6 py-8 shadow-[0_28px_90px_rgba(37,99,235,0.14)] transition-colors dark:bg-[var(--bg-secondary)] sm:px-8 sm:py-10">
+      <section className={`${isAdminProfile ? 'glass-card rounded-2xl shadow-[0_28px_90px_rgba(37,99,235,0.14)]' : 'border-b border-[var(--border-color)]'} relative overflow-hidden px-6 py-8 transition-colors sm:px-8 sm:py-10`}>
         {/* background mesh */}
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(255,107,53,0.14),transparent_28%),radial-gradient(circle_at_80%_18%,rgba(245,158,11,0.10),transparent_28%)] dark:bg-[radial-gradient(circle_at_20%_15%,rgba(255,107,53,0.18),transparent_28%),radial-gradient(circle_at_80%_18%,rgba(245,158,11,0.12),transparent_28%)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(37,99,235,0.12),transparent_28%),radial-gradient(circle_at_80%_18%,rgba(20,184,166,0.10),transparent_28%)] dark:bg-[radial-gradient(circle_at_20%_15%,rgba(59,130,246,0.18),transparent_28%),radial-gradient(circle_at_80%_18%,rgba(45,212,191,0.12),transparent_28%)]" />
 
         <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center xl:gap-12">
           {/* Avatar */}
           <label
-            className={`group relative grid h-32 w-32 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-full border-2 border-dashed transition duration-200 sm:h-36 sm:w-36 ${isDraggingPhoto ? 'border-[var(--accent-primary)] bg-[var(--accent-soft)]' : 'border-[var(--accent-primary)]/30 bg-white/70 dark:bg-white/5'}`}
+            className={`group relative grid h-32 w-32 shrink-0 cursor-pointer place-items-center overflow-hidden rounded-full border-2 border-dashed transition duration-200 sm:h-36 sm:w-36 ${isDraggingPhoto ? 'border-[var(--accent-primary)] bg-[var(--accent-soft)]' : 'border-[var(--accent-primary)] bg-[var(--bg-subtle)]'}`}
             onDragOver={(e) => { e.preventDefault(); setIsDraggingPhoto(true) }}
             onDragLeave={() => setIsDraggingPhoto(false)}
             onDrop={(e) => { e.preventDefault(); setIsDraggingPhoto(false); handleAvatarFile(e.dataTransfer.files?.[0]) }}
@@ -278,13 +360,13 @@ export default function UserPage() {
           {/* Info */}
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-3">
-              <h1 className="min-w-0 text-3xl font-semibold text-slate-950 dark:text-white sm:text-4xl">{displayName}</h1>
+              <h1 className="min-w-0 text-3xl font-semibold text-[var(--text-primary)] sm:text-4xl">{displayName}</h1>
               <span className="inline-flex items-center gap-2 rounded-full border border-[var(--accent-primary)]/25 bg-[var(--accent-soft)] px-4 py-2 text-sm font-semibold text-[var(--accent-primary)]">
                 <UserRound size={17} />
                 {roleLabel}
               </span>
-              {learningStreak > 0 && (
-                <span className="inline-flex items-center gap-2 rounded-full border border-amber-300/40 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 dark:border-amber-400/25 dark:bg-amber-500/10 dark:text-amber-300">
+              {!isAdminProfile && learningStreak > 0 && (
+                <span className="inline-flex items-center gap-2 rounded-full border border-orange-400/30 bg-orange-500/10 px-4 py-2 text-sm font-semibold text-[var(--accent-orange)]">
                   <Flame size={17} /> {learningStreak} day streak
                 </span>
               )}
@@ -319,7 +401,11 @@ export default function UserPage() {
             <div className="mt-5 flex flex-wrap gap-3">
               <Button variant="secondary" onClick={() => document.getElementById('profile-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Edit Profile</Button>
               <Button variant="secondary" onClick={shareProfile}><Share2 size={16} /> Share</Button>
-              <Button onClick={() => navigate('/certificates')}><Download size={16} /> Certificates</Button>
+              {isAdminProfile ? (
+                <Button onClick={() => navigate('/admin')}><ShieldCheck size={16} /> Admin Dashboard</Button>
+              ) : (
+                <Button onClick={() => navigate('/certificates')}><Download size={16} /> Certificates</Button>
+              )}
               {profileImage ? <Button variant="secondary" onClick={removeAvatarPreview}><Trash2 size={16} /> Remove Photo</Button> : null}
             </div>
           </div>
@@ -327,15 +413,8 @@ export default function UserPage() {
       </section>
 
       {/* ─── Learning Stats ─── */}
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
-        {[
-          ['Active Courses', activeCourseCount, 'enrolled paths', BookOpenCheck],
-          ['Completed', completedCourseCount, 'finished courses', Award],
-          ['Certificates', certificateCount, 'earned credentials', ShieldCheck],
-          ['XP Points', xpPoints, 'total earned', Zap],
-          ['Current Streak', `${learningStreak} days`, 'learning momentum', Flame],
-          ['Avg. Score', `${assessmentScore}%`, 'performance', BarChart3],
-        ].map(([label, value, detail, Icon]) => (
+      {isAdminProfile ? <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {profileStats.map(([label, value, detail, Icon]) => (
           <motion.div
             key={label}
             className="theme-subcard theme-subcard-hover rounded-2xl p-4 shadow-soft"
@@ -350,16 +429,16 @@ export default function UserPage() {
             <p className="mt-1 text-sm text-[var(--text-secondary)]">{detail}</p>
           </motion.div>
         ))}
-      </section>
+      </section> : null}
 
       {/* ─── Two-column: Activity + Sidebar ─── */}
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <section className="grid gap-6">
 
         {/* ── Main Column ── */}
         <div className="space-y-6">
 
           {/* XP & Level Overview */}
-          <div className="glass-card p-5 shadow-glow sm:p-6">
+          {showLearnerDashboardCards ? <div className="glass-card p-5 shadow-glow sm:p-6">
             <div className="flex flex-col gap-4 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-primary)]">Learning Progress</p>
@@ -368,28 +447,28 @@ export default function UserPage() {
                   {getProgressMessage(activeCourseCount, completedCourseCount, learningStreak)}
                 </p>
               </div>
-              <div className="grid h-20 w-20 shrink-0 place-items-center rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 shadow-[0_16px_38px_rgba(245,158,11,0.18)] dark:border-amber-200/30 dark:from-slate-900 dark:to-slate-800">
-                <Trophy className="h-10 w-10 text-amber-500" />
+              <div className="grid h-20 w-20 shrink-0 place-items-center rounded-3xl border border-[var(--border-color)] bg-[var(--accent-soft)] shadow-[0_16px_38px_rgba(245,158,11,0.18)]">
+                <Trophy className="h-10 w-10 text-[var(--accent-orange)]" />
               </div>
             </div>
 
             <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              <div className="flex items-center justify-between rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 p-4 shadow-soft dark:border-white/10 dark:from-slate-900/80 dark:to-slate-800/80">
+              <div className="theme-subcard flex items-center justify-between rounded-2xl p-4 shadow-soft">
                 <div className="flex items-center gap-3">
-                  <Zap className="text-amber-500" />
+                  <Zap className="text-[var(--accent-orange)]" />
                   <div>
-                    <p className="text-sm font-semibold text-slate-800 dark:text-white">XP Points</p>
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">XP Points</p>
                     <p className="text-xs text-[var(--text-muted)]">Keep learning to earn more</p>
                   </div>
                 </div>
-                <span className="text-2xl font-bold text-amber-500">{xpPoints}</span>
+                <span className="text-2xl font-bold text-[var(--accent-orange)]">{xpPoints}</span>
               </div>
 
-              <div className="flex items-center justify-between rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-4 shadow-soft dark:border-white/10 dark:from-slate-900/80 dark:to-slate-800/80">
+              <div className="theme-subcard flex items-center justify-between rounded-2xl p-4 shadow-soft">
                 <div className="flex items-center gap-3">
                   <Target className="text-emerald-500" />
                   <div>
-                    <p className="text-sm font-semibold text-slate-800 dark:text-white">Badges</p>
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">Badges</p>
                     <p className="text-xs text-[var(--text-muted)]">Master topics to unlock</p>
                   </div>
                 </div>
@@ -414,14 +493,14 @@ export default function UserPage() {
                 <span className="font-semibold text-[var(--text-primary)]">Level {level} progress</span>
                 <span className="text-[var(--text-muted)]">{xpPoints % 1000} / 1,000 XP to next level</span>
               </div>
-              <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/70 dark:bg-white/10">
+              <div className="mt-3 h-3 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
                 <div className="h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${Math.min((xpPoints % 1000) / 10, 100)}%` }} />
               </div>
             </div>
-          </div>
+          </div> : null}
 
           {/* Quick tips */}
-          <div className="glass-card p-5 shadow-soft sm:p-6">
+          {showLearnerDashboardCards ? <div className="glass-card p-5 shadow-soft sm:p-6">
             <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-primary)]">Quick Actions</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {[
@@ -446,10 +525,40 @@ export default function UserPage() {
                 </button>
               ))}
             </div>
-          </div>
+          </div> : null}
+
+          {isAdminProfile ? (
+            <div className="glass-card p-5 shadow-glow sm:p-6">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-primary)]">Admin Control Center</p>
+                  <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Operational profile and access readiness</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
+                    This profile focuses on platform access, security, identity, and management shortcuts instead of learner XP, streaks, and certificates.
+                  </p>
+                </div>
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]">
+                  <LockKeyhole size={22} />
+                </span>
+              </div>
+              <div className="mt-5 grid gap-3 md:grid-cols-3">
+                {[
+                  ['Identity', 'Keep name, phone, and profile image current for audit clarity.', UserRound, '/profile'],
+                  ['Users', 'Review learner, instructor, and admin records from the management panel.', ShieldCheck, '/admin/users'],
+                  ['Courses', 'Manage catalog, instructors, assignments, and publishing status.', BookOpen, '/admin/courses'],
+                ].map(([title, text, Icon, path]) => (
+                  <button key={title} type="button" onClick={() => navigate(path)} className="theme-subcard theme-subcard-hover rounded-xl p-4 text-left">
+                    <span className="theme-icon-badge grid h-10 w-10 place-items-center rounded-lg"><Icon size={18} /></span>
+                    <p className="mt-3 text-sm font-bold text-[var(--text-primary)]">{title}</p>
+                    <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{text}</p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {/* Profile Editor */}
-          <div id="profile-editor" className="glass-card p-5 shadow-glow sm:p-6">
+          <div id="profile-editor" className={isAdminProfile ? 'glass-card p-5 shadow-glow sm:p-6' : 'p-6 sm:p-8'}>
             <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-primary)]">Profile Editor</p>
@@ -465,34 +574,40 @@ export default function UserPage() {
             ) : null}
 
             <form onSubmit={submitProfile} className="mt-6">
-              <div className="grid gap-4 xl:grid-cols-2">
-                <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
-                  <p className="text-sm font-semibold text-[var(--text-primary)]">Basic Details</p>
-                  <div className="mt-4 grid gap-3">
-                    <input className="admin-input" value={profileForm.name} onChange={(e) => updateProfile('name', e.target.value)} placeholder="Full name" />
-                    <input className="admin-input" value={user?.email || ''} readOnly placeholder="Email address" />
-                    <input className="admin-input" value={profileForm.phone} onChange={(e) => updateProfile('phone', e.target.value)} placeholder="Phone" />
+              <div className="grid gap-6">
+                <section>
+                  <p className="border-b border-[var(--border-color)] pb-2 text-sm font-bold text-[var(--text-primary)]">Basic details</p>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    <ProfileField label="Full name" value={profileForm.name} onChange={(e) => updateProfile('name', e.target.value)} placeholder="Enter your full name" />
+                    <ProfileField label="Email address" value={user?.email || ''} readOnly placeholder="Email address" />
+                    <ProfileField label="Phone number" type="tel" value={profileForm.phone} onChange={(e) => updateProfile('phone', e.target.value)} placeholder="Enter your phone number" />
                   </div>
-                </div>
+                </section>
 
-                <div className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
-                  <p className="text-sm font-semibold text-[var(--text-primary)]">Location & Links</p>
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    <input className="admin-input" value={detailsForm.dob} onChange={(e) => updateDetails('dob', e.target.value)} placeholder="Date of birth" />
-                    <input className="admin-input" value={detailsForm.gender} onChange={(e) => updateDetails('gender', e.target.value)} placeholder="Gender" />
-                    <input className="admin-input" value={detailsForm.country} onChange={(e) => updateDetails('country', e.target.value)} placeholder="Country" />
-                    <input className="admin-input" value={detailsForm.city} onChange={(e) => updateDetails('city', e.target.value)} placeholder="City" />
-                    <input className="admin-input md:col-span-2" value={detailsForm.website} onChange={(e) => updateDetails('website', e.target.value)} placeholder="Personal website" />
-                    <input className="admin-input md:col-span-2" value={detailsForm.linkedin} onChange={(e) => updateDetails('linkedin', e.target.value)} placeholder="LinkedIn URL" />
-                    <input className="admin-input md:col-span-2" value={detailsForm.github} onChange={(e) => updateDetails('github', e.target.value)} placeholder="GitHub URL" />
+                <section>
+                  <p className="border-b border-[var(--border-color)] pb-2 text-sm font-bold text-[var(--text-primary)]">Personal details and location</p>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                    <ProfileField label="Date of birth" type="date" value={detailsForm.dob} onChange={(e) => updateDetails('dob', e.target.value)} />
+                    <ProfileField label="Gender" value={detailsForm.gender} onChange={(e) => updateDetails('gender', e.target.value)} placeholder="Select gender" options={GENDER_OPTIONS} />
+                    <ProfileField label="Country" value={detailsForm.country} onChange={(e) => setDetailsForm((current) => ({ ...current, country: e.target.value, city: '' }))} placeholder="Select country" options={COUNTRY_OPTIONS} />
+                    <ProfileField label="City" value={detailsForm.city} onChange={(e) => updateDetails('city', e.target.value)} placeholder={CITY_OPTIONS[detailsForm.country] ? 'Select city' : 'Enter city'} options={CITY_OPTIONS[detailsForm.country]} />
                   </div>
-                </div>
-                <input className="admin-input xl:col-span-2" value={profileForm.avatarUrl} onChange={(e) => updateProfile('avatarUrl', e.target.value)} placeholder="Profile picture URL" />
+                </section>
+
+                <section>
+                  <p className="border-b border-[var(--border-color)] pb-2 text-sm font-bold text-[var(--text-primary)]">Links and profile image</p>
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <ProfileField label="Personal website" type="url" value={detailsForm.website} onChange={(e) => updateDetails('website', e.target.value)} placeholder="https://yourwebsite.com" />
+                    <ProfileField label="LinkedIn" type="url" value={detailsForm.linkedin} onChange={(e) => updateDetails('linkedin', e.target.value)} placeholder="LinkedIn profile URL" />
+                    <ProfileField label="GitHub" type="url" value={detailsForm.github} onChange={(e) => updateDetails('github', e.target.value)} placeholder="GitHub profile URL" />
+                    <ProfileField label="Profile picture URL" type="url" value={profileForm.avatarUrl} onChange={(e) => updateProfile('avatarUrl', e.target.value)} placeholder="Profile picture URL" />
+                  </div>
+                </section>
               </div>
 
-              <div className="mt-4 flex flex-col gap-4 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className={`mt-6 flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between ${isAdminProfile ? 'rounded-2xl border border-[var(--border-color)] bg-[var(--bg-subtle)]' : 'border-t border-[var(--border-color)] px-0 pb-0'}`}>
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-[var(--border-color)] bg-white/70 dark:bg-white/5">
+                  <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)]">
                     {profileImage ? (
                       <img src={profileImage} alt="Preview" className="h-full w-full object-cover"
                         onLoad={(e) => { e.currentTarget.style.display = 'block' }}
@@ -504,14 +619,14 @@ export default function UserPage() {
                   </span>
                   <p className="text-xs leading-5 text-[var(--text-secondary)]">Upload progress: {uploadProgress}%</p>
                 </div>
-                <Button type="submit" variant="secondary" disabled={profileBusy}>{profileBusy ? 'Saving...' : 'Save Profile'}</Button>
+                <Button type="submit" variant="secondary" loading={profileBusy} loadingLabel="Saving...">Save Profile</Button>
               </div>
             </form>
           </div>
         </div>
 
         {/* ── Sidebar ── */}
-        <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
+        {showLearnerDashboardCards ? <aside className="space-y-6 xl:sticky xl:top-6 xl:self-start">
 
           {/* Account Overview */}
           <div className="glass-card p-5 shadow-soft">
@@ -520,11 +635,11 @@ export default function UserPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-[var(--text-primary)]">Profile Completion</p>
-                  <p className="mt-1 text-sm text-[var(--text-secondary)]">Complete essentials for certificates.</p>
+                  <p className="mt-1 text-sm text-[var(--text-secondary)]">{isAdminProfile ? 'Keep admin identity clear for platform records.' : 'Complete essentials for certificates.'}</p>
                 </div>
                 <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-sm font-semibold text-[var(--accent-primary)]">{readinessPct}%</span>
               </div>
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/70 dark:bg-white/10">
+              <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
                 <div className="h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${readinessPct}%` }} />
               </div>
               <div className="mt-4 grid gap-2">
@@ -543,28 +658,60 @@ export default function UserPage() {
             </div>
           </div>
 
-          {/* Learning Goals */}
-          <div className="glass-card p-5 shadow-soft">
-            <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-primary)]">Learning Goals</p>
-            <div className="mt-4 space-y-3">
-              <GoalTracker label="Complete first course" current={completedCourseCount} target={Math.max(completedCourseCount, 1)} icon={BookOpenCheck} />
-              <GoalTracker label="Earn 3 certificates" current={certificateCount} target={3} icon={Award} />
-              <GoalTracker label="7-day learning streak" current={learningStreak} target={7} icon={Flame} />
-              <GoalTracker label="Study 20 hours" current={learningHours} target={20} icon={Clock3} />
+          <>
+            <div className="glass-card p-5 shadow-soft">
+              <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-primary)]">Learning Goals</p>
+              <div className="mt-4 space-y-3">
+                <GoalTracker label="Complete first course" current={completedCourseCount} target={Math.max(completedCourseCount, 1)} icon={BookOpenCheck} />
+                <GoalTracker label="Earn 3 certificates" current={certificateCount} target={3} icon={Award} />
+                <GoalTracker label="7-day learning streak" current={learningStreak} target={7} icon={Flame} />
+                <GoalTracker label="Study 20 hours" current={learningHours} target={20} icon={Clock3} />
+              </div>
             </div>
-          </div>
 
-          {/* Quick Links */}
-          <div className="glass-card p-5 shadow-soft">
-            <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-primary)]">Quick Links</p>
-            <div className="mt-4 grid gap-3">
-              <Button onClick={() => navigate('/explore')}>Explore Courses</Button>
-              <Button variant="secondary" onClick={() => navigate('/certificates')}>View Certificates</Button>
-              <Button variant="secondary" onClick={() => navigate('/personalities')}>AI Teachers</Button>
+            <div className="glass-card p-5 shadow-soft">
+              <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-primary)]">Quick Links</p>
+              <div className="mt-4 grid gap-3">
+                <Button onClick={() => navigate('/explore')}>Explore Courses</Button>
+                <Button variant="secondary" onClick={() => navigate('/certificates')}>View Certificates</Button>
+                <Button variant="secondary" onClick={() => navigate('/personalities')}>AI Teachers</Button>
+              </div>
             </div>
-          </div>
-        </aside>
+          </>
+        </aside> : null}
       </section>
+      </div>
+
+      {isAdminProfile ? <section className="grid gap-6 xl:grid-cols-2">
+        <div className="glass-card p-5 shadow-soft sm:p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div><p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-primary)]">Certificates</p><h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Earned credentials</h2></div>
+            <Button variant="secondary" onClick={() => navigate(isAdminProfile ? '/admin/certificates' : '/certificates')}>View all</Button>
+          </div>
+          <div className="mt-5 grid gap-3">
+            {profileDataLoading ? Array.from({ length: 3 }).map((_, index) => <span key={index} className="skeleton h-20 rounded-xl" />) : certificatesForProfile.length ? certificatesForProfile.slice(0, 3).map((certificate) => (
+              <div key={certificate.id || certificate.certificateNo} className="flex items-center gap-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--color-success-soft)] text-[var(--color-success)]"><Award size={20} /></span>
+                <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-[var(--text-primary)]">{certificate.course?.title || 'Course Certificate'}</span><span className="mt-1 block truncate text-xs text-[var(--text-muted)]">{certificate.certificateNo || 'Verified credential'} · {formatProfileDate(certificate.issuedAt)}</span></span>
+                <CheckCircle2 size={18} className="shrink-0 text-[var(--color-success)]" />
+              </div>
+            )) : <div className="rounded-xl border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] p-6 text-center"><Award className="mx-auto text-[var(--text-muted)]" size={28} /><p className="mt-3 font-semibold text-[var(--text-primary)]">No certificates yet</p><p className="mt-1 text-sm text-[var(--text-secondary)]">Completed course credentials will appear here.</p></div>}
+          </div>
+        </div>
+
+        <div className="glass-card p-5 shadow-soft sm:p-6">
+          <p className="text-sm uppercase tracking-[0.24em] text-[var(--accent-primary)]">Activity Timeline</p>
+          <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Recent learning activity</h2>
+          <div className="relative mt-5 grid gap-4 before:absolute before:bottom-3 before:left-[0.7rem] before:top-3 before:w-px before:bg-[var(--border-color)]">
+            {profileDataLoading ? Array.from({ length: 4 }).map((_, index) => <span key={index} className="skeleton ml-8 h-16 rounded-xl" />) : learningData.analytics?.recent?.length ? learningData.analytics.recent.slice(0, 6).map((activity, index) => (
+              <div key={activity.id || `${activity.courseId}-${activity.lessonId}-${index}`} className="relative flex gap-4">
+                <span className="relative z-10 mt-1 h-6 w-6 shrink-0 rounded-full border-4 border-[var(--bg-elevated)] bg-[var(--accent-primary)]" />
+                <div className="min-w-0 flex-1 rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-3"><p className="truncate text-sm font-semibold text-[var(--text-primary)]">{activity.lesson?.title || activity.course?.title || 'Learning progress updated'}</p><p className="mt-1 text-xs text-[var(--text-muted)]">{activity.percentComplete || 0}% complete · {formatProfileDate(activity.lastAccessedAt || activity.updatedAt)}</p></div>
+              </div>
+            )) : <div className="relative flex gap-4"><span className="relative z-10 mt-1 h-6 w-6 shrink-0 rounded-full border-4 border-[var(--bg-elevated)] bg-[var(--accent-primary)]" /><div className="min-w-0 flex-1 rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-3"><p className="text-sm font-semibold text-[var(--text-primary)]">Profile created</p><p className="mt-1 text-xs text-[var(--text-muted)]">Member since {memberSince}</p></div></div>}
+          </div>
+        </div>
+      </section> : null}
 
       {/* ─── Password Security ─── */}
       <div className="glass-card p-5 shadow-soft sm:p-6">
@@ -588,11 +735,11 @@ export default function UserPage() {
           </div>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        {isAdminProfile ? <div className="mt-6 grid gap-4 lg:grid-cols-3">
           <SecuritySignal icon={KeyRound} label="Password Strength" value={passwordStrength.label} detail="Use 8+ chars with letters, numbers, and symbols." />
           <SecuritySignal icon={Clock3} label="Last Activity" value="Current session" detail="JWT-backed session is active for this device." />
           <SecuritySignal icon={MonitorPlay} label="Device Access" value="1 browser" detail="Review devices regularly on shared machines." />
-        </div>
+        </div> : null}
 
         {passwordNotice.message ? (
           <p className={`mt-5 rounded-2xl border px-4 py-3 text-sm ${passwordNotice.type === 'error' ? 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-100' : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-100'}`}>
@@ -606,7 +753,7 @@ export default function UserPage() {
             <PasswordInput label="New password" value={changeForm.newPassword} onChange={(v) => updateChange('newPassword', v)} strength={passwordStrength} />
             <PasswordInput label="Confirm password" value={changeForm.confirmPassword} onChange={(v) => updateChange('confirmPassword', v)} />
             <div className="lg:col-span-3">
-              <Button type="submit" disabled={passwordBusy}>{passwordBusy ? 'Updating...' : 'Update Password'}</Button>
+              <Button type="submit" loading={passwordBusy} loadingLabel="Updating...">Update Password</Button>
             </div>
           </form>
         ) : (
@@ -624,7 +771,7 @@ export default function UserPage() {
             <PasswordInput label="New password" value={resetForm.newPassword} onChange={(v) => updateReset('newPassword', v)} strength={passwordStrength} />
             <PasswordInput label="Confirm password" value={resetForm.confirmPassword} onChange={(v) => updateReset('confirmPassword', v)} />
             <div className="lg:col-span-3">
-              <Button type="submit" disabled={passwordBusy || !otpSent}>{passwordBusy ? 'Resetting...' : 'Reset Password'}</Button>
+              <Button type="submit" disabled={!otpSent} loading={passwordBusy} loadingLabel="Resetting...">Reset Password</Button>
             </div>
           </form>
         )}
@@ -637,6 +784,23 @@ export default function UserPage() {
    Sub-components
    ───────────────────────────────────────────── */
 
+function ProfileField({ label, className = '', options, placeholder, ...inputProps }) {
+  const normalizedOptions = options || []
+  const hasExistingCustomValue = Boolean(inputProps.value && !normalizedOptions.includes(inputProps.value))
+  return (
+    <label className={`grid gap-2 text-sm font-semibold text-[var(--text-primary)] ${className}`}>
+      {label}
+      {options ? (
+        <select className="admin-input font-normal" {...inputProps}>
+          <option value="">{placeholder || `Select ${label.toLowerCase()}`}</option>
+          {hasExistingCustomValue ? <option value={inputProps.value}>{inputProps.value}</option> : null}
+          {normalizedOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+        </select>
+      ) : <input className="admin-input font-normal" placeholder={placeholder} {...inputProps} />}
+    </label>
+  )
+}
+
 function GoalTracker({ label, current, target, icon: Icon }) {
   const pct = Math.min(Math.round((current / target) * 100), 100)
   return (
@@ -648,7 +812,7 @@ function GoalTracker({ label, current, target, icon: Icon }) {
         </span>
         <span className="text-xs font-bold text-[var(--accent-primary)]">{current}/{target}</span>
       </div>
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/60 dark:bg-white/10">
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
         <div className="h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -677,7 +841,7 @@ function PasswordInput({ label, value, onChange, strength }) {
         <input value={value} onChange={(e) => onChange(e.target.value)} type={visible ? 'text' : 'password'}
           className="admin-input pr-12" placeholder="Minimum 8 characters" />
         <button type="button" onClick={() => setVisible((c) => !c)}
-          className="absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-[var(--text-secondary)] transition hover:bg-[var(--bg-muted)] hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/70"
+          className="absolute right-3 top-1/2 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/70"
           aria-label={visible ? `Hide ${label}` : `Show ${label}`}>
           {visible ? <EyeOff size={18} /> : <Eye size={18} />}
         </button>

@@ -8,7 +8,7 @@ export function QuestionPreview({ question, showAnswers = true }) {
   return (
     <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] p-4">
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="rounded-lg bg-cyan-500/10 px-2 py-1 font-semibold text-cyan-700 dark:text-cyan-200">{QUESTION_TYPE_LABELS[question.type]}</span>
+        <span className="rounded-lg bg-[var(--accent-soft)] px-2 py-1 font-semibold text-[var(--accent-primary)]">{QUESTION_TYPE_LABELS[question.type]}</span>
         <span className="rounded-lg bg-[var(--bg-subtle)] px-2 py-1 text-[var(--text-muted)]">{DIFFICULTY_LABELS[question.difficulty] || question.difficulty}</span>
         <span className="rounded-lg bg-[var(--bg-subtle)] px-2 py-1 text-[var(--text-muted)]">{question.marks || 1} marks</span>
       </div>
@@ -39,7 +39,7 @@ export function QuestionPreview({ question, showAnswers = true }) {
       {question.type === 'FILL_BLANK' ? (
         <div className="mt-4">
           <input className="admin-input" readOnly placeholder="Student answer" />
-          {showAnswers ? <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-200">Answer: {(question.correctAnswers || []).join(', ')}</p> : null}
+          {showAnswers ? <p className="mt-2 text-sm text-[var(--success)]">Answer: {(question.correctAnswers || []).join(', ')}</p> : null}
         </div>
       ) : null}
 
@@ -109,7 +109,15 @@ export function StudentQuestionCard({ question, onSubmit }) {
         <Button type="button" onClick={submit}>Submit Answer</Button>
         {result ? (
           <span className="text-sm font-semibold text-[var(--text-primary)]">
-            {result.needsReview ? `Submitted for review (${result.wordCount || 0} words)` : result.correct ? 'Correct answer' : 'Incorrect answer'}
+            {result.submissionId
+              ? result.needsReview
+                ? `Submitted to admin evaluations (${result.wordCount || 0} words)`
+                : result.correct
+                  ? 'Correct answer. Submission saved for evaluation history.'
+                  : 'Incorrect answer. Submission saved for evaluation history.'
+              : result.needsReview
+                ? `Submitted for review (${result.wordCount || 0} words)`
+                : result.correct ? 'Correct answer' : 'Incorrect answer'}
           </span>
         ) : null}
       </div>

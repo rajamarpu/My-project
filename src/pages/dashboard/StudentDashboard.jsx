@@ -2,682 +2,163 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import {
-  AlertCircle,
-  ArrowRight,
-  Award,
-  BookOpenCheck,
-  CalendarDays,
-  CheckCircle2,
-  Clock3,
-  Compass,
-  GraduationCap,
-  Layers3,
-  LineChart as LineChartIcon,
-  PlayCircle,
-  RefreshCw,
-  ShieldCheck,
-  Sparkles,
-  Target,
-  TrendingUp,
-  Trophy,
+  ArrowRight, Award, BookOpenCheck, CalendarCheck, Clock3,
+  Compass, FileQuestion, Flame, GraduationCap, RefreshCw, Target, TrendingUp,
 } from 'lucide-react'
-import { motion } from 'framer-motion'
 import Button from '../../components/common/Button/Button.jsx'
-import { fadeInUp } from '../../utils/animationVariants.js'
-import { fetchLearnerDashboard, fetchUserAnalytics } from '../../api/api'
-import { resolveCourseThumbnail } from '../../utils/courseThumbnail'
+import { fetchCourses, fetchLearnerDashboard, fetchMyAssessmentSubmissions, fetchUserAnalytics } from '../../api/api.js'
+import { getCourseAssignments } from '../../utils/courseContent.js'
 
-const emptyWeekly = [
-  { day: 'Mon', hours: 0 },
-  { day: 'Tue', hours: 0 },
-  { day: 'Wed', hours: 0 },
-  { day: 'Thu', hours: 0 },
-  { day: 'Fri', hours: 0 },
-  { day: 'Sat', hours: 0 },
-  { day: 'Sun', hours: 0 },
-]
+const emptyAnalytics = { completion: 0, hoursStudied: 0, quiz: 0, streak: 0, certificates: 0, weekly: [], recent: [] }
 
-const emptyAnalytics = {
-  totalCourses: 0,
-  avgProgress: 0,
-  streak: 0,
-  hoursStudied: 0,
-  completions: 0,
-  quiz: 0,
-  certificates: 0,
-  weekly: emptyWeekly,
-  recent: [],
+function number(value) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
 }
 
-const learnerCapabilities = [
-  ['Discover', 'Explore curated course tracks by category, skill level, and mentor.'],
-  ['Practice', 'Attempt questions and assignments connected to your enrolled courses.'],
-  ['Progress', 'Track completion, weekly hours, certificates, and streak momentum.'],
-  ['Community', 'Join discussions, ask doubts, and learn with peers.'],
-]
-
-function normalizeNumber(value, fallback = 0) {
-  const nextValue = Number(value)
-  return Number.isFinite(nextValue) ? nextValue : fallback
-}
-
-function normalizeAnalytics(payload, courseCount) {
-  const data = payload?.analytics || payload || {}
-  return {
-    totalCourses: normalizeNumber(data.totalCourses, courseCount),
-    avgProgress: Math.round(normalizeNumber(data.avgProgress ?? data.completion)),
-    streak: normalizeNumber(data.streak),
-    hoursStudied: Math.round(normalizeNumber(data.hoursStudied)),
-    completions: normalizeNumber(data.completions ?? data.certificates),
-    quiz: normalizeNumber(data.quiz),
-    certificates: normalizeNumber(data.certificates),
-    weekly: Array.isArray(data.weekly) && data.weekly.length ? data.weekly : emptyWeekly,
-    recent: Array.isArray(data.recent) ? data.recent : [],
-  }
-}
-
-function getInstructor(course) {
-  return course?.createdBy?.name || course?.instructor?.full_name || course?.instructor?.name || course?.instructor || 'Instructor'
+function progressFor(enrollment) {
+  return Math.max(0, Math.min(100, Math.round(number(enrollment?.completionPct ?? enrollment?.progress))))
 }
 
 export default function StudentDashboard() {
   const navigate = useNavigate()
-  const auth = useSelector((state) => state.auth)
-  const [analytics, setAnalytics] = useState(normalizeAnalytics(emptyAnalytics, 0))
+  const user = useSelector((state) => state.auth.user)
+  const [analytics, setAnalytics] = useState(emptyAnalytics)
   const [courses, setCourses] = useState([])
+  const [catalog, setCatalog] = useState([])
+  const [submissions, setSubmissions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [notice, setNotice] = useState('')
 
-  async function loadDashboardData() {
+  async function loadDashboard() {
     try {
       setLoading(true)
       setError('')
-      const [analyticsRes, coursesRes] = await Promise.all([
-        fetchUserAnalytics().catch(() => ({ data: { analytics: {} } })),
+      const [analyticsResponse, dashboardResponse, catalogResponse, assessmentResponse] = await Promise.all([
+        fetchUserAnalytics().catch(() => ({ data: { analytics: emptyAnalytics } })),
         fetchLearnerDashboard().catch(() => ({ data: { dashboard: { enrollments: [] } } })),
+        fetchCourses().catch(() => ({ data: { courses: [] } })),
+        fetchMyAssessmentSubmissions().catch(() => ({ data: { submissions: [] } })),
       ])
-      const enrollments = coursesRes.data?.dashboard?.enrollments || []
-      const courseList = enrollments
-        .map((enrollment) => ({
-          ...enrollment.course,
-          enrollmentId: enrollment.id,
-          enrollment,
-          isEnrolled: true,
-          progress: Math.round(normalizeNumber(enrollment.completionPct)),
-        }))
-        .filter((course) => course?.id)
-
-      setCourses(courseList)
-      setAnalytics(normalizeAnalytics(analyticsRes.data, courseList.length))
-    } catch (dashboardError) {
-      console.error('Failed to load dashboard data:', dashboardError)
-      setError(dashboardError?.response?.data?.message || dashboardError.message || 'Could not load learner dashboard.')
-      setCourses([])
-      setAnalytics(normalizeAnalytics(emptyAnalytics, 0))
+      const enrollments = dashboardResponse.data?.dashboard?.enrollments || []
+      setCourses(enrollments.map((enrollment) => ({ ...enrollment.course, enrollment, progress: progressFor(enrollment), isEnrolled: true })).filter((course) => course.id))
+      setAnalytics({ ...emptyAnalytics, ...(analyticsResponse.data?.analytics || {}) })
+      setCatalog(catalogResponse.data?.courses || catalogResponse.data || [])
+      setSubmissions(assessmentResponse.data?.submissions || [])
+    } catch (requestError) {
+      setError(requestError?.response?.data?.message || requestError.message || 'Could not load your learner dashboard.')
     } finally {
       setLoading(false)
     }
   }
 
-  useEffect(() => {
-    void Promise.resolve().then(loadDashboardData)
-  }, [])
+  useEffect(() => { void Promise.resolve().then(loadDashboard) }, [])
 
-  const activeCourse = useMemo(() => {
-    return [...courses].sort((a, b) => {
-      const dateA = new Date(a.enrollment?.enrolledAt || a.updatedAt || a.createdAt || 0).getTime()
-      const dateB = new Date(b.enrollment?.enrolledAt || b.updatedAt || b.createdAt || 0).getTime()
-      return dateB - dateA
-    })[0]
-  }, [courses])
-
-  const averageProgress = courses.length
-    ? Math.round(courses.reduce((sum, course) => sum + normalizeNumber(course.progress), 0) / courses.length)
-    : analytics.avgProgress
-  const weeklyGoalHours = Math.max(5, Math.min(12, courses.length * 3 || 5))
-  const weeklyCompletedHours = analytics.weekly.reduce((sum, item) => sum + normalizeNumber(item.hours), 0)
-  const weeklyGoalPct = Math.min(100, Math.round((weeklyCompletedHours / weeklyGoalHours) * 100))
-  const atRiskCourses = courses.filter((course) => normalizeNumber(course.progress) < 25)
-
-  const roadmapItems = [
-    { label: 'Pick a course', done: courses.length > 0 },
-    { label: 'Complete first lesson', done: averageProgress > 0 },
-    { label: 'Pass a practice set', done: analytics.quiz > 0 },
-    { label: 'Earn certificate', done: analytics.certificates > 0 },
-  ]
-  const completionPlan = buildCompletionPlan({
-    activeCourse,
-    atRiskCourses,
-    averageProgress,
-    weeklyGoalPct,
-    streak: analytics.streak,
-    quiz: analytics.quiz,
-    certificates: analytics.certificates,
-  })
-
-  function goTo(path, fallbackMessage = '') {
-    if (!path) {
-      if (fallbackMessage) setNotice(fallbackMessage)
-      return
-    }
-    setNotice('')
-    navigate(path)
-  }
-
-  function resumeLearning() {
-    if (!activeCourse?.id) {
-      goTo('/explore', 'No active course found. Choose a course to start learning.')
-      return
-    }
-    goTo(`/player/${activeCourse.id}`)
-  }
+  const sortedCourses = useMemo(() => [...courses].sort((a, b) => new Date(b.enrollment?.enrolledAt || 0) - new Date(a.enrollment?.enrolledAt || 0)), [courses])
+  const activeCourse = sortedCourses.find((course) => course.progress < 100) || sortedCourses[0]
+  const averageProgress = courses.length ? Math.round(courses.reduce((sum, course) => sum + course.progress, 0) / courses.length) : number(analytics.completion)
+  const assignments = useMemo(() => courses.flatMap((course) => getCourseAssignments(course).map((assignment) => ({ ...assignment, course }))), [courses])
+  const enrolledIds = useMemo(() => new Set(courses.map((course) => course.id)), [courses])
+  const recommended = useMemo(() => catalog.filter((course) => !enrolledIds.has(course.id)).slice(0, 4), [catalog, enrolledIds])
+  const weekly = Array.isArray(analytics.weekly) && analytics.weekly.length ? analytics.weekly : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => ({ day, hours: 0 }))
+  const maxWeeklyHours = Math.max(1, ...weekly.map((day) => number(day.hours)))
 
   return (
-    <section className="learner-dashboard-v2 mx-auto w-full max-w-[1440px] space-y-6 pb-14">
-      <motion.div
-        variants={fadeInUp}
-        initial="hidden"
-        animate="visible"
-        className="learner-hero-v2 enterprise-mesh-panel rounded-xl border border-[var(--border-color)] p-5 shadow-soft sm:p-6 lg:p-8"
-      >
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,40rem)_36rem] lg:items-center lg:justify-start xl:grid-cols-[minmax(0,42rem)_40rem]">
-          <div>
-            <p className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-[var(--accent-primary)]">
-              <Sparkles size={14} /> Learner workspace
-            </p>
-            <h1 className="mt-4 max-w-3xl text-3xl font-bold leading-tight text-[var(--text-primary)] sm:text-4xl lg:text-5xl">
-              Welcome back, {auth.user?.name || auth.user?.fullName || 'learner'}.
-            </h1>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
-              Your courses, progress, practice, and certificates are organized into one focused learning cockpit.
-            </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button onClick={resumeLearning}>
-                <PlayCircle size={17} /> Resume learning
-              </Button>
-              <Button variant="secondary" onClick={() => goTo('/explore')}>
-                <Compass size={17} /> Explore courses
-              </Button>
-              <Button variant="secondary" onClick={() => goTo('/questions')}>
-                <Target size={17} /> Practice
-              </Button>
-            </div>
+    <section className="mx-auto w-full max-w-[1440px] space-y-6 pb-16">
+      <header className="admin-panel overflow-hidden p-5 sm:p-7">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.2em]">Learner dashboard</p>
+            <h1 className="mt-3 text-3xl font-bold text-[var(--text-primary)] sm:text-4xl">Welcome back, {user?.name || user?.fullName || 'learner'}.</h1>
+            <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)] sm:text-base">Continue your courses, review progress, complete assignments, and turn learning into verified achievement.</p>
           </div>
-
-          <div className="learner-hero-snapshot w-full rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5 shadow-soft">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">Next focus</p>
-                <p className="mt-2 text-lg font-bold text-[var(--text-primary)]">
-                  {loading ? 'Loading your workspace...' : activeCourse?.title || 'Choose your first course'}
-                </p>
-                <p className="mt-1 text-sm text-[var(--text-secondary)]">
-                  {activeCourse ? `Instructor: ${getInstructor(activeCourse)}` : 'Start with a guided course, then practice questions to build momentum.'}
-                </p>
-              </div>
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">
-                <GraduationCap size={24} />
-              </span>
-            </div>
-            <div className="mt-5 h-3 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
-              <div className="h-full rounded-full" style={{ width: `${Math.min(100, normalizeNumber(activeCourse?.progress))}%`, background: 'var(--brand-gradient)' }} />
-            </div>
-            <div className="mt-5 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] p-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="text-[0.68rem] font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">Recommended action</p>
-                  <p className="mt-2 text-sm font-semibold text-[var(--text-primary)]">
-                    {activeCourse ? 'Continue the latest enrolled course' : 'Explore courses and enroll in a learning track'}
-                  </p>
-                </div>
-                <span className="text-xl font-black text-[var(--accent-primary)]">{loading ? '-' : `${Math.min(100, normalizeNumber(activeCourse?.progress))}%`}</span>
-              </div>
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <Button onClick={resumeLearning}>
-                <PlayCircle size={17} /> {activeCourse ? 'Continue course' : 'Start learning'}
-              </Button>
-              <Button variant="secondary" onClick={() => goTo(activeCourse?.id ? `/course/${activeCourse.id}` : '/explore')}>
-                <ArrowRight size={17} /> {activeCourse ? 'View details' : 'Browse catalog'}
-              </Button>
-            </div>
+          <div className="flex flex-wrap gap-3">
+            <Button onClick={() => navigate(activeCourse ? `/player/${activeCourse.id}` : '/courses')}>{activeCourse ? 'Continue learning' : 'Find a course'} <ArrowRight size={16} /></Button>
+            <Button variant="secondary" onClick={() => navigate('/courses')}><Compass size={16} /> Explore courses</Button>
           </div>
         </div>
-      </motion.div>
+      </header>
 
-      {error ? (
-        <StatusMessage tone="danger" icon={AlertCircle} title="Unable to load learner dashboard" text={error}>
-          <Button variant="secondary" onClick={loadDashboardData}><RefreshCw size={16} /> Retry</Button>
-        </StatusMessage>
-      ) : null}
+      {error ? <div className="flex flex-col gap-3 rounded-xl border border-[var(--color-danger)]/30 bg-[var(--color-danger-soft)] p-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm font-semibold text-[var(--color-danger)]">{error}</p><Button variant="secondary" onClick={loadDashboard}><RefreshCw size={16} /> Retry</Button></div> : null}
 
-      {notice ? (
-        <StatusMessage tone="info" icon={Sparkles} title="Learning note" text={notice} />
-      ) : null}
+      <DashboardSection eyebrow="Continue Learning" title="Your active courses" action={<Button variant="secondary" onClick={() => navigate('/courses')}>Browse courses</Button>}>
+        <div className="grid gap-3">
+          {loading ? <><CourseSkeleton /><CourseSkeleton /></> : sortedCourses.length ? sortedCourses.slice(0, 5).map((course) => <LearningCourseRow key={course.id} course={course} onContinue={() => navigate(`/player/${course.id}`)} onDetails={() => navigate(`/course/${course.id}`)} />) : <EmptyState icon={GraduationCap} title="No active courses" text="Enroll in a course and your learning queue will appear here." action="Explore courses" onAction={() => navigate('/courses')} />}
+        </div>
+      </DashboardSection>
 
-      <div className="learner-metrics-v2 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard icon={BookOpenCheck} label="Active courses" value={analytics.totalCourses} detail="enrolled paths" loading={loading} />
-        <MetricCard icon={LineChartIcon} label="Avg progress" value={`${averageProgress}%`} detail="across courses" loading={loading} />
-        <MetricCard icon={Clock3} label="Study hours" value={analytics.hoursStudied} detail="tracked total" loading={loading} />
-        <MetricCard icon={Award} label="Certificates" value={analytics.certificates} detail="earned credentials" loading={loading} onClick={() => goTo('/certificates')} />
-      </div>
-
-      <section className="grid gap-4 lg:grid-cols-[1fr_1fr_1fr]">
-        <LearningGoalCard label="Weekly goal" value={`${weeklyCompletedHours}/${weeklyGoalHours}h`} progress={weeklyGoalPct} detail="Stay consistent with short daily sessions." icon={Target} />
-        <LearningGoalCard label="Learning streak" value={`${analytics.streak} days`} progress={Math.min(100, analytics.streak * 14)} detail={analytics.streak ? 'Keep the streak alive with one lesson today.' : 'Open a lesson today to start a streak.'} icon={Sparkles} />
-        <LearningGoalCard label="Attention needed" value={atRiskCourses.length} progress={courses.length ? Math.round(((courses.length - atRiskCourses.length) / courses.length) * 100) : 0} detail={atRiskCourses.length ? 'Resume low-progress courses before they stall.' : 'No low-progress courses right now.'} icon={AlertCircle} />
-      </section>
-
-      <CompletionAccelerator plan={completionPlan} onPrimary={resumeLearning} onPractice={() => goTo('/questions')} onCertificates={() => goTo('/certificates')} />
-
-      <div className="learner-insights-v2 grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(25rem,0.9fr)] xl:items-start">
-        <section className="learner-activity-card glass-card self-start rounded-xl p-5 shadow-soft sm:p-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">Learning activity</p>
-              <h2 className="mt-2 text-xl font-bold text-[var(--text-primary)]">This week overview</h2>
-            </div>
-            <Button variant="secondary" onClick={() => goTo('/reports')}>View report</Button>
+      <DashboardSection eyebrow="Learning Progress" title="Progress and study activity">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+            <StatCard icon={TrendingUp} label="Average progress" value={`${averageProgress}%`} detail={`${courses.length} enrolled course${courses.length === 1 ? '' : 's'}`} />
+            <StatCard icon={Clock3} label="Study time" value={`${number(analytics.hoursStudied)}h`} detail="tracked learning time" />
+            <StatCard icon={Target} label="Average assessment" value={`${number(analytics.quiz)}%`} detail="quiz performance" />
           </div>
-
-          <div className="learner-activity-body mt-6 grid gap-4 lg:grid-cols-[minmax(16rem,0.8fr)_minmax(0,1.2fr)]">
-            <div className="theme-subcard rounded-lg p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">Total study time</p>
-              <p className="mt-3 text-4xl font-black text-[var(--text-primary)]">{analytics.hoursStudied}h</p>
-              <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-                {analytics.hoursStudied > 0 ? 'Recorded across your enrolled courses.' : 'No tracked study time yet. Open a lesson to start logging progress.'}
-              </p>
-              <Button className="mt-5 w-full" onClick={resumeLearning}>
-                <PlayCircle size={17} /> Continue now
-              </Button>
-            </div>
-
-            <div className="grid gap-3">
-              {analytics.weekly.map((item) => {
-                const maxHours = Math.max(1, ...analytics.weekly.map((entry) => normalizeNumber(entry.hours)))
-                const hours = normalizeNumber(item.hours)
-                return (
-                  <div key={item.day} className="grid grid-cols-[2.5rem_minmax(0,1fr)_3rem] items-center gap-3 text-sm">
-                    <span className="font-bold text-[var(--text-secondary)]">{item.day}</span>
-                    <span className="h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
-                      <span className="block h-full rounded-full" style={{ width: `${Math.max(4, (hours / maxHours) * 100)}%`, background: hours ? 'var(--brand-gradient)' : 'var(--border-color)' }} />
-                    </span>
-                    <span className="text-right text-xs font-bold text-[var(--text-muted)]">{hours}h</span>
-                  </div>
-                )
+          <div className="theme-subcard rounded-xl p-5">
+            <p className="text-sm font-semibold text-[var(--text-primary)]">This week</p>
+            <div className="mt-5 grid gap-4">
+              {weekly.map((day) => {
+                const hours = number(day.hours)
+                return <div key={day.day} className="grid grid-cols-[2.5rem_minmax(0,1fr)_3.5rem] items-center gap-3"><span className="text-sm font-bold text-[var(--text-secondary)]">{day.day}</span><span className="h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]"><span className="block h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${hours ? Math.max(8, (hours / maxWeeklyHours) * 100) : 0}%` }} /></span><span className="text-right text-xs font-semibold text-[var(--text-muted)]">{hours}h</span></div>
               })}
             </div>
           </div>
-        </section>
+        </div>
+      </DashboardSection>
 
-        <section className="learner-health-card glass-card self-start rounded-xl p-5 shadow-soft sm:p-6">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">Learning health</p>
-              <h2 className="mt-2 text-xl font-bold text-[var(--text-primary)]">Progress snapshot</h2>
-            </div>
-            <span className="grid h-11 w-11 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">
-              <Trophy size={20} />
-            </span>
-          </div>
-          <div className="learner-health-grid mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-1">
-            <ProgressSnapshot label="Course progress" value={averageProgress} detail={`${courses.length} enrolled course${courses.length === 1 ? '' : 's'}`} />
-            <ProgressSnapshot label="Practice readiness" value={Math.min(100, analytics.quiz)} detail={`${analytics.quiz} assessment signal${analytics.quiz === 1 ? '' : 's'}`} />
-            <ProgressSnapshot label="Certificate path" value={Math.min(100, analytics.certificates * 25)} detail={`${analytics.certificates} certificate${analytics.certificates === 1 ? '' : 's'} earned`} />
-            <MiniHealthStat label="Streak" value={`${analytics.streak} days`} />
-            <MiniHealthStat label="Completion" value={`${analytics.completions}`} />
-          </div>
-        </section>
+      <div className="grid items-stretch gap-6 xl:grid-cols-3">
+        <DashboardSection eyebrow="Certificates" title="Verified achievements" compact>
+          <FeatureMetric icon={Award} value={number(analytics.certificates)} text="earned certificates" action="View certificates" onAction={() => navigate('/certificates')} />
+        </DashboardSection>
+        <DashboardSection eyebrow="Assignments" title="Course work" compact>
+          <FeatureMetric icon={CalendarCheck} value={assignments.length} text="available assignments" action="Review courses" onAction={() => navigate(activeCourse ? `/course/${activeCourse.id}/assessments` : '/courses')} />
+        </DashboardSection>
+        <DashboardSection eyebrow="Assessments" title="Submitted work" compact>
+          <FeatureMetric icon={FileQuestion} value={submissions.length} text={`${submissions.filter((item) => String(item.status).toUpperCase() === 'PENDING').length} awaiting review`} action="Open assessments" onAction={() => navigate(activeCourse ? `/course/${activeCourse.id}/assessments` : '/questions')} />
+        </DashboardSection>
       </div>
 
-      <section id="enrolled-courses" className="learner-active-courses-v2 glass-card scroll-mt-24 rounded-xl p-5 shadow-soft sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">Continue learning</p>
-            <h2 className="mt-2 text-xl font-bold text-[var(--text-primary)]">Active courses</h2>
-          </div>
-          <Button variant="secondary" onClick={() => goTo('/explore')}>Find more</Button>
+      <DashboardSection eyebrow="Learning Streak" title="Build a consistent learning rhythm">
+        <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
+          <div className="flex items-center gap-4 rounded-xl bg-[var(--color-warning-soft)] p-5"><span className="grid h-14 w-14 place-items-center rounded-2xl bg-[var(--bg-elevated)] text-[var(--color-warning)]"><Flame size={28} /></span><span><strong className="block text-3xl text-[var(--text-primary)]">{number(analytics.streak)} days</strong><span className="text-sm text-[var(--text-secondary)]">current streak</span></span></div>
+          <div className="theme-subcard rounded-xl p-5"><p className="font-semibold text-[var(--text-primary)]">{number(analytics.streak) ? 'Keep your momentum going' : 'Start your streak today'}</p><p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Complete one lesson or practice activity today. Short, consistent sessions make course completion easier.</p><Button className="mt-4" onClick={() => navigate(activeCourse ? `/player/${activeCourse.id}` : '/courses')}>Learn now</Button></div>
         </div>
+      </DashboardSection>
 
-        <div className={`mt-6 grid gap-4 ${courses.length > 4 ? 'max-h-[36rem] overflow-y-auto pr-1' : ''}`}>
-          {loading ? (
-            <>
-              <CourseRowSkeleton />
-              <CourseRowSkeleton />
-            </>
-          ) : courses.length ? (
-            courses.slice(0, 5).map((course) => (
-              <CourseRow key={course.id} course={course} onOpen={() => goTo(`/player/${course.id}`)} onDetails={() => goTo(`/course/${course.id}`)} />
-            ))
-          ) : (
-            <EmptyState onExplore={() => goTo('/explore')} />
-          )}
+      <DashboardSection eyebrow="Recommended Courses" title="Your next learning opportunities" action={<Button variant="secondary" onClick={() => navigate('/courses')}>View catalog</Button>}>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {loading ? Array.from({ length: 4 }).map((_, index) => <span key={index} className="skeleton h-48 rounded-xl" />) : recommended.length ? recommended.map((course) => <RecommendedCourse key={course.id} course={course} onOpen={() => navigate(`/course/${course.id}`)} />) : <div className="sm:col-span-2 xl:col-span-4"><EmptyState icon={BookOpenCheck} title="No recommendations yet" text="New published courses will appear here automatically." /></div>}
         </div>
-      </section>
-
-      <aside className="learner-support-grid-v2 grid gap-6 lg:grid-cols-2">
-          <section className="glass-card rounded-xl p-5 shadow-soft sm:p-6">
-            <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">Roadmap</p>
-            <h2 className="mt-2 text-xl font-bold text-[var(--text-primary)]">Next milestones</h2>
-            <div className="mt-5 grid gap-3">
-              {roadmapItems.map((item, index) => (
-                <div key={item.label} className="flex items-center gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-3">
-                  <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg ${item.done ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-200' : 'bg-[var(--bg-card)] text-[var(--text-muted)]'}`}>
-                    {item.done ? <CheckCircle2 size={17} /> : index + 1}
-                  </span>
-                  <span className="text-sm font-semibold text-[var(--text-primary)]">{item.label}</span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="glass-card rounded-xl p-5 shadow-soft sm:p-6">
-            <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">Quick actions</p>
-            <div className="mt-5 grid gap-3">
-              <QuickAction icon={Compass} title="Explore catalog" text="Find your next skill path." onClick={() => goTo('/explore')} />
-              <QuickAction icon={CalendarDays} title="Live sessions" text="Join upcoming learner events." onClick={() => goTo('/live-sessions')} />
-              <QuickAction icon={ShieldCheck} title="Profile" text="Manage account and settings." onClick={() => goTo('/profile')} />
-            </div>
-          </section>
-      </aside>
-
-      <section className="learner-capabilities-v2 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {learnerCapabilities.map(([title, text]) => (
-          <div key={title} className="theme-card rounded-lg p-5">
-            <span className="theme-icon-badge grid h-10 w-10 place-items-center rounded-lg">
-              <Layers3 size={18} />
-            </span>
-            <p className="mt-4 font-bold text-[var(--text-primary)]">{title}</p>
-            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{text}</p>
-          </div>
-        ))}
-      </section>
+      </DashboardSection>
     </section>
   )
 }
 
-function StatusMessage({ tone, icon: Icon, title, text, children }) {
-  const toneClass = tone === 'danger'
-    ? 'border-red-400/30 bg-red-500/10 text-red-700 dark:text-red-100'
-    : 'border-cyan-400/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-100'
-
-  return (
-    <div className={`rounded-lg border p-4 ${toneClass}`}>
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-start gap-3">
-          <Icon className="mt-0.5 shrink-0" size={20} />
-          <div>
-            <p className="font-bold">{title}</p>
-            <p className="mt-1 text-sm opacity-85">{text}</p>
-          </div>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
+function DashboardSection({ eyebrow, title, action, children, compact = false }) {
+  return <section className={`admin-panel h-full ${compact ? 'p-5' : 'p-5 sm:p-6'}`}><div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">{eyebrow}</p><h2 className="mt-2 text-xl font-bold text-[var(--text-primary)]">{title}</h2></div>{action}</div>{children}</section>
 }
 
-function MetricCard({ icon: Icon, label, value, detail, loading, onClick }) {
-  const className = 'theme-card theme-subcard-hover w-full rounded-lg p-5 text-left'
-  const content = (
-    <>
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">{label}</p>
-        <span className="theme-icon-badge grid h-10 w-10 place-items-center rounded-lg"><Icon size={18} /></span>
-      </div>
-      <p className="mt-5 text-2xl font-bold text-[var(--text-primary)]">{loading ? <span className="skeleton inline-block h-8 w-16" /> : value}</p>
-      <p className="mt-1 text-sm text-[var(--text-secondary)]">{detail}</p>
-    </>
-  )
-
-  return onClick ? <button type="button" onClick={onClick} className={className}>{content}</button> : <div className="theme-card rounded-lg p-5">{content}</div>
+function LearningCourseRow({ course, onContinue, onDetails }) {
+  return <article className="theme-subcard grid gap-4 rounded-xl p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"><div className="min-w-0"><div className="flex flex-wrap gap-2"><span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-bold text-[var(--accent-primary)]">{course.level || 'Beginner'}</span><span className="text-xs font-semibold text-[var(--text-muted)]">{course.category || 'Course'}</span></div><h3 className="mt-2 truncate font-bold text-[var(--text-primary)]">{course.title}</h3><div className="mt-3 flex items-center gap-3"><span className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--bg-card)]"><span className="block h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${course.progress}%` }} /></span><span className="w-12 text-right text-xs font-bold text-[var(--text-secondary)]">{course.progress}%</span></div></div><div className="flex gap-2"><Button onClick={onContinue}>Continue</Button><Button variant="secondary" onClick={onDetails}>Details</Button></div></article>
 }
 
-function LearningGoalCard({ icon: Icon, label, value, progress, detail }) {
-  const safeProgress = Math.max(0, Math.min(100, normalizeNumber(progress)))
-  return (
-    <div className="theme-card rounded-lg p-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">{label}</p>
-          <p className="mt-2 text-2xl font-black text-[var(--text-primary)]">{value}</p>
-        </div>
-        <span className="theme-icon-badge grid h-11 w-11 place-items-center rounded-lg"><Icon size={19} /></span>
-      </div>
-      <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
-        <span className="block h-full rounded-full" style={{ width: `${safeProgress}%`, background: 'var(--brand-gradient)' }} />
-      </div>
-      <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)]">{detail}</p>
-    </div>
-  )
+function StatCard({ icon: Icon, label, value, detail }) {
+  return <div className="theme-subcard flex items-center gap-4 rounded-xl p-4"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]"><Icon size={19} /></span><span><span className="block text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">{label}</span><strong className="mt-1 block text-2xl text-[var(--text-primary)]">{value}</strong><span className="text-xs text-[var(--text-secondary)]">{detail}</span></span></div>
 }
 
-function CompletionAccelerator({ plan, onPrimary, onPractice, onCertificates }) {
-  return (
-    <section className="glass-card rounded-xl p-5 shadow-soft sm:p-6">
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem] xl:items-stretch">
-        <div>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">Completion accelerator</p>
-              <h2 className="mt-2 text-xl font-bold text-[var(--text-primary)]">{plan.title}</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">{plan.summary}</p>
-            </div>
-            <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] px-4 py-3 text-right">
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">Momentum</p>
-              <p className="mt-1 text-2xl font-black text-[var(--accent-primary)]">{plan.momentum}%</p>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            {plan.cards.map((card) => {
-              const Icon = card.icon
-              return (
-                <div key={card.label} className="theme-subcard rounded-lg p-4">
-                  <span className="theme-icon-badge grid h-10 w-10 place-items-center rounded-lg"><Icon size={18} /></span>
-                  <p className="mt-3 text-sm font-bold text-[var(--text-primary)]">{card.label}</p>
-                  <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{card.text}</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">Today</p>
-          <p className="mt-3 text-lg font-black text-[var(--text-primary)]">{plan.action}</p>
-          <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{plan.reason}</p>
-          <div className="mt-5 grid gap-2">
-            <Button onClick={onPrimary}><PlayCircle size={17} /> {plan.primaryLabel}</Button>
-            <Button variant="secondary" onClick={onPractice}><Target size={17} /> Practice questions</Button>
-            <Button variant="secondary" onClick={onCertificates}><Award size={17} /> Certificates</Button>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
+function FeatureMetric({ icon: Icon, value, text, action, onAction }) {
+  return <div><span className="grid h-12 w-12 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]"><Icon size={21} /></span><p className="mt-5 text-3xl font-bold text-[var(--text-primary)]">{value}</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{text}</p><Button variant="secondary" className="mt-5 w-full" onClick={onAction}>{action}</Button></div>
 }
 
-function buildCompletionPlan({ activeCourse, atRiskCourses, averageProgress, weeklyGoalPct, streak, quiz, certificates }) {
-  const courseProgress = Math.min(100, normalizeNumber(activeCourse?.progress ?? averageProgress))
-  const momentum = Math.min(100, Math.round((courseProgress * 0.45) + (weeklyGoalPct * 0.25) + (Math.min(7, normalizeNumber(streak)) * 4) + (normalizeNumber(quiz) ? 8 : 0) + (normalizeNumber(certificates) ? 8 : 0)))
-
-  if (!activeCourse) {
-    return {
-      title: 'Start with one focused course',
-      summary: 'Choose a course, complete the first lesson, and your personalized progress plan will become more useful.',
-      momentum,
-      action: 'Pick a course to begin',
-      reason: 'A first enrollment unlocks progress tracking, weekly goals, practice, and certificate milestones.',
-      primaryLabel: 'Start learning',
-      cards: [
-        { label: 'First step', text: 'Enroll in a course that matches your current goal.', icon: Compass },
-        { label: 'Learning habit', text: 'Finish one short lesson to start building momentum.', icon: Sparkles },
-        { label: 'Proof of skill', text: 'Assessments and certificates appear after course activity.', icon: Award },
-      ],
-    }
-  }
-
-  if (atRiskCourses.length) {
-    return {
-      title: 'Rescue low-progress courses',
-      summary: `${atRiskCourses.length} enrolled course${atRiskCourses.length === 1 ? '' : 's'} need attention before momentum drops.`,
-      momentum,
-      action: 'Complete one lesson today',
-      reason: `${activeCourse.title} is the fastest path back into a consistent learning rhythm.`,
-      primaryLabel: 'Resume course',
-      cards: [
-        { label: 'At-risk focus', text: 'Courses below 25% progress should be resumed first.', icon: AlertCircle },
-        { label: 'Micro goal', text: 'One completed lesson is enough to restart your streak.', icon: CheckCircle2 },
-        { label: 'Next checkpoint', text: 'Use practice questions after the lesson to reinforce retention.', icon: Target },
-      ],
-    }
-  }
-
-  if (courseProgress >= 80) {
-    return {
-      title: 'Finish strong and unlock proof',
-      summary: `${activeCourse.title} is close to completion. Prioritize final lessons, assessments, and certificate readiness.`,
-      momentum,
-      action: 'Finish the certificate path',
-      reason: 'High progress is the best moment to convert learning into a credential.',
-      primaryLabel: 'Continue course',
-      cards: [
-        { label: 'Final push', text: `${Math.max(0, 100 - courseProgress)}% progress remains on your active course.`, icon: Trophy },
-        { label: 'Assessment', text: 'Practice and submit required work while the material is fresh.', icon: Target },
-        { label: 'Credential', text: 'Check certificate status once lessons and assessments are complete.', icon: Award },
-      ],
-    }
-  }
-
-  return {
-    title: 'Keep a steady weekly rhythm',
-    summary: `${activeCourse.title} is active. Short, repeated sessions will improve retention and completion probability.`,
-    momentum,
-    action: 'Continue your current lesson',
-    reason: weeklyGoalPct >= 100 ? 'You have met the weekly goal, so keep momentum with a light review.' : 'You can still close the weekly goal with one focused session.',
-    primaryLabel: 'Continue course',
-    cards: [
-      { label: 'Current course', text: `${courseProgress}% complete across the active learning path.`, icon: BookOpenCheck },
-      { label: 'Weekly goal', text: `${weeklyGoalPct}% of this week completed.`, icon: TrendingUp },
-      { label: 'Retention', text: 'Use practice after lessons to turn progress into recall.', icon: Target },
-    ],
-  }
+function RecommendedCourse({ course, onOpen }) {
+  const assignments = getCourseAssignments(course).length
+  return <button type="button" onClick={onOpen} className="theme-subcard theme-subcard-hover flex min-h-48 flex-col rounded-xl p-5 text-left"><span className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--accent-primary)]">{course.category || 'Learning path'}</span><h3 className="mt-3 line-clamp-2 font-bold text-[var(--text-primary)]">{course.title}</h3><p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--text-secondary)]">{course.description || 'Build practical skills with guided lessons and assessments.'}</p><span className="mt-auto flex items-center justify-between gap-3 pt-4 text-xs font-semibold text-[var(--text-muted)]"><span>{course.level || 'Beginner'}</span><span>{assignments} assignments</span></span></button>
 }
 
-function ProgressSnapshot({ label, value, detail }) {
-  const safeValue = Math.max(0, Math.min(100, normalizeNumber(value)))
-
-  return (
-    <div className="theme-subcard rounded-lg p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-bold text-[var(--text-primary)]">{label}</p>
-          <p className="mt-1 text-xs text-[var(--text-secondary)]">{detail}</p>
-        </div>
-        <span className="text-lg font-black text-[var(--accent-primary)]">{safeValue}%</span>
-      </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--bg-card)]">
-        <div className="h-full rounded-full" style={{ width: `${safeValue}%`, background: 'var(--brand-gradient)' }} />
-      </div>
-    </div>
-  )
+function EmptyState({ icon: Icon, title, text, action, onAction }) {
+  return <div className="rounded-xl border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] p-7 text-center"><Icon className="mx-auto text-[var(--text-muted)]" size={30} /><p className="mt-3 font-bold text-[var(--text-primary)]">{title}</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{text}</p>{action ? <Button className="mt-5" onClick={onAction}>{action}</Button> : null}</div>
 }
 
-function MiniHealthStat({ label, value }) {
-  return (
-    <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
-      <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">{label}</p>
-      <p className="mt-2 text-xl font-black text-[var(--text-primary)]">{value}</p>
-    </div>
-  )
-}
-
-function CourseRow({ course, onOpen, onDetails }) {
-  const progress = Math.min(100, normalizeNumber(course.progress))
-  const [imageFailed, setImageFailed] = useState(false)
-  const thumbnail = resolveCourseThumbnail(course)
-
-  return (
-    <article className="theme-subcard theme-subcard-hover grid gap-4 rounded-lg p-3 sm:grid-cols-[9rem_minmax(0,1fr)_auto] sm:items-center">
-      <div className="aspect-[16/10] overflow-hidden rounded-lg border border-[var(--border-color)] bg-gradient-to-br from-cyan-400/15 via-white to-orange-400/15 dark:via-white/5">
-        {!imageFailed && thumbnail ? (
-          <img
-            src={thumbnail}
-            alt={course.title}
-            className="h-full w-full object-cover"
-            onLoad={(event) => { event.currentTarget.style.display = 'block' }}
-            onError={() => setImageFailed(true)}
-          />
-        ) : (
-          <div className="grid h-full w-full place-items-center p-3 text-center">
-            <div>
-              <BookOpenCheck className="mx-auto text-[var(--accent-primary)]" size={24} />
-              <p className="mt-2 line-clamp-2 text-xs font-bold text-[var(--text-primary)]">{course.title || 'Course'}</p>
-            </div>
-          </div>
-        )}
-      </div>
-      <div className="min-w-0">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-[0.68rem] font-bold uppercase tracking-[0.1em] text-[var(--accent-primary)]">
-            {course.level || 'Beginner'}
-          </span>
-          <span className="text-xs font-semibold text-[var(--text-muted)]">{getInstructor(course)}</span>
-        </div>
-        <h3 className="mt-2 line-clamp-2 text-base font-bold text-[var(--text-primary)]">{course.title}</h3>
-        <div className="mt-4 flex items-center gap-3">
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--bg-card)]">
-            <div className="h-full rounded-full" style={{ width: `${progress}%`, background: 'var(--brand-gradient)' }} />
-          </div>
-          <span className="w-12 text-right text-xs font-bold text-[var(--text-secondary)]">{progress}%</span>
-        </div>
-      </div>
-      <div className="flex gap-2 sm:flex-col">
-        <Button onClick={onOpen}>Open</Button>
-        <Button variant="secondary" onClick={onDetails}>Details</Button>
-      </div>
-    </article>
-  )
-}
-
-function QuickAction({ icon: Icon, title, text, onClick }) {
-  return (
-    <button type="button" onClick={onClick} className="theme-subcard theme-subcard-hover flex items-center gap-3 rounded-lg p-4 text-left">
-      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">
-        <Icon size={18} />
-      </span>
-      <span className="min-w-0">
-        <span className="block font-bold text-[var(--text-primary)]">{title}</span>
-        <span className="mt-0.5 block text-sm text-[var(--text-secondary)]">{text}</span>
-      </span>
-      <ArrowRight className="ml-auto shrink-0 text-[var(--text-muted)]" size={16} />
-    </button>
-  )
-}
-
-function EmptyState({ onExplore }) {
-  return (
-    <div className="rounded-lg border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] p-8 text-center">
-      <GraduationCap className="mx-auto text-[var(--text-muted)]" size={34} />
-      <p className="mt-3 font-bold text-[var(--text-primary)]">No active courses yet</p>
-      <p className="mt-1 text-sm text-[var(--text-secondary)]">Choose a course and your learning plan will appear here.</p>
-      <Button className="mt-5" onClick={onExplore}>Explore courses</Button>
-    </div>
-  )
-}
-
-function CourseRowSkeleton() {
-  return (
-    <div className="theme-subcard grid gap-4 rounded-lg p-3 sm:grid-cols-[9rem_minmax(0,1fr)_8rem] sm:items-center">
-      <div className="skeleton aspect-[16/10] rounded-lg" />
-      <div className="space-y-3">
-        <div className="skeleton h-4 w-32 rounded" />
-        <div className="skeleton h-5 w-3/4 rounded" />
-        <div className="skeleton h-2 w-full rounded-full" />
-      </div>
-      <div className="skeleton h-11 rounded-lg" />
-    </div>
-  )
+function CourseSkeleton() {
+  return <div className="theme-subcard grid gap-3 rounded-xl p-4"><span className="skeleton h-5 w-2/3 rounded" /><span className="skeleton h-2 w-full rounded-full" /><span className="skeleton h-10 w-32 rounded-lg" /></div>
 }

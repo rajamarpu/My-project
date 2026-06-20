@@ -45,7 +45,7 @@ export default function ChatInterface({ courseId, roomId }) {
               className="flex items-start gap-3"
             >
               <img
-                src={msg.sender?.profile_image || 'https://via.placeholder.com/40'}
+                src={msg.sender?.profile_image || '/favicon.svg'}
                 alt={msg.sender?.full_name || 'User'}
                 className="w-8 h-8 rounded-full"
               />

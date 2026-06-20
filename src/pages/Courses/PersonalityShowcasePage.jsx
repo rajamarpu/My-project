@@ -64,7 +64,8 @@ export default function PersonalityShowcasePage() {
           <button
             key={category}
             onClick={() => setActiveCategory(category)}
-            className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
+            type="button"
+            className={`min-h-11 px-6 py-2 rounded-full text-sm font-medium transition-all ${
               activeCategory === category
                 ? 'bg-cyan-500 text-slate-950'
                 : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--bg-card-hover)]'
@@ -99,7 +100,7 @@ export default function PersonalityShowcasePage() {
         >
           <div className="flex items-start gap-6">
             <img
-              src={selectedPersonality.avatar || 'https://via.placeholder.com/150'}
+              src={selectedPersonality.avatar || '/favicon.svg'}
               alt={selectedPersonality.name}
               className="w-24 h-24 rounded-full object-cover"
             />

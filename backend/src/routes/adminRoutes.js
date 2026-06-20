@@ -23,7 +23,10 @@ const uploadExtensionByMime = {
 }
 
 function dateKey(value) {
-  return value.toISOString().slice(0, 10)
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
 }
 
 function pct(part, total) {
@@ -132,6 +135,9 @@ router.get('/overview', async (_req, res, next) => {
       totalLearners,
       totalAdmins,
       totalInstructors,
+      pendingUsers,
+      rejectedUsers,
+      suspendedUsers,
       activeSessions,
       totalCourses,
       publishedCourses,
@@ -153,15 +159,20 @@ router.get('/overview', async (_req, res, next) => {
       popularCourses,
       categoryDemand,
       recentUsers,
+      recentRegistrations,
       recentActivity,
       recentEnrollments,
       recentCompletions,
       recentPayments,
+      recentUserActions,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { role: 'USER' } }),
       prisma.user.count({ where: { role: 'ADMIN' } }),
       prisma.user.count({ where: { role: 'INSTRUCTOR' } }),
+      prisma.user.count({ where: { approvalStatus: 'PENDING' } }),
+      prisma.user.count({ where: { approvalStatus: 'REJECTED' } }),
+      prisma.user.count({ where: { OR: [{ approvalStatus: 'SUSPENDED' }, { isActive: false }] } }),
       prisma.session.findMany({
         where: { revokedAt: null, expiresAt: { gt: new Date() } },
         distinct: ['userId'],
@@ -196,20 +207,28 @@ router.get('/overview', async (_req, res, next) => {
         take: 8,
       }),
       prisma.user.findMany({ orderBy: { createdAt: 'desc' }, take: 6, select: userSelect }),
+      prisma.user.findMany({ where: { createdAt: { gte: thirtyDaysAgo } }, select: { createdAt: true } }),
       prisma.activityLog.findMany({ orderBy: { createdAt: 'desc' }, take: 8, include: { user: { select: userSelect } } }),
       prisma.enrollment.findMany({ where: { enrolledAt: { gte: thirtyDaysAgo } }, select: { enrolledAt: true } }),
       prisma.enrollment.findMany({ where: { completedAt: { gte: thirtyDaysAgo } }, select: { completedAt: true } }),
       prisma.payment.findMany({ where: { status: 'PAID', createdAt: { gte: thirtyDaysAgo } }, select: { createdAt: true, amountCents: true } }),
+      prisma.activityLog.findMany({
+        where: {
+          createdAt: { gte: thirtyDaysAgo },
+          action: { in: ['user_created', 'intern_created', 'instructor_created', 'user_approved', 'user_rejected', 'user_suspended', 'user_deleted'] },
+        },
+        select: { action: true, createdAt: true },
+      }),
     ])
 
     const daily = Array.from({ length: 30 }, (_, index) => {
       const date = new Date(thirtyDaysAgo)
       date.setDate(thirtyDaysAgo.getDate() + index)
       const key = dateKey(date)
-      return { date: key, registrations: 0, enrollments: 0, completions: 0, revenueCents: 0 }
+      return { date: key, registrations: 0, enrollments: 0, completions: 0, revenueCents: 0, userApprovals: 0, userRejections: 0, userSuspensions: 0, userDeletions: 0, userCreations: 0 }
     })
     const dailyByDate = new Map(daily.map((item) => [item.date, item]))
-    recentUsers.forEach((user) => {
+    recentRegistrations.forEach((user) => {
       const bucket = dailyByDate.get(dateKey(user.createdAt))
       if (bucket) bucket.registrations += 1
     })
@@ -226,6 +245,15 @@ router.get('/overview', async (_req, res, next) => {
       const bucket = dailyByDate.get(dateKey(payment.createdAt))
       if (bucket) bucket.revenueCents += payment.amountCents || 0
     })
+    recentUserActions.forEach((log) => {
+      const bucket = dailyByDate.get(dateKey(log.createdAt))
+      if (!bucket) return
+      if (['user_created', 'intern_created', 'instructor_created'].includes(log.action)) bucket.userCreations += 1
+      if (log.action === 'user_approved') bucket.userApprovals += 1
+      if (log.action === 'user_rejected') bucket.userRejections += 1
+      if (log.action === 'user_suspended') bucket.userSuspensions += 1
+      if (log.action === 'user_deleted') bucket.userDeletions += 1
+    })
 
     const completionRate = pct(completedCourses, totalEnrollments)
     const publishRate = pct(publishedCourses, totalCourses)
@@ -239,10 +267,14 @@ router.get('/overview', async (_req, res, next) => {
         totalLearners,
         totalAdmins,
         totalInstructors,
+        pendingUsers,
+        rejectedUsers,
+        suspendedUsers,
         activeUsers: activeSessions.length,
         totalCourses,
         publishedCourses,
-        pendingApprovals: pendingCourses,
+        pendingApprovals: pendingUsers,
+        pendingCourses,
         totalEnrollments,
         completedCourses,
         messages,
@@ -877,13 +909,34 @@ router.post('/users', async (req, res, next) => {
 
 router.patch('/users/:id', async (req, res, next) => {
   try {
+    const userId = Number(req.params.id)
+    if (!Number.isInteger(userId)) {
+      return res.status(400).json({ success: false, message: 'A valid user id is required.' })
+    }
+
     const user = await prisma.user.update({
-      where: { id: Number(req.params.id) },
+      where: { id: userId },
       data: {
         name: req.body.name,
         role: req.body.role ? roleToDatabase(req.body.role) : undefined,
         approvalStatus: req.body.approvalStatus ? String(req.body.approvalStatus).toUpperCase() : undefined,
         isActive: typeof req.body.isActive === 'boolean' ? req.body.isActive : undefined,
+      },
+    })
+    await prisma.activityLog.create({
+      data: {
+        userId: req.user.id,
+        action: 'user_updated',
+        entityType: 'user',
+        entityId: String(user.id),
+        metadata: {
+          targetEmail: user.email,
+          targetRole: user.role,
+          approvalStatus: user.approvalStatus,
+          isActive: user.isActive,
+        },
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
       },
     })
     res.json({ success: true, user: publicUser(user) })
@@ -933,7 +986,36 @@ router.post('/users/:id/suspend', async (req, res, next) => {
 
 router.delete('/users/:id', async (req, res, next) => {
   try {
-    await prisma.user.delete({ where: { id: Number(req.params.id) } })
+    const userId = Number(req.params.id)
+    if (!Number.isInteger(userId)) {
+      return res.status(400).json({ success: false, message: 'A valid user id is required.' })
+    }
+    if (Number(req.user.id) === userId) {
+      return res.status(400).json({ success: false, message: 'You cannot delete your own admin account.' })
+    }
+
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: userSelect })
+    if (!user) return res.status(404).json({ success: false, message: 'User not found.' })
+
+    await prisma.$transaction([
+      prisma.user.delete({ where: { id: userId } }),
+      prisma.activityLog.create({
+        data: {
+          userId: req.user.id,
+          action: 'user_deleted',
+          entityType: 'user',
+          entityId: String(userId),
+          metadata: {
+            targetEmail: user.email,
+            targetRole: user.role,
+            approvalStatus: user.approvalStatus,
+            isActive: user.isActive,
+          },
+          ipAddress: req.ip,
+          userAgent: req.get('user-agent'),
+        },
+      }),
+    ])
     res.json({ success: true })
   } catch (error) {
     next(error)

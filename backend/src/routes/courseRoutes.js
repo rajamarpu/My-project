@@ -2,6 +2,7 @@ import crypto from 'crypto'
 import { Router } from 'express'
 import { prisma } from '../config/prisma.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
+import { logActivity } from '../utils/activityLogger.js'
 import { verifyToken } from '../utils/tokens.js'
 
 const router = Router()
@@ -238,6 +239,19 @@ router.post('/:id/enroll', requireAuth, requireRole('learner', 'admin'), async (
           eventType: 'course_enrolled',
         },
       })
+      await logActivity(req, {
+        action: 'learner.course_enrolled',
+        entityType: 'course',
+        entityId: course.id,
+        metadata: { courseId: course.id, personalityId, instructorId: currentInstructorId },
+      })
+    } else {
+      await logActivity(req, {
+        action: 'learner.course_enrollment_updated',
+        entityType: 'course',
+        entityId: course.id,
+        metadata: { courseId: course.id, personalityId, instructorId: currentInstructorId },
+      })
     }
     const enrollmentCount = await prisma.enrollment.count({ where: { courseId: course.id } })
     res.status(201).json({ success: true, enrollment, isEnrolled: true, enrollmentCount, wasAlreadyEnrolled: Boolean(existingEnrollment) })
@@ -273,6 +287,12 @@ router.delete('/:id/enroll', requireAuth, requireRole('learner', 'admin'), async
         courseId: course.id,
         eventType: 'course_unenrolled',
       },
+    })
+    await logActivity(req, {
+      action: 'learner.course_unenrolled',
+      entityType: 'course',
+      entityId: course.id,
+      metadata: { courseId: course.id },
     })
     const enrollmentCount = await prisma.enrollment.count({ where: { courseId: course.id } })
     res.json({ success: true, isEnrolled: false, enrollmentCount, message: 'Unenrolled from course.' })
@@ -353,13 +373,15 @@ router.post('/:id/instructor', requireAuth, requireRole('learner', 'admin'), asy
           reason: req.body.reason ? String(req.body.reason).trim() : null,
         },
       })
-      await prisma.activityLog.create({
-        data: {
-          userId: req.user.id,
-          action: 'instructor_changed',
-          entityType: 'course',
-          entityId: course.id,
-          metadata: { fromInstructorId: previousInstructorId, toInstructorId: instructor.id },
+      await logActivity(req, {
+        action: 'learner.instructor_changed',
+        entityType: 'course',
+        entityId: course.id,
+        metadata: {
+          courseId: course.id,
+          fromInstructorId: previousInstructorId,
+          toInstructorId: instructor.id,
+          instructorName: instructor.name,
         },
       })
       await prisma.analyticsEvent.create({

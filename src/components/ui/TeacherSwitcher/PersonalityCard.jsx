@@ -44,6 +44,10 @@ export default function PersonalityCard({ personality, onSelect, showPreview = t
     <motion.div
       whileHover={{ y: -5 }}
       onClick={handleSelect}
+      onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleSelect() } }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Select ${personality.name} as AI teacher`}
       className={cn(
         'glass-card relative cursor-pointer overflow-hidden rounded-3xl p-6',
         isSelected ? 'ring-2 ring-cyan-400' : ''
@@ -52,8 +56,10 @@ export default function PersonalityCard({ personality, onSelect, showPreview = t
       <div className={cn('absolute inset-0 bg-gradient-to-br opacity-20', personality.colorTheme.bg)} />
       
       <button
+        type="button"
         onClick={handleToggleFavorite}
-        className="absolute right-4 top-4 z-10 rounded-full bg-[var(--bg-subtle)] p-2 text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-card-hover)]"
+        aria-label={isFavorite ? `Remove ${personality.name} from favorites` : `Add ${personality.name} to favorites`}
+        className="absolute right-4 top-4 z-10 grid h-11 w-11 place-items-center rounded-full bg-[var(--bg-subtle)] text-[var(--text-primary)] transition-colors hover:bg-[var(--bg-card-hover)]"
       >
         <Heart className={cn('h-5 w-5', isFavorite ? 'fill-orange-500 text-orange-500' : 'text-[var(--text-primary)]')} />
       </button>

@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { prisma } from '../config/prisma.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
+import { logActivity } from '../utils/activityLogger.js'
 
 const router = Router()
 
@@ -30,6 +31,12 @@ router.post('/message', requireAuth, async (req, res, next) => {
     const saved = await prisma.chatMessage.create({
       data: { roomId, courseId: courseId || null, body: text, parentId: parentId || null, emoji, senderId: req.user.id },
       include: { sender: { select: { id: true, name: true, avatarUrl: true, role: true } } },
+    })
+    await logActivity(req, {
+      action: 'learner.chat_message_sent',
+      entityType: 'chat_message',
+      entityId: saved.id,
+      metadata: { roomId, courseId: courseId || null, parentId: parentId || null },
     })
     res.status(201).json({ success: true, message: saved })
   } catch (error) {

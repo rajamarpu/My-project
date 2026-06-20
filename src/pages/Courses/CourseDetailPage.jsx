@@ -1,13 +1,13 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ClipboardList, Star, Heart, Users, Clock, BarChart3, FileText } from 'lucide-react'
+import { CheckCircle2, ClipboardList, Star, Heart, Users, Clock, BarChart3, FileText, MessageSquare } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import Button from '../../components/common/Button/Button.jsx'
-import { enrollCourseRequest, fetchCourseById, fetchCourseInstructors, unenrollCourseRequest } from '../../api/api.js'
-import { toggleWishlist, enrollCourse, unenrollCourse } from '../../store/slices/authSlice.js'
+import { createCheckout, enrollCourseRequest, fetchCourseById, fetchCourseInstructors, fetchSavedCourses, removeSavedCourseRequest, saveCourseRequest, unenrollCourseRequest } from '../../api/api.js'
+import { toggleWishlist, setWishlist, enrollCourse, unenrollCourse } from '../../store/slices/authSlice.js'
 import { resolveCourseThumbnail } from '../../utils/courseThumbnail.js'
 import { formatRupeesFromPaise } from '../../utils/money.js'
-import { getCourseAssignments, getCourseLessons } from '../../utils/courseContent.js'
+import { getCourseAssignments, getCourseLessons, getCourseModules, getLessonOutcomes } from '../../utils/courseContent.js'
 
 export default function CourseDetailPage() {
   const { courseId } = useParams()
@@ -24,6 +24,7 @@ export default function CourseDetailPage() {
   const [enrollmentBusy, setEnrollmentBusy] = useState(false)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('overview')
+  const [wishlistBusy, setWishlistBusy] = useState(false)
 
   useEffect(() => {
     async function loadCourse() {
@@ -47,10 +48,17 @@ export default function CourseDetailPage() {
     void loadCourse()
   }, [auth.user, courseId])
 
+  useEffect(() => {
+    if (!auth.user || String(auth.user.role || auth.role).toLowerCase() !== 'learner') return
+    fetchSavedCourses().then((response) => dispatch(setWishlist((response.data?.savedCourses || []).map((item) => item.id)))).catch(() => {})
+  }, [auth.role, auth.user, dispatch])
+
   const isSaved = wishlist.includes(course?.id)
   const lessons = getCourseLessons(course)
   const assignments = getCourseAssignments(course)
-  const durationText = useMemo(() => `${lessons.length} lessons`, [lessons.length])
+  const modules = getCourseModules(course)
+  const outcomes = [...new Set(lessons.flatMap(getLessonOutcomes))]
+  const durationText = `${lessons.length} lessons`
 
   const enrollmentCount = course?.enrollmentCount ?? course?._count?.enrollments ?? course?.enrollments?.length ?? 0
   const isEnrolled = Boolean(course?.isEnrolled)
@@ -76,7 +84,13 @@ export default function CourseDetailPage() {
       if (openPlayer) navigate(`/player/${course.id}`)
     } catch (err) {
       if (err?.response?.status === 402) {
-        setError(err.response.data?.message || `Payment required. Cost to enroll is ${priceLabel}.`)
+        try {
+          const checkout = await createCheckout({ courseId: course.id }, window.crypto.randomUUID())
+          if (checkout.data?.checkoutUrl) window.location.assign(checkout.data.checkoutUrl)
+          else setError(`Secure checkout could not be opened. Cost to enroll is ${priceLabel}.`)
+        } catch (checkoutError) {
+          setError(checkoutError?.response?.data?.message || err.response.data?.message || `Payment required. Cost to enroll is ${priceLabel}.`)
+        }
       } else {
         setError(err?.response?.data?.message || err.message || 'Enrollment failed.')
       }
@@ -106,6 +120,19 @@ export default function CourseDetailPage() {
     }
   }
 
+  const handleWishlist = async () => {
+    if (!auth.user) { navigate('/login'); return }
+    try {
+      setWishlistBusy(true)
+      dispatch(toggleWishlist(course.id))
+      if (isSaved) await removeSavedCourseRequest(course.id)
+      else await saveCourseRequest(course.id)
+    } catch (err) {
+      dispatch(toggleWishlist(course.id))
+      setError(err?.response?.data?.message || 'Could not update saved courses.')
+    } finally { setWishlistBusy(false) }
+  }
+
   if (loading) {
     return <div className="rounded-3xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-8 text-[var(--text-secondary)]">Loading course...</div>
   }
@@ -118,7 +145,6 @@ export default function CourseDetailPage() {
   const selectedInstructor = instructors.find((item) => String(item.id) === String(selectedInstructorId))
   const displayInstructor = selectedInstructor || instructor
   const cover = resolveCourseThumbnail(course)
-  const isSubjectArtwork = String(cover).startsWith('data:image/svg+xml')
 
   const toggleInstructorPanel = async () => {
     if (!auth.user) {
@@ -164,21 +190,21 @@ export default function CourseDetailPage() {
             </div>
 
             <div className="grid gap-3 pt-1 sm:grid-cols-3">
-              <div className="rounded-xl border border-[var(--border-color)] bg-white/78 p-4 shadow-sm dark:bg-slate-950/42">
+              <div className="platform-card-muted p-4 shadow-sm">
                 <p className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
                   <BarChart3 size={16} className="text-[var(--accent-primary)]" />
                   Practical Skills
                 </p>
                 <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Analytics, visualization, and decision-ready data workflows.</p>
               </div>
-              <div className="rounded-xl border border-[var(--border-color)] bg-white/78 p-4 shadow-sm dark:bg-slate-950/42">
+              <div className="platform-card-muted p-4 shadow-sm">
                 <p className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
                   <ClipboardList size={16} className="text-[var(--accent-primary)]" />
                   Assignments
                 </p>
                 <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{isEnrolled ? `${assignments.length} unlocked for this course.` : 'Available after enrollment.'}</p>
               </div>
-              <div className="rounded-xl border border-[var(--border-color)] bg-white/78 p-4 shadow-sm dark:bg-slate-950/42">
+              <div className="platform-card-muted p-4 shadow-sm">
                 <p className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
                   <Users size={16} className="text-[var(--accent-primary)]" />
                   Guided Learning
@@ -197,7 +223,7 @@ export default function CourseDetailPage() {
                     assignments.length ? `${assignments.length} assignment${assignments.length === 1 ? '' : 's'}` : 'Practice checkpoints',
                     `${lessons.length || 1} guided lesson${(lessons.length || 1) === 1 ? '' : 's'}`,
                   ].map((item) => (
-                    <span key={item} className="rounded-full border border-orange-200 bg-white/80 px-3 py-1.5 text-xs font-semibold text-orange-800 dark:border-orange-300/20 dark:bg-white/5 dark:text-orange-100">
+                    <span key={item} className="rounded-full border border-[var(--border-color)] bg-[var(--bg-card)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)]">
                       {item}
                     </span>
                   ))}
@@ -207,7 +233,7 @@ export default function CourseDetailPage() {
                 </p>
               </div>
 
-              <div className="rounded-xl border border-[var(--border-color)] bg-white/78 p-4 shadow-sm dark:bg-slate-950/42">
+              <div className="platform-card-muted p-4 shadow-sm">
                 <p className="text-sm font-semibold text-[var(--text-primary)]">Course path</p>
                 <div className="mt-3 space-y-2 text-sm text-[var(--text-secondary)]">
                   {['Start lesson', 'Practice assignment', 'Unlock certificate'].map((step, index) => (
@@ -221,9 +247,9 @@ export default function CourseDetailPage() {
             </div>
           </div>
 
-          <div className="space-y-3 rounded-2xl border border-[var(--border-color)] bg-white/92 p-4 shadow-soft dark:bg-slate-950/70">
+          <div className="platform-card space-y-3 p-4">
             <div className="aspect-[16/9] overflow-hidden rounded-xl bg-slate-900 relative">
-              <img src={cover} alt={course.title} className={`h-full w-full ${isSubjectArtwork ? 'object-contain' : 'object-cover'}`} />
+              <img src={cover} alt={course.title} className="h-full w-full object-contain" />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
               <div className="absolute bottom-4 left-4 flex items-center gap-3">
                 <img
@@ -238,17 +264,17 @@ export default function CourseDetailPage() {
               {isEnrolled ? (
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Button onClick={() => navigate(`/player/${course.id}`)} size="lg" disabled={enrollmentBusy}>Start Learning</Button>
-                  <Button variant="secondary" onClick={handleUnenroll} size="lg" disabled={enrollmentBusy}>
-                    {enrollmentBusy ? 'Updating...' : 'Unenroll'}
+                  <Button variant="secondary" onClick={handleUnenroll} size="lg" loading={enrollmentBusy} loadingLabel="Updating...">
+                    Unenroll
                   </Button>
                 </div>
               ) : (
-                <Button onClick={() => handleEnroll()} size="lg" disabled={enrollmentBusy}>
-                  {enrollmentBusy ? 'Enrolling...' : auth.user ? (priceCents > 0 ? `Pay ${priceLabel} to Enroll` : 'Enroll Course') : 'Login to Enroll'}
+                <Button onClick={() => handleEnroll()} size="lg" loading={enrollmentBusy} loadingLabel="Enrolling...">
+                  {auth.user ? (priceCents > 0 ? `Pay ${priceLabel} to Enroll` : 'Enroll Course') : 'Login to Enroll'}
                 </Button>
               )}
               <div className="flex gap-2">
-                <Button variant="secondary" onClick={() => dispatch(toggleWishlist(course.id))} className="flex-1">
+                <Button variant="secondary" onClick={handleWishlist} loading={wishlistBusy} disabled={wishlistBusy} className="flex-1">
                   <Heart size={16} className="mr-2" /> {isSaved ? 'Saved' : 'Add Wishlist'}
                 </Button>
               </div>
@@ -260,20 +286,25 @@ export default function CourseDetailPage() {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,0.42fr)] xl:items-start">
-        <div className="space-y-5 rounded-2xl border border-[var(--border-color)] bg-white/92 p-5 shadow-soft dark:bg-slate-950/72 sm:p-6">
+        <div className="platform-card space-y-5 p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--text-secondary)]">
-            {['Overview', 'Lessons', 'Resources'].map((tab) => (
+            {[
+              ['Overview', 'overview'],
+              ['Curriculum', 'curriculum'],
+              ['Reviews', 'reviews'],
+              ['Resources', 'resources'],
+            ].map(([label, key]) => (
               <button
-                key={tab}
+                key={key}
                 type="button"
-                onClick={() => setActiveTab(tab.toLowerCase())}
-                className={`rounded-full px-4 py-2 transition ${
-                  activeTab === tab.toLowerCase()
+                onClick={() => setActiveTab(key)}
+                className={`min-h-11 rounded-full px-4 py-2 transition ${
+                  activeTab === key
                     ? 'bg-cyan-500 text-white shadow-glow'
                     : 'bg-[var(--bg-subtle)] text-[var(--text-secondary)] hover:bg-[var(--accent-soft)] hover:text-[var(--accent-primary)]'
                 }`}
               >
-                {tab}
+                {label}
               </button>
             ))}
             <button
@@ -282,7 +313,7 @@ export default function CourseDetailPage() {
                 if (isEnrolled || auth.role === 'admin') navigate(`/course/${course.id}/assessments`)
                 else void handleEnroll()
               }}
-              className="inline-flex items-center gap-2 rounded-full bg-[var(--bg-subtle)] px-4 py-2 text-[var(--text-secondary)] transition hover:bg-[var(--accent-soft)] hover:text-[var(--accent-primary)]"
+              className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[var(--bg-subtle)] px-4 py-2 text-[var(--text-secondary)] transition hover:bg-[var(--accent-soft)] hover:text-[var(--accent-primary)]"
             >
               <ClipboardList size={16} />
               {isEnrolled || auth.role === 'admin' ? `Assignments ${assignments.length ? `(${assignments.length})` : ''}` : 'Enroll to view assignments'}
@@ -330,11 +361,23 @@ export default function CourseDetailPage() {
                 ))}
               </div>
 
+              <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5">
+                <h3 className="text-lg font-semibold text-[var(--text-primary)]">Learning outcomes</h3>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {(outcomes.length ? outcomes : [
+                    `Understand the core concepts in ${course.category || 'this subject'}`,
+                    `Apply ${course.level || 'guided'} skills through practical lessons`,
+                    'Complete assignments and measurable practice checkpoints',
+                    'Build progress toward a verified course certificate',
+                  ]).map((outcome) => <div key={outcome} className="flex items-start gap-3 rounded-lg bg-[var(--bg-subtle)] p-3 text-sm text-[var(--text-secondary)]"><CheckCircle2 size={17} className="mt-0.5 shrink-0 text-[var(--color-success)]" /><span>{outcome}</span></div>)}
+                </div>
+              </div>
+
               <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
                 <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="font-semibold text-[var(--text-primary)]">Learning path preview</h3>
-                    <button type="button" onClick={() => setActiveTab('lessons')} className="text-sm font-semibold text-[var(--accent-primary)]">
+                    <button type="button" onClick={() => setActiveTab('curriculum')} className="text-sm font-semibold text-[var(--accent-primary)]">
                       View all
                     </button>
                   </div>
@@ -370,7 +413,7 @@ export default function CourseDetailPage() {
                     <p className="text-sm font-semibold text-[var(--text-primary)]">{course.level || 'Beginner'} path</p>
                     <p className="mt-1 text-sm text-[var(--text-secondary)]">{course.category || 'Skill development'} · {priceLabel}</p>
                   </div>
-                  <Button className="mt-4 w-full" onClick={() => (isEnrolled ? navigate(`/player/${course.id}`) : handleEnroll())} disabled={enrollmentBusy}>
+                  <Button className="mt-4 w-full" onClick={() => (isEnrolled ? navigate(`/player/${course.id}`) : handleEnroll())} loading={enrollmentBusy} loadingLabel="Enrolling...">
                     {isEnrolled ? 'Continue Learning' : 'Enroll and Start'}
                   </Button>
                 </div>
@@ -378,25 +421,22 @@ export default function CourseDetailPage() {
             </div>
           )}
 
-          {activeTab === 'lessons' && (
+          {activeTab === 'curriculum' && (
             <div className="space-y-4">
-              <h2 className="text-2xl font-semibold text-[var(--text-primary)]">Curriculum</h2>
+              <div><h2 className="text-2xl font-semibold text-[var(--text-primary)]">Course curriculum</h2><p className="mt-2 text-sm text-[var(--text-secondary)]">{modules.length} modules · {lessons.length} lessons · {assignments.length} assignments</p></div>
               <div className="space-y-3">
-                {lessons.length ? lessons.map((lesson) => (
-                  <div
-                    key={lesson.id}
-                    className="theme-subcard rounded-3xl p-4 text-[var(--text-secondary)]"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <span>{lesson.title}</span>
-                      <span>{lesson.durationMin ? `${lesson.durationMin} min` : lesson.type}</span>
-                    </div>
-                    {lesson.description ? <p className="mt-2 text-sm text-[var(--text-muted)]">{lesson.description}</p> : null}
-                  </div>
-                )) : (
-                  <div className="theme-subcard rounded-3xl p-5 text-[var(--text-muted)]">No lessons added yet.</div>
-                )}
+                {modules.length ? modules.map((module, moduleIndex) => <section key={module.title} className="overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)]"><div className="flex items-center justify-between gap-3 border-b border-[var(--border-color)] bg-[var(--bg-subtle)] p-4"><span className="font-semibold text-[var(--text-primary)]">Module {moduleIndex + 1}: {module.title}</span><span className="text-xs font-semibold text-[var(--text-muted)]">{module.lessons.length} lessons</span></div><div className="divide-y divide-[var(--border-color)]">{module.lessons.map((lesson, index) => <div key={lesson.id} className="flex items-start gap-3 p-4"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-xs font-bold text-[var(--accent-primary)]">{index + 1}</span><span className="min-w-0 flex-1"><span className="block font-semibold text-[var(--text-primary)]">{lesson.title}</span>{lesson.description ? <span className="mt-1 block text-sm text-[var(--text-secondary)]">{lesson.description}</span> : null}</span><span className="shrink-0 text-xs text-[var(--text-muted)]">{lesson.durationMin ? `${lesson.durationMin} min` : lesson.type}</span></div>)}</div></section>) : <div className="theme-subcard rounded-xl p-5 text-[var(--text-muted)]">No curriculum has been added yet.</div>}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'reviews' && (
+            <div className="space-y-5">
+              <div className="grid gap-4 sm:grid-cols-[15rem_minmax(0,1fr)]">
+                <div className="rounded-xl bg-[var(--accent-soft)] p-5 text-center"><Star className="mx-auto fill-[var(--color-warning)] text-[var(--color-warning)]" size={26} /><p className="mt-3 text-4xl font-bold text-[var(--text-primary)]">{Number(course.rating || 0).toFixed(1)}</p><p className="mt-1 text-sm text-[var(--text-secondary)]">Course rating</p></div>
+                <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5"><h2 className="text-xl font-semibold text-[var(--text-primary)]">Learner reviews</h2><p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Ratings reflect the live course record. Written learner reviews will appear here when review collection is available.</p><div className="mt-4 flex items-center gap-2 text-sm text-[var(--text-muted)]"><Users size={17} /> {enrollmentCount} enrolled learners</div></div>
+              </div>
+              <div className="rounded-xl border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] p-8 text-center"><MessageSquare className="mx-auto text-[var(--text-muted)]" size={30} /><p className="mt-3 font-semibold text-[var(--text-primary)]">No written reviews yet</p><p className="mt-1 text-sm text-[var(--text-secondary)]">Be among the first learners to complete this course.</p></div>
             </div>
           )}
 
@@ -409,15 +449,15 @@ export default function CourseDetailPage() {
                   Course metadata and instructor profile are synced from the backend.
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-2xl bg-white/5 p-4 light:bg-black/5">Category: {course.category}</div>
-                  <div className="rounded-2xl bg-white/5 p-4 light:bg-black/5">Instructor: {displayInstructor.name || 'Instructor'}</div>
+                  <div className="rounded-2xl bg-[var(--bg-subtle)] p-4">Category: {course.category}</div>
+                  <div className="rounded-2xl bg-[var(--bg-subtle)] p-4">Instructor: {displayInstructor.name || 'Instructor'}</div>
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        <aside className="space-y-4 rounded-2xl border border-[var(--border-color)] bg-white/92 p-5 shadow-soft dark:bg-slate-950/72 sm:p-6">
+        <aside className="platform-card space-y-4 p-5 sm:p-6">
           <div>
             <p className="text-sm uppercase tracking-[0.3em] text-[var(--accent-primary)]">Course summary</p>
             <ul className="mt-5 space-y-3 text-[var(--text-secondary)]">
@@ -429,9 +469,9 @@ export default function CourseDetailPage() {
             </ul>
           </div>
 
-          <div className="overflow-hidden rounded-xl border border-[var(--border-color)] bg-white/92 dark:bg-slate-900/72">
+          <div className="overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)]">
             <div className="p-4">
-              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Choose celebrity instructor</p>
+              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">Meet your instructor</p>
               <div className="mt-4 flex items-center gap-4">
                 <img src={displayInstructor.avatarUrl || cover} alt={displayInstructor.name} className="h-16 w-16 rounded-2xl object-cover" />
                 <div className="min-w-0">
@@ -444,7 +484,7 @@ export default function CourseDetailPage() {
               </Button>
             </div>
             {switchPanelOpen ? (
-              <div className="border-t border-[var(--border-color)] bg-white/95 p-5 dark:bg-slate-950/75">
+              <div className="border-t border-[var(--border-color)] bg-[var(--bg-elevated)] p-5">
                 <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">
                   Select instructor
                   <select
@@ -468,7 +508,7 @@ export default function CourseDetailPage() {
                 </label>
 
                 {selectedInstructor ? (
-                  <div className="mt-4 flex items-start gap-3 rounded-lg border border-[var(--border-color)] bg-black/[0.03] p-3 dark:bg-white/5">
+                  <div className="mt-4 flex items-start gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-3">
                     <img src={selectedInstructor.avatarUrl || '/favicon.svg'} alt={selectedInstructor.name} className="h-12 w-12 shrink-0 rounded-lg object-cover" />
                     <div className="min-w-0">
                       <p className="truncate font-semibold text-[var(--text-primary)]">{selectedInstructor.name}</p>
@@ -479,7 +519,7 @@ export default function CourseDetailPage() {
                   </div>
                 ) : null}
 
-                <Button onClick={() => handleEnroll({ openPlayer: true })} disabled={!selectedInstructorId || enrollmentBusy} className="mt-4 w-full">
+                <Button onClick={() => handleEnroll({ openPlayer: true })} disabled={!selectedInstructorId} loading={enrollmentBusy} loadingLabel="Updating..." className="mt-4 w-full">
                   {isEnrolled ? `Continue with ${selectedInstructor?.name || 'Selected Instructor'}` : priceCents > 0 ? `Pay ${priceLabel} to Enroll` : `Enroll with ${selectedInstructor?.name || 'Selected Instructor'}`}
                 </Button>
               </div>

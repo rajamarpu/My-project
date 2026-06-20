@@ -17,6 +17,8 @@ import chatRoutes from './routes/chatRoutes.v2.js'
 import certificateRoutes from './routes/certificateRoutes.js'
 import questionRoutes from './routes/questionRoutes.js'
 import assessmentRoutes from './routes/assessmentRoutes.js'
+import productionRoutes from './routes/productionRoutes.js'
+import { logActivity } from './utils/activityLogger.js'
 import { publicUser, verifyToken } from './utils/tokens.js'
 import { requireAuth, requestLogger } from './middleware/auth.js'
 
@@ -64,6 +66,13 @@ io.on('connection', (socket) => {
     const saved = await prisma.chatMessage.create({
       data: { roomId, courseId: courseId || null, body: text, parentId: parentId || null, emoji, senderId: socket.userId },
       include: { sender: { select: { id: true, name: true, avatarUrl: true, role: true } } },
+    })
+    await logActivity(null, {
+      userId: socket.userId,
+      action: 'learner.chat_message_sent',
+      entityType: 'chat_message',
+      entityId: saved.id,
+      metadata: { roomId, courseId: courseId || null, parentId: parentId || null, channel: 'socket' },
     })
     io.to(roomId).emit('new-message', saved)
   })
@@ -194,6 +203,28 @@ app.get('/api/stats/summary', async (_req, res, next) => {
   }
 })
 
+app.get('/api/instructors', async (_req, res, next) => {
+  try {
+    const instructors = await prisma.user.findMany({
+      where: { role: 'INSTRUCTOR', isActive: true, approvalStatus: 'APPROVED' },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        avatarUrl: true,
+        bio: true,
+        expertise: true,
+        socialLinks: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+    res.json({ success: true, instructors })
+  } catch (error) {
+    next(error)
+  }
+})
+
 app.put('/api/profile', requireAuth, async (req, res, next) => {
   try {
     const user = await prisma.user.update({
@@ -205,6 +236,14 @@ app.put('/api/profile', requireAuth, async (req, res, next) => {
         avatarUrl: req.body.avatarUrl || undefined,
       },
     })
+    await logActivity(req, {
+      action: 'learner.profile_updated',
+      entityType: 'user',
+      entityId: user.id,
+      metadata: {
+        fields: ['name', 'phone', 'bio', 'avatarUrl'].filter((field) => Object.prototype.hasOwnProperty.call(req.body || {}, field)),
+      },
+    })
     res.json({ success: true, user: publicUser(user) })
   } catch (error) {
     next(error)
@@ -213,16 +252,18 @@ app.put('/api/profile', requireAuth, async (req, res, next) => {
 
 app.put('/api/settings', requireAuth, async (req, res, next) => {
   try {
-    await prisma.activityLog.create({
-      data: {
-        userId: req.user.id,
-        action: 'settings_updated',
-        metadata: req.body || {},
-        ipAddress: req.ip,
-        userAgent: req.get('user-agent'),
-      },
+    const settings = req.body && typeof req.body === 'object' && !Array.isArray(req.body) ? req.body : {}
+    const preference = await prisma.userPreference.upsert({
+      where: { userId: req.user.id },
+      update: { settings },
+      create: { userId: req.user.id, settings },
     })
-    res.json({ success: true, settings: req.body || {} })
+    await logActivity(req, {
+      action: 'account.settings_updated',
+      entityType: 'settings',
+      entityId: preference.id,
+    })
+    res.json({ success: true, settings: preference.settings })
   } catch (error) {
     next(error)
   }
@@ -352,6 +393,12 @@ app.post('/api/learner/progress', requireAuth, async (req, res, next) => {
       update: { percentComplete, watchedSeconds, quizScore, completed: percentComplete >= 100, lastAccessedAt: new Date() },
       create: { userId: req.user.id, courseId, lessonId, percentComplete, watchedSeconds, quizScore, completed: percentComplete >= 100 },
     })
+    await logActivity(req, {
+      action: percentComplete >= 100 ? 'learner.course_completed' : 'learner.progress_updated',
+      entityType: lessonId ? 'lesson' : 'course',
+      entityId: lessonId || courseId,
+      metadata: { courseId, lessonId, percentComplete, watchedSeconds, quizScore: quizScore ?? null, endpoint: '/api/learner/progress' },
+    })
     res.json({ success: true, progress })
   } catch (error) {
     next(error)
@@ -367,6 +414,7 @@ app.use('/api/chat', chatRoutes)
 app.use('/api/certificates', certificateRoutes)
 app.use('/api/questions', questionRoutes)
 app.use('/api/assessments', assessmentRoutes)
+app.use('/api/portal', productionRoutes)
 
 app.use((req, res) => res.status(404).json({ success: false, message: `Route not found: ${req.method} ${req.path}` }))
 

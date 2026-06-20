@@ -72,7 +72,7 @@ export default function AuthBrandPanel({ isAdminPortal = false }) {
               ['Live', 'analytics', Sparkles],
             ].map(([value, label, Icon]) => (
               <motion.div key={label} className="auth-feature-card auth-metric-card" whileHover={{ y: -3 }}>
-                <Icon className="text-[#FF6B35]" size={20} />
+                <Icon className="text-[var(--accent-primary)]" size={20} />
                 <span className="mt-4 block text-2xl font-black text-slate-950 dark:text-white">{value}</span>
                 <span className="mt-1 block text-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{label}</span>
               </motion.div>

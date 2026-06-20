@@ -71,6 +71,9 @@ const authSlice = createSlice({
         notification.id === action.payload ? { ...notification, read: true } : notification,
       )
     },
+    setWishlist(state, action) {
+      state.wishlist = Array.isArray(action.payload) ? [...new Set(action.payload)] : []
+    },
     updateCurrentUser(state, action) {
       state.user = { ...(state.user || {}), ...(action.payload || {}) }
       if (typeof window !== 'undefined') {
@@ -85,6 +88,6 @@ const authSlice = createSlice({
   },
 })
 
-export const { login, logout, toggleWishlist, enrollCourse, unenrollCourse, markNotificationRead, updateCurrentUser, setTheme } = authSlice.actions
+export const { login, logout, toggleWishlist, setWishlist, enrollCourse, unenrollCourse, markNotificationRead, updateCurrentUser, setTheme } = authSlice.actions
 export default authSlice.reducer
 
