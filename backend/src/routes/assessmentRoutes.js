@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { prisma } from '../config/prisma.js'
 import { requireAuth, requireRole } from '../middleware/auth.js'
+import { logActivity } from '../utils/activityLogger.js'
 
 const router = Router()
 router.use(requireAuth)
@@ -117,7 +118,7 @@ function normalizeQuestions(assignment) {
       options: Array.isArray(question.options) ? question.options : [],
       correctAnswers: Array.isArray(question.correctAnswers) ? question.correctAnswers : [],
       correctAnswer: question.correctAnswer || '',
-      modelAnswer: question.modelAnswer || question.expectedAnswer || '',
+      modelAnswer: question.modelAnswer || question.expectedAnswer || question.correctAnswers?.[0] || '',
       caseSensitive: Boolean(question.caseSensitive),
       marks: Math.max(1, Number.parseInt(question.marks, 10) || 1),
     }))
@@ -125,6 +126,24 @@ function normalizeQuestions(assignment) {
 }
 
 async function findAssignment(courseId, assignmentId) {
+  if (assignmentId === `question-bank-${courseId}`) {
+    const questions = await prisma.question.findMany({
+      where: { courseId },
+      orderBy: { createdAt: 'desc' },
+      take: 50,
+    })
+    if (!questions.length) return null
+    return {
+      id: assignmentId,
+      title: 'Question bank practice',
+      description: 'Admin-created practice questions assigned to this course.',
+      quizJson: {
+        kind: 'assessment',
+        prompt: 'Practice questions from the admin question bank.',
+        questions,
+      },
+    }
+  }
   const course = await prisma.course.findUnique({
     where: { id: courseId },
     include: { lessons: { orderBy: { sortOrder: 'asc' } } },
@@ -210,6 +229,20 @@ router.post('/submit', requireRole('learner', 'admin'), async (req, res, next) =
       include: {
         student: { select: { id: true, name: true, email: true } },
         course: { select: { id: true, title: true } },
+      },
+    })
+    await logActivity(req, {
+      action: 'learner.assessment_submitted',
+      entityType: 'assessment',
+      entityId: submission.id,
+      metadata: {
+        submissionId: submission.id,
+        courseId,
+        assignmentId,
+        assignmentName: assignment.title,
+        status: submission.status,
+        percentage: submission.percentage,
+        attemptNumber: submission.attemptNumber,
       },
     })
     res.status(201).json({ success: true, submission })
@@ -339,19 +372,16 @@ router.post('/admin/retakes', requireRole('admin'), async (req, res, next) => {
       },
     })
 
-    await prisma.activityLog.create({
-      data: {
-        userId: req.user.id,
-        action: 'assessment_retake_opened',
-        entityType: 'assessment',
-        entityId: assignmentId,
-        metadata: {
-          studentId,
-          courseId,
-          assignmentId,
-          assignmentName: assignment.title,
-          allowedAttempts: 1 + retakeGrant.extraAttempts,
-        },
+    await logActivity(req, {
+      action: 'admin.assessment_retake_opened',
+      entityType: 'assessment',
+      entityId: assignmentId,
+      metadata: {
+        studentId,
+        courseId,
+        assignmentId,
+        assignmentName: assignment.title,
+        allowedAttempts: 1 + retakeGrant.extraAttempts,
       },
     })
 

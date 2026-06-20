@@ -1,6 +1,7 @@
 import { Router } from 'express'
 import { prisma } from '../config/prisma.js'
 import { requireAuth } from '../middleware/auth.js'
+import { logActivity } from '../utils/activityLogger.js'
 
 const router = Router()
 
@@ -108,8 +109,26 @@ router.post('/', requireAuth, async (req, res, next) => {
       data: { completionPct: percentComplete, hoursStudied: { increment: watchedSeconds / 3600 }, quizAverage: quizScore || undefined },
     })
     await prisma.analyticsEvent.create({ data: { userId: req.user.id, courseId, eventType: 'progress_updated', value: percentComplete } })
+    await logActivity(req, {
+      action: percentComplete >= 100 ? 'learner.course_completed' : 'learner.progress_updated',
+      entityType: lessonId ? 'lesson' : 'course',
+      entityId: lessonId || courseId,
+      metadata: {
+        courseId,
+        lessonId,
+        percentComplete,
+        watchedSeconds,
+        quizScore: quizScore ?? null,
+      },
+    })
     if (watchedSeconds > 0) {
       await prisma.analyticsEvent.create({ data: { userId: req.user.id, courseId, eventType: 'watch_time', value: watchedSeconds } })
+      await logActivity(req, {
+        action: 'learner.lesson_watch_time',
+        entityType: lessonId ? 'lesson' : 'course',
+        entityId: lessonId || courseId,
+        metadata: { courseId, lessonId, watchedSeconds },
+      })
     }
     if (percentComplete >= 100) {
       await prisma.analyticsEvent.create({ data: { userId: req.user.id, courseId, eventType: 'course_completed' } })

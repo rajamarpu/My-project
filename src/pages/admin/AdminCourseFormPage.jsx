@@ -7,6 +7,7 @@ import { formatRupeesFromPaise } from '../../utils/money.js'
 
 const MAX_THUMBNAIL_SIZE = 2 * 1024 * 1024
 const MAX_COURSE_FILE_SIZE = 60 * 1024 * 1024
+const COURSE_CATEGORY_OPTIONS = ['Development', 'Data Science', 'Artificial Intelligence', 'Design', 'Business', 'Marketing', 'Cloud Computing', 'Cybersecurity', 'Career Skills']
 const COURSE_ASSET_ACCEPT = [
   'video/*',
   'application/pdf',
@@ -109,7 +110,12 @@ const initialForm = {
 export default function AdminCourseFormPage({ mode = 'create' }) {
   const navigate = useNavigate()
   const { courseId } = useParams()
-  const [form, setForm] = useState(initialForm)
+  const draftKey = 'uptoskills-admin-course-draft'
+  const [form, setForm] = useState(() => {
+    if (mode !== 'create') return initialForm
+    try { return { ...initialForm, ...JSON.parse(window.localStorage.getItem(draftKey) || '{}') } } catch { return initialForm }
+  })
+  const [savedSnapshot, setSavedSnapshot] = useState(JSON.stringify(initialForm))
   const [loading, setLoading] = useState(mode === 'edit')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -128,7 +134,7 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
         const response = await fetchAdminCourses()
         const course = response.data.courses.find((item) => item.id === courseId)
         if (!course) throw new Error('Course not found.')
-        setForm({
+        const loadedForm = {
           title: course.title || '',
           description: course.description || '',
           category: course.category || '',
@@ -139,7 +145,9 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
           isPublished: Boolean(course.isPublished),
           lessons: normalizeLessons(course.lessons),
           assessments: normalizeAssessments(course.lessons),
-        })
+        }
+        setForm(loadedForm)
+        setSavedSnapshot(JSON.stringify(loadedForm))
       } catch (err) {
         setError(err?.response?.data?.message || err.message || 'Failed to load course.')
       } finally {
@@ -148,6 +156,20 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
     }
     void loadCourse()
   }, [courseId, mode])
+
+  const dirty = JSON.stringify(form) !== savedSnapshot
+  useEffect(() => {
+    if (mode !== 'create' || !dirty) return undefined
+    const timer = window.setTimeout(() => window.localStorage.setItem(draftKey, JSON.stringify(form)), 600)
+    return () => window.clearTimeout(timer)
+  }, [dirty, form, mode])
+
+  useEffect(() => {
+    if (!dirty) return undefined
+    const warn = (event) => { event.preventDefault(); event.returnValue = '' }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
 
   useEffect(() => {
     async function loadAiOptions() {
@@ -676,6 +698,8 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
       const payload = { ...form, lessons: [...lessons, ...assessmentLessons], priceCents: Number(form.priceCents || 0) }
       if (mode === 'edit') await updateAdminCourse(courseId, payload)
       else await createCourseRequest(payload)
+      setSavedSnapshot(JSON.stringify(form))
+      window.localStorage.removeItem(draftKey)
       setSuccess('Course saved successfully.')
       navigate('/admin/courses')
     } catch (err) {
@@ -689,11 +713,21 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
     <section className="space-y-6 pb-16">
       <AdminPageHeader eyebrow="Course catalog" title={mode === 'edit' ? 'Edit course' : 'Upload course'} description="Save course details, publication state, preview media, and catalog metadata." />
 
+      {mode === 'create' && dirty ? <AdminNotice type="info">Draft changes are automatically saved on this device until the course is submitted.</AdminNotice> : null}
+
       <form onSubmit={submit} className="admin-panel p-5 sm:p-6">
         {loading ? <AdminLoadingState label="Loading course..." /> : (
           <div className="grid gap-5 lg:grid-cols-2">
             <Field label="Title" value={form.title} error={fieldErrors.title} onChange={(value) => update('title', value)} />
-            <Field label="Category" value={form.category} error={fieldErrors.category} onChange={(value) => update('category', value)} />
+            <label className="admin-label">
+              Category
+              <select value={form.category} onChange={(event) => update('category', event.target.value)} className="admin-input" aria-invalid={Boolean(fieldErrors.category)}>
+                <option value="">Select category</option>
+                {form.category && !COURSE_CATEGORY_OPTIONS.includes(form.category) ? <option value={form.category}>{form.category}</option> : null}
+                {COURSE_CATEGORY_OPTIONS.map((category) => <option key={category} value={category}>{category}</option>)}
+              </select>
+              <FieldError>{fieldErrors.category}</FieldError>
+            </label>
             <label className="admin-label">
               Level
               <select value={form.level} onChange={(event) => update('level', event.target.value)} className="admin-input">
@@ -1170,7 +1204,7 @@ export default function AdminCourseFormPage({ mode = 'create' }) {
         <AdminNotice type="error">{error}</AdminNotice>
         <AdminNotice type="success">{success}</AdminNotice>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Button type="submit" disabled={saving || loading}>{saving ? 'Saving...' : 'Save Course'}</Button>
+          <Button type="submit" disabled={loading} loading={saving} loadingLabel="Saving...">Save Course</Button>
           <Button type="button" variant="secondary" onClick={() => navigate('/admin/courses')}>Cancel</Button>
         </div>
       </form>

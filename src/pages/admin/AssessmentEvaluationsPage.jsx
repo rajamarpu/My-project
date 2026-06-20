@@ -153,13 +153,13 @@ export default function AssessmentEvaluationsPage() {
           <Search size={18} />
           <input className="w-full bg-transparent text-sm outline-none" value={filters.search} onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Search student, course, assignment" />
         </label>
-        <select className="admin-input" value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>
+        <select aria-label="Filter submissions by status" className="admin-input" value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))}>
           {statusOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
         </select>
         <input className="admin-input" value={filters.courseId} onChange={(event) => setFilters((current) => ({ ...current, courseId: event.target.value }))} placeholder="Course ID" />
         <input className="admin-input" value={filters.studentId} onChange={(event) => setFilters((current) => ({ ...current, studentId: event.target.value }))} placeholder="Student ID" />
         <input className="admin-input" value={filters.assignmentId} onChange={(event) => setFilters((current) => ({ ...current, assignmentId: event.target.value }))} placeholder="Assignment ID" />
-        <input className="admin-input" type="date" value={filters.date} onChange={(event) => setFilters((current) => ({ ...current, date: event.target.value }))} />
+        <input aria-label="Filter submissions by date" className="admin-input" type="date" value={filters.date} onChange={(event) => setFilters((current) => ({ ...current, date: event.target.value }))} />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
@@ -202,7 +202,7 @@ export default function AssessmentEvaluationsPage() {
                   <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">{selected.assignmentName}</h2>
                   <p className="mt-1 text-sm text-[var(--text-secondary)]">{selected.student?.name} answered {selected.questionReviews?.length || 0} questions.</p>
                 </div>
-                <Button type="button" onClick={saveEvaluation} disabled={saving}><Save size={16} /> {saving ? 'Saving...' : 'Save Evaluation'}</Button>
+                <Button type="button" onClick={saveEvaluation} loading={saving} loadingLabel="Saving..."><Save size={16} /> Save Evaluation</Button>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-4">

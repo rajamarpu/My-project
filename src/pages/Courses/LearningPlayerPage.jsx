@@ -7,6 +7,7 @@ import Button from '../../components/common/Button/Button.jsx'
 import ChatInterface from '../../components/ui/Dashboard/ChatInterface.jsx'
 import { fetchCourseById, fetchCourseInstructors, fetchUserProgress, switchCourseInstructor, updateUserProgress } from '../../api/api.js'
 import { getCourseAssignments, getCourseLessons, getCourseModules, getLessonKind, getLessonOutcomes, getLessonResources, lessonMeta } from '../../utils/courseContent.js'
+import { ChevronLeft, ChevronRight, Download, FileText } from 'lucide-react'
 
 export default function LearningPlayerPage() {
   const { courseId } = useParams()
@@ -68,6 +69,7 @@ export default function LearningPlayerPage() {
   const switchHistory = enrollment?.instructorChanges || []
   const selectedIsCurrent = selectedInstructor && activeInstructor?.id === selectedInstructor.id
   const activeResources = getLessonResources(activeLesson)
+  const courseResources = useMemo(() => lessons.flatMap((lesson) => getLessonResources(lesson).map((resource) => ({ ...resource, lessonTitle: lesson.title }))), [lessons])
   const activeMeta = lessonMeta(activeLesson)
   const activeKind = getLessonKind(activeLesson)
   const activeOutcomes = getLessonOutcomes(activeLesson)
@@ -150,11 +152,26 @@ export default function LearningPlayerPage() {
   }
 
   if (error && !course) {
-    return <div className="rounded-lg border border-red-400/30 bg-red-500/10 p-8 text-red-700 dark:text-red-100">{error}</div>
+    return <section className="rounded-lg border border-red-400/30 bg-red-500/10 p-8 text-red-700 dark:text-red-100"><h1 className="text-2xl font-bold">Course player unavailable</h1><p className="mt-3">{error}</p><Button className="mt-5" variant="secondary" onClick={() => navigate('/explore')}>Browse courses</Button></section>
+  }
+
+  if (course && !course.isEnrolled && !enrollment) {
+    return <section className="glass-card rounded-2xl p-8 text-center shadow-glow"><h1 className="text-3xl font-black text-[var(--text-primary)]">Enrollment required</h1><p className="mx-auto mt-3 max-w-xl text-[var(--text-secondary)]">Enroll in {course.title} before opening its lessons, assessments, notes, and community workspace.</p><div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row"><Button onClick={() => navigate(`/course/${course.id}`)}>View enrollment options</Button><Button variant="secondary" onClick={() => navigate('/explore')}>Back to courses</Button></div></section>
   }
 
   return (
     <motion.section className="mx-auto w-full max-w-[1600px] space-y-6 pb-16" variants={fadeInUp} initial="hidden" animate="visible">
+      <nav className="sticky top-[76px] z-20 flex flex-col gap-3 rounded-xl border border-[var(--border-color)] bg-[var(--navbar-bg)] p-3 shadow-soft backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between" aria-label="Course player navigation">
+        <div className="flex min-w-0 items-center gap-2">
+          <Button variant="secondary" onClick={() => navigate(`/course/${course.id}`)}><ChevronLeft size={16} /> Course details</Button>
+          <span className="hidden truncate text-sm font-semibold text-[var(--text-secondary)] lg:block">{activeLesson?.title || course.title}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="hidden min-w-44 items-center gap-3 sm:flex"><span className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--bg-subtle)]"><span className="block h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${progressPct}%` }} /></span><span className="text-xs font-bold text-[var(--text-secondary)]">{progressPct}%</span></div>
+          <Button variant="secondary" onClick={() => setActiveLessonIndex((index) => Math.max(0, index - 1))} disabled={activeLessonIndex <= 0} aria-label="Previous lesson"><ChevronLeft size={16} /> Previous</Button>
+          <Button variant="secondary" aria-label="Next lesson" onClick={() => setActiveLessonIndex((index) => Math.min(lessons.length - 1, index + 1))} disabled={activeLessonIndex >= lessons.length - 1}>Next <ChevronRight size={16} /></Button>
+        </div>
+      </nav>
       <div className="enterprise-mesh-panel rounded-xl border border-[var(--border-color)] p-5 shadow-soft lg:p-6">
         <div className="grid gap-8 lg:grid-cols-[1.5fr_0.9fr] lg:items-start">
           <div className="space-y-5">
@@ -209,7 +226,7 @@ export default function LearningPlayerPage() {
                     <div className="grid aspect-video place-items-center bg-slate-950 p-8 text-center text-white">
                       <div>
                         <p className="text-lg font-semibold">External course lesson</p>
-                        <a className="mt-4 inline-flex rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-950" href={activeMeta.courseUrl} target="_blank" rel="noreferrer">Open Lesson URL</a>
+                        <a className="mt-4 inline-flex rounded-lg bg-[var(--bg-card)] px-4 py-2 text-sm font-semibold text-[var(--text-primary)]" href={activeMeta.courseUrl} target="_blank" rel="noreferrer">Open Lesson URL</a>
                       </div>
                     </div>
                   ) : (
@@ -222,8 +239,11 @@ export default function LearningPlayerPage() {
                   )}
                 </div>
               ) : (
-                <div className="mt-3 rounded-lg border border-[var(--border-color)] bg-black/[0.025] p-5 text-sm leading-7 text-slate-700 dark:bg-white/5 dark:text-slate-300">
-                  No course lessons have been added yet.
+                <div className="mt-3 platform-empty-state min-h-[10rem] text-sm leading-7">
+                  <div>
+                    <p className="font-bold text-[var(--text-primary)]">No lessons yet</p>
+                    <p className="mt-1 text-[var(--text-secondary)]">Add lessons from the admin course editor to activate the player experience.</p>
+                  </div>
                 </div>
               )}
             </div>
@@ -244,12 +264,12 @@ export default function LearningPlayerPage() {
               </Button>
               {notice ? <p className="mt-3 rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-200">{notice}</p> : null}
               {switchPanelOpen ? (
-                <div className="mt-4 overflow-hidden rounded-lg border border-[var(--border-color)] bg-white/90 shadow-soft dark:bg-slate-950/75">
+                <div className="mt-4 overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-elevated)] shadow-soft">
                   <div className="border-b border-[var(--border-color)] p-4">
-                    <p className="text-sm font-semibold text-slate-950 dark:text-slate-100">
+                    <p className="text-sm font-semibold text-[var(--text-primary)]">
                       Choose any celebrity instructor
                     </p>
-                    <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-400">
+                    <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">
                       Your completed lessons, quiz work, certificates, and course progress will stay unchanged.
                     </p>
                   </div>
@@ -268,7 +288,7 @@ export default function LearningPlayerPage() {
                               'flex w-full gap-3 rounded-lg border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-cyan-400/50',
                               active
                                 ? 'border-cyan-500 bg-cyan-500/10 shadow-soft'
-                                : 'border-[var(--border-color)] bg-white/80 hover:border-cyan-500/50 hover:bg-cyan-500/5 dark:bg-slate-900/75',
+                                : 'border-[var(--border-color)] bg-[var(--bg-card)] hover:border-[var(--accent-primary)]/50 hover:bg-[var(--bg-subtle)]',
                             ].join(' ')}
                           >
                             <img
@@ -278,14 +298,14 @@ export default function LearningPlayerPage() {
                             />
                             <span className="min-w-0 flex-1">
                               <span className="flex flex-wrap items-center gap-2">
-                                <span className="font-semibold text-slate-950 dark:text-slate-100">{instructor.name}</span>
+                                <span className="font-semibold text-[var(--text-primary)]">{instructor.name}</span>
                                 {current ? <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-[0.68rem] font-semibold text-emerald-700 dark:text-emerald-200">Current</span> : null}
                                 {active && !current ? <span className="rounded-full bg-cyan-500/10 px-2 py-1 text-[0.68rem] font-semibold text-cyan-700 dark:text-cyan-200">Selected</span> : null}
                               </span>
                               <span className="mt-1 block text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-cyan-700 dark:text-cyan-300">
                                 {instructor.matchReason || instructor.expertise || course.category}
                               </span>
-                              <span className="mt-2 line-clamp-2 block text-sm leading-5 text-slate-600 dark:text-slate-400">
+                              <span className="mt-2 line-clamp-2 block text-sm leading-5 text-[var(--text-secondary)]">
                                 {instructor.bio || 'Available to guide your upcoming lessons and instructor interactions.'}
                               </span>
                             </span>
@@ -294,18 +314,18 @@ export default function LearningPlayerPage() {
                       })}
                     </div>
                   ) : (
-                    <div className="p-4 text-sm text-slate-600 dark:text-slate-400">
+                    <div className="p-4 text-sm text-[var(--text-secondary)]">
                       No celebrity instructors are available right now.
                     </div>
                   )}
 
-                  <div className="border-t border-[var(--border-color)] bg-white/95 p-3 dark:bg-slate-950/95">
+                  <div className="border-t border-[var(--border-color)] bg-[var(--bg-elevated)] p-3">
                     {selectedInstructor ? (
-                      <div className="mb-3 flex items-center gap-3 rounded-lg bg-black/[0.03] p-3 dark:bg-white/5">
+                      <div className="mb-3 flex items-center gap-3 rounded-lg bg-[var(--bg-subtle)] p-3">
                         <img src={selectedInstructor.avatarUrl || '/favicon.svg'} alt={selectedInstructor.name} className="h-10 w-10 rounded-lg object-cover" />
                         <div className="min-w-0">
-                          <p className="truncate text-xs uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">Selected instructor</p>
-                          <p className="truncate text-sm font-semibold text-slate-950 dark:text-slate-100">{selectedInstructor.name}</p>
+                          <p className="truncate text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">Selected instructor</p>
+                          <p className="truncate text-sm font-semibold text-[var(--text-primary)]">{selectedInstructor.name}</p>
                         </div>
                       </div>
                     ) : null}
@@ -331,8 +351,8 @@ export default function LearningPlayerPage() {
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--accent-primary)]">Lesson playlist</p>
             <div className="mt-5 space-y-4">
               {modules.length ? modules.map((module) => (
-                <div key={module.title} className="rounded-lg border border-[var(--border-color)] bg-black/[0.025] p-3 dark:bg-white/5">
-                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500 dark:text-slate-400">{module.title}</p>
+                <div key={module.title} className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-3">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">{module.title}</p>
                   <div className="space-y-2">
                     {module.lessons.map((lesson) => {
                       const index = lessons.findIndex((item) => item.id === lesson.id)
@@ -345,15 +365,15 @@ export default function LearningPlayerPage() {
                           onClick={() => setActiveLessonIndex(index)}
                           className={[
                             'w-full rounded-lg p-3 text-left transition border',
-                            isActive ? 'border-emerald-500/50 bg-emerald-500/10 text-slate-950 dark:border-emerald-300/50 dark:bg-emerald-300/10 dark:text-slate-100' : 'border-[var(--border-color)] bg-white/60 text-slate-700 hover:border-emerald-500/30 dark:bg-slate-900/40 dark:text-slate-300 dark:hover:border-emerald-300/30',
+                            isActive ? 'border-emerald-500/50 bg-emerald-500/10 text-[var(--text-primary)]' : 'border-[var(--border-color)] bg-[var(--bg-card)] text-[var(--text-secondary)] hover:border-emerald-500/30 hover:bg-[var(--bg-subtle)]',
                           ].join(' ')}
                         >
                           <span className="flex items-center justify-between gap-3">
                             <span className="min-w-0">
                               <span className="block truncate text-sm font-semibold">{index + 1}. {lesson.title}</span>
-                              <span className="mt-1 block text-xs text-slate-500 dark:text-slate-400">{lessonKindLabel(getLessonKind(lesson))}</span>
+                              <span className="mt-1 block text-xs text-[var(--text-muted)]">{lessonKindLabel(getLessonKind(lesson))}</span>
                             </span>
-                            <span className="text-xs text-slate-500 dark:text-slate-400">{completed ? 'Done' : lesson.durationMin ? `${lesson.durationMin}m` : lesson.type}</span>
+                            <span className="text-xs text-[var(--text-muted)]">{completed ? 'Done' : lesson.durationMin ? `${lesson.durationMin}m` : lesson.type}</span>
                           </span>
                         </button>
                       )
@@ -361,8 +381,8 @@ export default function LearningPlayerPage() {
                   </div>
                 </div>
               )) : (
-                <div className="rounded-lg border border-[var(--border-color)] bg-black/[0.03] p-4 text-sm text-slate-600 dark:bg-white/5 dark:text-slate-300">
-                  No lessons yet.
+                <div className="rounded-lg border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] p-4 text-sm text-[var(--text-secondary)]">
+                  No lessons yet. Add course content to unlock the playlist.
                 </div>
               )}
             </div>
@@ -377,19 +397,19 @@ export default function LearningPlayerPage() {
               </button>
             ) : null}
 
-            <div className="rounded-lg border border-[var(--border-color)] bg-black/[0.03] p-5 dark:bg-white/5">
-              <p className="text-sm uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Completion</p>
-              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+            <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-5">
+              <p className="text-sm uppercase tracking-[0.25em] text-[var(--text-muted)]">Completion</p>
+              <p className="mt-3 text-sm text-[var(--text-secondary)]">
                 {completedCount === lessons.length && lessons.length ? 'All lessons completed.' : 'Complete lessons to unlock the next module.'}
               </p>
             </div>
 
             {switchHistory.length ? (
-              <div className="rounded-lg border border-[var(--border-color)] bg-black/[0.03] p-5 dark:bg-white/5">
-                <p className="text-sm uppercase tracking-[0.25em] text-slate-500 dark:text-slate-400">Instructor history</p>
+              <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-5">
+                <p className="text-sm uppercase tracking-[0.25em] text-[var(--text-muted)]">Instructor history</p>
                 <div className="mt-3 space-y-2">
                   {switchHistory.slice(0, 3).map((item) => (
-                    <p key={item.id} className="text-sm text-slate-600 dark:text-slate-300">
+                    <p key={item.id} className="text-sm text-[var(--text-secondary)]">
                       {item.fromInstructor?.name || 'Original instructor'} to {item.toInstructor?.name || 'Instructor'} on {new Date(item.createdAt).toLocaleDateString()}
                     </p>
                   ))}
@@ -401,21 +421,21 @@ export default function LearningPlayerPage() {
 
           <div className="space-y-5 lg:col-span-2">
             {activeLesson?.description ? (
-              <div className="whitespace-pre-line rounded-lg border border-[var(--border-color)] bg-black/[0.025] p-4 text-sm leading-7 text-slate-700 dark:bg-white/5 dark:text-slate-300">
+              <div className="whitespace-pre-line rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4 text-sm leading-7 text-[var(--text-secondary)]">
                 {activeLesson.description}
               </div>
             ) : null}
             {activeOutcomes.length ? (
-              <div className="rounded-lg border border-[var(--border-color)] bg-black/[0.025] p-4 dark:bg-white/5">
-                <p className="text-sm font-semibold text-slate-950 dark:text-slate-100">Learning outcomes</p>
-                <ul className="mt-3 grid gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+                <p className="text-sm font-semibold text-[var(--text-primary)]">Learning outcomes</p>
+                <ul className="mt-3 grid gap-2 text-sm text-[var(--text-secondary)]">
                   {activeOutcomes.map((outcome) => <li key={outcome}>- {outcome}</li>)}
                 </ul>
               </div>
             ) : null}
             {activeResources.length ? (
-              <div className="rounded-lg border border-[var(--border-color)] bg-white/70 p-4 dark:bg-slate-950/40">
-                <p className="text-sm font-semibold text-slate-950 dark:text-slate-100">Attached files</p>
+              <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
+                <p className="text-sm font-semibold text-[var(--text-primary)]">Attached files</p>
                 <div className="mt-3 grid gap-2">
                   {activeResources.map((resource, index) => (
                     <a
@@ -423,16 +443,19 @@ export default function LearningPlayerPage() {
                       href={resource.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border-color)] bg-black/[0.025] px-3 py-2 text-sm text-cyan-700 transition hover:border-cyan-400/50 dark:bg-white/5 dark:text-cyan-200"
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3 py-2 text-sm text-[var(--accent-primary)] transition hover:border-[var(--accent-primary)]/50"
                     >
                       <span className="min-w-0 flex-1 truncate font-medium">{resource.name || resource.url}</span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">{resource.mimeType || 'file'}</span>
+                      <span className="text-xs text-[var(--text-muted)]">{resource.mimeType || 'file'}</span>
                     </a>
                   ))}
                 </div>
               </div>
             ) : null}
             <div className="flex flex-wrap items-center gap-3">
+              <Button variant="secondary" onClick={() => setActiveLessonIndex((index) => Math.max(index - 1, 0))} disabled={activeLessonIndex <= 0}>
+                Previous lesson
+              </Button>
               <Button onClick={markComplete} disabled={!auth.user}>Mark complete</Button>
               <Button variant="secondary" onClick={() => setActiveLessonIndex((index) => Math.min(index + 1, lessons.length - 1))} disabled={activeLessonIndex >= lessons.length - 1}>
                 Next lesson
@@ -461,6 +484,12 @@ export default function LearningPlayerPage() {
             <PlayerAction title="Assessment" text={`${assignments.length} assignment${assignments.length === 1 ? '' : 's'} available`} onClick={() => navigate(`/course/${course.id}/assessments`)} />
             <PlayerAction title="Course details" text="Review curriculum and instructor" onClick={() => navigate(`/course/${course.id}`)} />
             <PlayerAction title="Certificates" text={certificateReady ? 'Check eligibility status' : 'Unlock after completion'} onClick={() => navigate('/certificates')} />
+          </div>
+          <div className="mt-5 rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
+            <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-bold text-[var(--text-primary)]">Course resource library</p><p className="mt-1 text-xs text-[var(--text-muted)]">Files and links attached across all lessons</p></div><span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-bold text-[var(--accent-primary)]">{courseResources.length}</span></div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-2">
+              {courseResources.length ? courseResources.map((resource, index) => <a key={`${resource.url}-${index}`} href={resource.url} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-3 text-left transition hover:border-[var(--accent-primary)]/50"><span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">{resource.url ? <Download size={16} /> : <FileText size={16} />}</span><span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-[var(--text-primary)]">{resource.name || 'Lesson resource'}</span><span className="block truncate text-xs text-[var(--text-muted)]">{resource.lessonTitle}</span></span></a>) : <div className="rounded-lg border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] p-5 text-sm text-[var(--text-secondary)] sm:col-span-2">Resources added by instructors will appear here automatically.</div>}
+            </div>
           </div>
           <div className="mt-5 grid gap-4 rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
             <div>

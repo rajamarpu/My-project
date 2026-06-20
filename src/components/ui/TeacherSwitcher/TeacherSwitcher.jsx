@@ -52,7 +52,7 @@ export default function TeacherSwitcher({ courseTeacherId = 'rohit' }) {
       <AnimatePresence>
         {switching ? (
           <motion.div
-            className="pointer-events-none absolute inset-0 z-10 grid place-items-center rounded-2xl bg-cyan-400/10 text-sm font-semibold text-cyan-100 backdrop-blur-sm"
+            className="pointer-events-none absolute inset-0 z-10 grid place-items-center rounded-2xl bg-[var(--accent-soft)] text-sm font-semibold text-[var(--accent-primary)] backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -65,29 +65,29 @@ export default function TeacherSwitcher({ courseTeacherId = 'rohit' }) {
       <AnimatePresence>
         {open ? (
           <motion.div
-            className="fixed inset-0 z-[80] overflow-y-auto bg-slate-950/82 px-4 py-8 backdrop-blur-xl"
+            className="fixed inset-0 z-[80] overflow-y-auto bg-black/55 px-4 py-8 backdrop-blur-xl dark:bg-slate-950/82"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="mx-auto max-w-6xl rounded-2xl border border-white/10 bg-slate-950 p-5 shadow-[0_30px_120px_rgba(34,211,238,0.18)] sm:p-7"
+              className="theme-card mx-auto max-w-6xl rounded-2xl p-5 shadow-[0_30px_120px_rgba(34,211,238,0.18)] sm:p-7"
               initial={{ y: 24, scale: 0.98 }}
               animate={{ y: 0, scale: 1 }}
               exit={{ y: 18, scale: 0.98 }}
             >
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <p className="text-sm uppercase tracking-[0.28em] text-cyan-200">Teacher switcher</p>
-                  <h2 className="mt-2 text-3xl font-semibold text-white">Choose your AI lecture personality</h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+                  <p className="theme-eyebrow text-sm uppercase tracking-[0.28em]">Teacher switcher</p>
+                  <h2 className="mt-2 text-3xl font-semibold text-[var(--text-primary)]">Choose your AI lecture personality</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">
                     The learning UI updates instantly with a new avatar, voice style, teaching tone, and mentor profile.
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setOpen(false)}
-                  className="grid h-11 w-11 place-items-center rounded-xl border border-white/10 bg-white/5 text-white transition hover:bg-white/10"
+                  className="grid h-11 w-11 place-items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] text-[var(--text-primary)] transition hover:bg-[var(--bg-card-hover)]"
                   aria-label="Close teacher switcher"
                 >
                   <X size={18} />
@@ -104,39 +104,39 @@ export default function TeacherSwitcher({ courseTeacherId = 'rohit' }) {
                       onClick={() => chooseTeacher(teacher)}
                       className={[
                         'group relative overflow-hidden rounded-2xl border p-4 text-left transition',
-                        active ? 'border-cyan-300/70 bg-cyan-400/10' : 'border-white/10 bg-white/[0.04] hover:border-cyan-300/45 hover:bg-white/[0.07]',
+                        active ? 'border-[var(--accent-primary)] bg-[var(--accent-soft)]' : 'border-[var(--border-color)] bg-[var(--bg-card)] hover:border-[var(--accent-primary)] hover:bg-[var(--bg-card-hover)]',
                       ].join(' ')}
                       whileHover={{ y: -4 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      <span className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300 to-transparent opacity-70" />
+                      <span className="absolute inset-x-0 top-0 h-px bg-[var(--brand-gradient)] opacity-70" />
                       <div className="flex items-start gap-4">
-                        <img src={teacher.avatar} alt={teacher.name} className="h-20 w-20 rounded-xl object-cover ring-1 ring-white/15" />
+                        <img src={teacher.avatar} alt={teacher.name} className="h-20 w-20 rounded-xl object-cover ring-1 ring-[var(--border-color)]" />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center justify-between gap-3">
-                            <h3 className="truncate text-lg font-semibold text-white">{teacher.name}</h3>
-                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-300/10 px-2 py-1 text-xs text-amber-200">
+                            <h3 className="truncate text-lg font-semibold text-[var(--text-primary)]">{teacher.name}</h3>
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--accent-orange)]/10 px-2 py-1 text-xs text-[var(--accent-orange)]">
                               <Star size={13} fill="currentColor" />
                               {teacher.rating}
                             </span>
                           </div>
-                          <p className="mt-1 text-sm text-cyan-100">{teacher.teachingTone}</p>
-                          <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-300">{teacher.specialty}</p>
+                          <p className="mt-1 text-sm text-[var(--accent-primary)]">{teacher.teachingTone}</p>
+                          <p className="mt-3 line-clamp-2 text-sm leading-6 text-[var(--text-secondary)]">{teacher.specialty}</p>
                         </div>
                       </div>
-                      <div className="mt-4 grid gap-2 text-xs text-slate-300 sm:grid-cols-2">
-                        <span className="inline-flex items-center gap-2 rounded-xl bg-slate-900/80 px-3 py-2"><Volume2 size={14} /> {teacher.voiceStyle}</span>
-                        <span className="inline-flex items-center gap-2 rounded-xl bg-slate-900/80 px-3 py-2"><Mic2 size={14} /> {teacher.category}</span>
+                      <div className="mt-4 grid gap-2 text-xs text-[var(--text-secondary)] sm:grid-cols-2">
+                        <span className="inline-flex items-center gap-2 rounded-xl bg-[var(--bg-subtle)] px-3 py-2"><Volume2 size={14} /> {teacher.voiceStyle}</span>
+                        <span className="inline-flex items-center gap-2 rounded-xl bg-[var(--bg-subtle)] px-3 py-2"><Mic2 size={14} /> {teacher.category}</span>
                       </div>
                       <div className="mt-4 flex flex-wrap gap-2">
                         {teacher.traits.map((trait) => (
-                          <span key={trait} className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300">
+                          <span key={trait} className="rounded-full border border-[var(--border-color)] px-3 py-1 text-xs text-[var(--text-secondary)]">
                             {trait}
                           </span>
                         ))}
                       </div>
                       {active ? (
-                        <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-cyan-100">
+                        <span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent-primary)]">
                           <Sparkles size={15} /> Active now
                         </span>
                       ) : null}

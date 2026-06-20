@@ -16,6 +16,7 @@ import { cn } from '../../utils/classNames.js'
 const routeByRole = {
   admin: '/admin',
   learner: '/dashboard',
+  instructor: '/instructor',
 }
 
 const copyByMode = {
@@ -255,9 +256,9 @@ export default function AuthPage() {
           </p>
         ) : null}
 
-        <Button type="submit" disabled={!canSubmit} className={cn('auth-submit-button', isRegister && 'auth-submit-button-dense')}>
+        <Button type="submit" disabled={!canSubmit} loading={loading} loadingLabel="Please wait..." className={cn('auth-submit-button', isRegister && 'auth-submit-button-dense')}>
           {mode === 'login' ? (isAdminPortal ? <LockKeyhole size={16} /> : <LogIn size={16} />) : null}
-          {loading ? 'Please wait...' : buttonLabel(mode, isAdminPortal)}
+          {buttonLabel(mode, isAdminPortal)}
         </Button>
       </form>
 
@@ -286,7 +287,7 @@ export default function AuthPage() {
               <Rocket size={16} className="text-teal-300" />
               Personalized learning starts after sign in
             </p>
-            <Zap size={16} className="text-[#FF6B35]" />
+            <Zap size={16} className="text-[var(--accent-primary)]" />
           </div>
           <p className="px-4 py-3 leading-6 text-slate-700">
             Your courses, certificates, mentor mode, and progress sync into one learner workspace.

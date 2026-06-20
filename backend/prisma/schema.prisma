@@ -90,6 +90,12 @@ model User {
   payments       Payment[]
   sessions       Session[]
   activityLogs   ActivityLog[]
+  savedCourses   SavedCourse[]
+  preference     UserPreference?
+  liveSessionsCreated LiveSession[] @relation("LiveSessionInstructor")
+  communityTopics CommunityTopic[]
+  communityPosts CommunityPost[]
+  communityReports CommunityReport[]
 
   @@index([role])
   @@index([createdAt])
@@ -138,6 +144,8 @@ model Course {
   questions       Question[]
   assessmentSubmissions AssessmentSubmission[]
   assessmentRetakeGrants AssessmentRetakeGrant[]
+  savedBy         SavedCourse[]
+  liveSessions    LiveSession[]
 
   @@index([category])
   @@index([categoryId])
@@ -374,6 +382,11 @@ model Payment {
   provider        String?
   providerRef     String?
   status          String    @default("PENDING")
+  productType     String    @default("COURSE")
+  productRef      String?
+  idempotencyKey  String?   @unique
+  receiptNo       String?   @unique
+  refundedCents   Int       @default(0)
   paidAt          DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -384,6 +397,114 @@ model Payment {
   @@index([courseId])
   @@index([status])
   @@map("payments")
+}
+
+model SavedCourse {
+  id        String   @id @default(cuid())
+  userId    Int
+  courseId  String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, courseId])
+  @@index([userId, createdAt])
+  @@map("saved_courses")
+}
+
+model UserPreference {
+  id        String   @id @default(cuid())
+  userId    Int      @unique
+  settings  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
+}
+
+model PlatformSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  updatedById Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("platform_settings")
+}
+
+model LiveSession {
+  id           String   @id @default(cuid())
+  title        String
+  description  String?
+  courseId     String?
+  instructorId Int
+  startsAt     DateTime
+  endsAt       DateTime
+  meetingUrl   String?
+  recordingUrl String?
+  status       String   @default("SCHEDULED")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  course       Course?  @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  instructor   User     @relation("LiveSessionInstructor", fields: [instructorId], references: [id], onDelete: Cascade)
+
+  @@index([startsAt, status])
+  @@index([instructorId, startsAt])
+  @@index([courseId])
+  @@map("live_sessions")
+}
+
+model CommunityTopic {
+  id          String          @id @default(cuid())
+  slug        String          @unique
+  title       String
+  description String?
+  createdById Int
+  isLocked    Boolean         @default(false)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  createdBy   User            @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  posts       CommunityPost[]
+
+  @@index([createdAt])
+  @@map("community_topics")
+}
+
+model CommunityPost {
+  id        String            @id @default(cuid())
+  topicId   String
+  authorId  Int
+  parentId  String?
+  body      String
+  isDeleted Boolean           @default(false)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  topic     CommunityTopic    @relation(fields: [topicId], references: [id], onDelete: Cascade)
+  author    User              @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent    CommunityPost?    @relation("CommunityReplies", fields: [parentId], references: [id], onDelete: SetNull)
+  replies   CommunityPost[]   @relation("CommunityReplies")
+  reports   CommunityReport[]
+
+  @@index([topicId, createdAt])
+  @@index([parentId])
+  @@map("community_posts")
+}
+
+model CommunityReport {
+  id         String        @id @default(cuid())
+  postId     String
+  reporterId Int
+  reason     String
+  status     String        @default("OPEN")
+  createdAt  DateTime      @default(now())
+  post       CommunityPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reporter   User          @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, reporterId])
+  @@index([status, createdAt])
+  @@map("community_reports")
 }
 
 model Session {

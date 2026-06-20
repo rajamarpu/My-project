@@ -8,11 +8,11 @@ export default function AuthField({ label, icon, error, compact = false, childre
       <span
         className={cn(
           `${compact ? 'mt-1.5 min-h-11 px-3' : 'mt-2 min-h-12 px-4'} flex min-w-0 items-center gap-3 rounded-xl border bg-white text-[var(--text-primary)] shadow-[0_12px_26px_rgba(15,23,42,0.06)] transition dark:bg-slate-950/70`,
-          'focus-within:border-[#FF6B35] focus-within:ring-4 focus-within:ring-[#FF6B35]/15',
+          'focus-within:border-[var(--accent-primary)] focus-within:ring-4 focus-within:ring-[var(--focus-ring)]',
           error ? 'border-red-400/70 ring-4 ring-red-400/10' : 'border-black/10 dark:border-white/10',
         )}
       >
-        <span className={`${compact ? 'h-6 w-6' : 'h-7 w-7'} grid shrink-0 place-items-center rounded-lg bg-orange-50 text-[#FF6B35] dark:bg-orange-500/10`}>{icon}</span>
+        <span className={`${compact ? 'h-6 w-6' : 'h-7 w-7'} grid shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]`}>{icon}</span>
         <span className="flex min-w-0 flex-1 items-center gap-2">{children}</span>
       </span>
       {error ? (

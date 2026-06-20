@@ -17,6 +17,7 @@
     "prisma:seed": "cd backend && node prisma/seed.js",
     "build": "vite build",
     "lint": "eslint .",
+    "test:production": "node scripts/production-readiness-smoke.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

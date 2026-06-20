@@ -41,7 +41,7 @@ export default function CertificatesPage() {
         </div>
       </div>
       {activeCertificate ? (
-        <div className="mt-6 rounded-3xl border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-700 dark:text-emerald-200">
+        <div className="mt-6 rounded-3xl border border-emerald-500/25 bg-emerald-500/10 p-4 text-sm text-[var(--success)]">
           {activeCertificate}
         </div>
       ) : null}
@@ -71,8 +71,8 @@ export default function CertificatesPage() {
               </div>
               <span className="rounded-full bg-amber-400/15 px-3 py-1 text-sm text-amber-700 dark:text-amber-200">{item.status || 'ISSUED'}</span>
             </div>
-            <div className="mt-6 rounded-lg border border-[var(--border-color)] bg-white p-5 text-slate-800">
-              <p className="text-center text-sm font-bold uppercase tracking-[0.22em] text-orange-600">Certificate of Completion</p>
+            <div className="mt-6 rounded-lg border border-[var(--border-color)] bg-[var(--bg-elevated)] p-5 text-[var(--text-primary)]">
+              <p className="text-center text-sm font-bold uppercase tracking-[0.22em] text-[var(--accent-orange)]">Certificate of Completion</p>
               <p className="mt-4 text-sm leading-6">
                 This is to certify that <strong>{studentName}</strong> has successfully completed the course <strong>"{courseName}"</strong> offered by <strong>UptoSkills</strong>.
               </p>
@@ -84,9 +84,9 @@ export default function CertificatesPage() {
                 <p><strong>Certificate ID:</strong> {item.certificateNo}</p>
               </div>
             </div>
-            <div className="mt-4 rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4">
+            <div className="mt-4 rounded-lg border border-emerald-500/25 bg-emerald-500/10 p-4">
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="mt-0.5 shrink-0 text-emerald-600" size={18} />
+                <CheckCircle2 className="mt-0.5 shrink-0 text-[var(--success)]" size={18} />
                 <div>
                   <p className="text-sm font-semibold text-[var(--text-primary)]">Verification status</p>
                   <p className="mt-1 text-sm text-[var(--text-secondary)]">This certificate can be verified using certificate ID {item.certificateNo}.</p>

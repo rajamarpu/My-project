@@ -18,7 +18,7 @@
   --admin-font-3xl: 1.875rem;
   --admin-shadow-card: 0 18px 45px rgba(17, 24, 39, 0.08);
   --admin-shadow-hover: 0 26px 72px rgba(37, 99, 235, 0.16);
-  --admin-focus: 0 0 0 4px rgba(255, 107, 53, 0.22);
+  --admin-focus: 0 0 0 4px var(--focus-ring);
   --admin-success: var(--success);
   --admin-warning: var(--warning);
   --admin-danger: var(--danger);
@@ -29,12 +29,12 @@
 .dark {
   --admin-shadow-card: 0 22px 60px rgba(0, 0, 0, 0.3);
   --admin-shadow-hover: 0 26px 76px rgba(0, 0, 0, 0.42);
-  --admin-focus: 0 0 0 4px rgba(255, 107, 53, 0.28);
+  --admin-focus: 0 0 0 4px var(--focus-ring);
   --admin-success: var(--success);
   --admin-warning: var(--warning);
   --admin-danger: var(--danger);
   --admin-info: var(--accent-primary);
-  --admin-card-gradient: linear-gradient(180deg, rgba(31, 41, 55, 0.94), rgba(24, 26, 32, 0.88));
+  --admin-card-gradient: linear-gradient(180deg, rgba(32, 42, 68, 0.96), rgba(30, 41, 59, 0.94));
 }
 
 .admin-shell {
@@ -76,9 +76,9 @@
 }
 
 .admin-nav-link-active {
-  background: color-mix(in srgb, #FF6B35 16%, var(--bg-subtle));
-  color: #FF6B35;
-  box-shadow: inset 3px 0 0 #FF6B35, inset 0 0 0 1px color-mix(in srgb, #FF6B35 26%, transparent);
+  background: color-mix(in srgb, var(--accent-primary) 16%, var(--bg-subtle));
+  color: var(--accent-primary);
+  box-shadow: inset 3px 0 0 var(--accent-primary), inset 0 0 0 1px color-mix(in srgb, var(--accent-primary) 26%, transparent);
 }
 
 .admin-panel-hover {
@@ -105,7 +105,7 @@
 }
 
 .admin-input:focus {
-  border-color: #FF6B35;
+  border-color: var(--accent-primary);
   box-shadow: var(--admin-focus);
 }
 
@@ -137,18 +137,18 @@
 }
 
 .admin-table-card tbody tr:hover {
-  background: #FFF5F0;
-  box-shadow: inset 3px 0 0 rgba(255, 107, 53, 0.45);
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--accent-primary) 55%, transparent);
 }
 
 .dark .admin-table-card tbody tr:hover {
-  background: rgba(255, 107, 53, 0.12);
+  background: var(--accent-soft);
 }
 
 .admin-row-selected,
 .admin-table-card tbody tr.admin-row-selected {
-  background: color-mix(in srgb, #FF6B35 16%, var(--bg-elevated));
-  box-shadow: inset 4px 0 0 #FF6B35;
+  background: color-mix(in srgb, var(--accent-primary) 16%, var(--bg-elevated));
+  box-shadow: inset 4px 0 0 var(--accent-primary);
 }
 
 .admin-table-card th {
@@ -176,7 +176,7 @@
 .admin-shell input,
 .admin-shell select,
 .admin-shell textarea {
-  outline-color: #FF6B35;
+  outline-color: var(--accent-primary);
 }
 
 .admin-shell button,
@@ -210,7 +210,7 @@
 }
 
 .admin-shell :is(button, a, input, select, textarea):focus-visible {
-  outline: 2px solid #FF6B35;
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
   box-shadow: var(--admin-focus);
 }
@@ -298,8 +298,9 @@
 
 @media (min-width: 1024px) {
   .admin-main {
-    width: calc(100vw - 288px);
-    max-width: calc(100vw - 288px);
+    width: calc(100vw - var(--admin-sidebar-width, 276px));
+    max-width: calc(100vw - var(--admin-sidebar-width, 276px));
+    margin-left: var(--admin-sidebar-width, 276px);
   }
 
   .admin-main > * {

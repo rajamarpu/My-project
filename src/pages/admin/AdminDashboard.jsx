@@ -1,51 +1,39 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { useNavigate } from 'react-router-dom'
-import { Activity, Award, BadgeIndianRupee, BookOpenCheck, ClipboardList, Clock3, FileBarChart2, FolderTree, UserPlus, Users } from 'lucide-react'
+import {
+  Activity, Award, BadgeIndianRupee, BookOpenCheck, ClipboardCheck,
+  CreditCard, FileBarChart2, GraduationCap, Search, UserPlus, Users,
+} from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
-import { fetchAdminOverview } from '../../api/api.js'
-import { AdminMetricCard, AdminNotice, AdminPageHeader, AdminQuickAction } from '../../components/admin/AdminUI.jsx'
+import { fetchAdminAssessmentSubmissions, fetchAdminOverview } from '../../api/api.js'
+import {
+  AdminEmptyState, AdminLoadingState, AdminMetricCard, AdminNotice,
+  AdminPageHeader, AdminQuickAction,
+} from '../../components/admin/AdminUI.jsx'
 
 const zeroMetrics = {
-  totalUsers: 0,
-  totalLearners: 0,
-  totalAdmins: 0,
-  totalInstructors: 0,
-  pendingUsers: 0,
-  rejectedUsers: 0,
-  suspendedUsers: 0,
-  activeUsers: 0,
-  totalCourses: 0,
-  publishedCourses: 0,
-  totalEnrollments: 0,
-  completedCourses: 0,
-  totalCertificates: 0,
-  totalCategories: 0,
-  totalNotifications: 0,
-  totalPayments: 0,
-  paidPayments: 0,
-  pendingPayments: 0,
-  pendingApprovals: 0,
-  pendingCourses: 0,
-  revenueCents: 0,
-  totalHoursStudied: 0,
-  totalWatchHours: 0,
-  totalProgress: 0,
-  activeProgress: 0,
-  completionRate: 0,
-  publishRate: 0,
-  paidPaymentRate: 0,
-  averageProgressPct: 0,
-  growth: [],
-  popularCourses: [],
-  categoryDemand: [],
-  recentUsers: [],
-  recentActivity: [],
+  totalUsers: 0, totalLearners: 0, totalInstructors: 0, totalCourses: 0,
+  publishedCourses: 0, totalCertificates: 0, totalEnrollments: 0,
+  completedCourses: 0, pendingApprovals: 0, pendingPayments: 0,
+  revenueCents: 0, activeProgress: 0, completionRate: 0, publishRate: 0,
+  growth: [], popularCourses: [], categoryDemand: [], recentUsers: [], recentActivity: [],
 }
 
+const managementActions = [
+  { label: 'Upload Course', description: 'Create and publish learning content', icon: BookOpenCheck, href: '/admin/upload-course', keywords: 'create course catalog publish' },
+  { label: 'Add Learner', description: 'Create learner or intern access', icon: UserPlus, href: '/admin/add-learner', keywords: 'student intern user' },
+  { label: 'Add Instructor', description: 'Onboard and assign an instructor', icon: GraduationCap, href: '/admin/add-instructor', keywords: 'teacher creator' },
+  { label: 'Manage Users', description: 'Review accounts and approvals', icon: Users, href: '/admin/users', keywords: 'approvals learners instructors' },
+  { label: 'Manage Courses', description: 'Edit catalog and publishing status', icon: BookOpenCheck, href: '/admin/courses', keywords: 'draft curriculum category' },
+  { label: 'Evaluate Assessments', description: 'Review learner submissions', icon: ClipboardCheck, href: '/admin/evaluations', keywords: 'assignments submissions review' },
+  { label: 'Payments', description: 'Review revenue and payment status', icon: CreditCard, href: '/admin/payments', keywords: 'pending paid finance' },
+  { label: 'Certificates', description: 'Manage issued credentials', icon: Award, href: '/admin/certificates', keywords: 'generate credentials' },
+  { label: 'Reports', description: 'Open detailed platform reporting', icon: FileBarChart2, href: '/admin/reports', keywords: 'analytics activity progress' },
+]
+
 function normalizeOverview(payload) {
-  const data = payload?.analytics || {}
-  return { ...zeroMetrics, ...data }
+  return { ...zeroMetrics, ...(payload?.analytics || {}) }
 }
 
 function money(cents) {
@@ -56,345 +44,280 @@ function compact(value) {
   return new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(value || 0)
 }
 
-function hasChartData(rows, keys) {
-  return rows.some((row) => keys.some((key) => Number(row[key] || 0) > 0))
+function formatDate(value) {
+  if (!value) return 'Recently'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'Recently'
+  return new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).format(date)
 }
 
-function toDateKey(date) {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
+function activityCategory(item) {
+  const action = String(item?.action || item?.entityType || '').toLowerCase()
+  if (action.includes('user') || action.includes('instructor') || action.includes('learner')) return 'users'
+  if (action.includes('course') || action.includes('category')) return 'courses'
+  if (action.includes('payment') || action.includes('revenue')) return 'payments'
+  return 'other'
 }
 
-function buildWeekActivity(rows = []) {
-  const today = new Date()
-  const day = today.getDay()
-  const diffToMonday = day === 0 ? -6 : 1 - day
-  const monday = new Date(today)
-  monday.setHours(0, 0, 0, 0)
-  monday.setDate(today.getDate() + diffToMonday)
+function activityLabel(item) {
+  return String(item?.action || item?.title || 'Platform activity')
+    .replace(/[._-]+/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
 
-  const byDate = new Map(rows.map((row) => [row.date, row]))
-  const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-
-  return labels.map((label, index) => {
-    const date = new Date(monday)
-    date.setDate(monday.getDate() + index)
-    const dateKey = toDateKey(date)
-    const source = byDate.get(dateKey) || {}
-    return {
-      date: label,
-      fullDate: dateKey,
-      registrations: Number(source.registrations || 0),
-      enrollments: Number(source.enrollments || 0),
-      completions: Number(source.completions || 0),
-      revenueCents: Number(source.revenueCents || 0),
-    }
-  })
+function hasData(rows, keys) {
+  return rows.some((row) => keys.some((key) => Number(row?.[key] || 0) > 0))
 }
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
   const [metrics, setMetrics] = useState(zeroMetrics)
+  const [submissions, setSubmissions] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [range, setRange] = useState('30')
+  const [chartMode, setChartMode] = useState('engagement')
+  const [activityFilter, setActivityFilter] = useState('all')
 
   async function loadAdminData() {
     try {
       setError('')
       setLoading(true)
-      const response = await fetchAdminOverview()
-      setMetrics(normalizeOverview(response.data))
+      const [overviewResponse, assessmentResponse] = await Promise.all([
+        fetchAdminOverview(),
+        fetchAdminAssessmentSubmissions().catch(() => ({ data: { submissions: [] } })),
+      ])
+      setMetrics(normalizeOverview(overviewResponse.data))
+      setSubmissions(assessmentResponse.data?.submissions || [])
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Failed to load admin dashboard.')
       setMetrics(zeroMetrics)
+      setSubmissions([])
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    const initial = window.setTimeout(() => {
-      void loadAdminData()
-    }, 0)
+    const initial = window.setTimeout(() => void loadAdminData(), 0)
     const timer = window.setInterval(loadAdminData, 30000)
-    return () => {
-      window.clearTimeout(initial)
-      window.clearInterval(timer)
-    }
+    return () => { window.clearTimeout(initial); window.clearInterval(timer) }
   }, [])
 
-  const cards = useMemo(() => [
-    ['Total Users', metrics.totalUsers, `${metrics.totalLearners} learners`, Users, '/admin/users', 'cyan'],
-    ['Courses', metrics.totalCourses, `${metrics.publishRate}% published`, BookOpenCheck, '/admin/courses', 'blue'],
-    ['Enrollments', metrics.totalEnrollments, `${metrics.completionRate}% completed`, Activity, '/admin/enrollments', 'cyan'],
-    ['Revenue', money(metrics.revenueCents), `${metrics.paidPayments} paid payments`, BadgeIndianRupee, '/admin/revenue', 'orange'],
-    ['Certificates', metrics.totalCertificates, 'issued credentials', Award, '/admin/certificates', 'green'],
-    ['Categories', metrics.totalCategories, 'course groups', FolderTree, '/admin/categories', 'blue'],
-    ['Instructors', metrics.totalInstructors, 'approved teachers', Users, '/admin/instructors', 'cyan'],
-    ['Watch Hours', compact(metrics.totalWatchHours), 'from progress events', Clock3, '/admin/reports', 'orange'],
-  ], [metrics])
+  const assignmentCount = useMemo(() => new Set(submissions.map((item) => item.assignmentId).filter(Boolean)).size, [submissions])
+  const kpis = useMemo(() => [
+    { label: 'Users', value: compact(metrics.totalUsers), detail: 'all platform accounts', icon: Users, href: '/admin/users', tone: 'blue' },
+    { label: 'Students', value: compact(metrics.totalLearners), detail: 'registered learners', icon: GraduationCap, href: '/admin/learners', tone: 'cyan' },
+    { label: 'Instructors', value: compact(metrics.totalInstructors), detail: 'teaching accounts', icon: Users, href: '/admin/instructors', tone: 'orange' },
+    { label: 'Courses', value: compact(metrics.totalCourses), detail: `${metrics.publishRate}% published`, icon: BookOpenCheck, href: '/admin/courses', tone: 'blue' },
+    { label: 'Revenue', value: money(metrics.revenueCents), detail: 'confirmed payments', icon: BadgeIndianRupee, href: '/admin/revenue', tone: 'orange' },
+    { label: 'Certificates', value: compact(metrics.totalCertificates), detail: 'issued credentials', icon: Award, href: '/admin/certificates', tone: 'green' },
+    { label: 'Assignments', value: compact(assignmentCount), detail: 'unique assigned assessments', icon: ClipboardCheck, href: '/admin/evaluations', tone: 'cyan' },
+    { label: 'Assessments', value: compact(submissions.length), detail: 'learner submissions', icon: FileBarChart2, href: '/admin/evaluations', tone: 'green' },
+  ], [assignmentCount, metrics, submissions.length])
 
-  const weekActivity = useMemo(() => buildWeekActivity(metrics.growth), [metrics.growth])
-  const hasGrowthData = hasChartData(weekActivity, ['registrations', 'enrollments', 'completions'])
-  const hasRevenueData = hasChartData(metrics.growth, ['revenueCents'])
-  const hasPopularCourses = metrics.popularCourses.some((course) => Number(course.enrollments || 0) > 0)
+  const chartData = useMemo(() => metrics.growth.slice(-Number(range)), [metrics.growth, range])
+  const courseResults = useMemo(() => {
+    const needle = searchQuery.trim().toLowerCase()
+    return metrics.popularCourses.filter((course) => !needle || `${course.title} ${course.category}`.toLowerCase().includes(needle))
+  }, [metrics.popularCourses, searchQuery])
+  const actionResults = useMemo(() => {
+    const needle = searchQuery.trim().toLowerCase()
+    return managementActions.filter((item) => !needle || `${item.label} ${item.description} ${item.keywords}`.toLowerCase().includes(needle))
+  }, [searchQuery])
+  const activityResults = useMemo(() => {
+    const needle = searchQuery.trim().toLowerCase()
+    const activity = metrics.recentActivity.length
+      ? metrics.recentActivity
+      : metrics.recentUsers.map((user) => ({ ...user, action: 'user registered', createdAt: user.createdAt, user }))
+    return activity.filter((item) => {
+      const categoryMatches = activityFilter === 'all' || activityCategory(item) === activityFilter
+      const text = `${activityLabel(item)} ${item.user?.name || item.name || ''} ${item.user?.email || item.email || ''}`.toLowerCase()
+      return categoryMatches && (!needle || text.includes(needle))
+    })
+  }, [activityFilter, metrics.recentActivity, metrics.recentUsers, searchQuery])
+
+  const attention = [
+    { label: 'Pending approvals', value: metrics.pendingApprovals, detail: 'Accounts waiting for a decision', href: '/admin/users' },
+    { label: 'Pending payments', value: metrics.pendingPayments, detail: 'Transactions requiring review', href: '/admin/payments' },
+    { label: 'Draft courses', value: Math.max(0, metrics.totalCourses - metrics.publishedCourses), detail: 'Courses not yet published', href: '/admin/courses' },
+  ].filter((item) => item.value > 0)
+
+  const chartHasData = chartMode === 'revenue'
+    ? hasData(chartData, ['revenueCents'])
+    : hasData(chartData, ['registrations', 'enrollments', 'completions'])
 
   return (
-    <section className="space-y-8 pb-16">
+    <section className="space-y-6 pb-16">
       <AdminPageHeader
-        eyebrow="Admin dashboard"
-        title="Live PostgreSQL platform metrics"
-        description="Every number below is calculated from real database tables: users, enrollments, payments, courses, sessions, certificates, and progress."
-        actions={<Button variant="secondary" onClick={loadAdminData} disabled={loading}>{loading ? 'Refreshing...' : 'Refresh'}</Button>}
+        eyebrow="Admin workspace"
+        title="Learning operations overview"
+        description="Monitor platform performance and move directly into the management workflows that need attention. Data refreshes every 30 seconds."
+        actions={(
+          <>
+            <span className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] px-3 text-sm font-semibold text-[var(--text-secondary)]">
+              <span className="h-2.5 w-2.5 rounded-full bg-[var(--color-success)]" /> Live data
+            </span>
+            <Button variant="secondary" onClick={loadAdminData} loading={loading} loadingLabel="Refreshing...">Refresh</Button>
+          </>
+        )}
       />
       <AdminNotice type="error">{error}</AdminNotice>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <main className="min-w-0 space-y-6">
-          <section className="grid gap-4 md:grid-cols-3">
-            <HealthCard label="System health" value="API and database online" status />
-            <HealthCard label="Publishing health" value={`${metrics.publishRate}% published catalog`} />
-            <HealthCard label="Learning health" value={`${metrics.completionRate}% completion rate`} />
-          </section>
+      <div className="admin-panel flex flex-col gap-3 p-3 sm:flex-row sm:items-center sm:justify-between sm:p-4">
+        <label className="flex min-h-11 min-w-0 flex-1 items-center gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--input-bg)] px-3 text-[var(--text-muted)] sm:max-w-xl">
+          <Search size={17} aria-hidden="true" />
+          <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} className="min-w-0 flex-1 bg-transparent text-sm text-[var(--input-text)] outline-none" placeholder="Search activity, courses, or management tools" aria-label="Search dashboard" />
+        </label>
+        <label className="flex items-center gap-2 text-sm font-semibold text-[var(--text-secondary)]">
+          Reporting range
+          <select value={range} onChange={(event) => setRange(event.target.value)} className="admin-input min-h-11 w-32 py-2" aria-label="Reporting range">
+            <option value="7">Last 7 days</option>
+            <option value="30">Last 30 days</option>
+          </select>
+        </label>
+      </div>
 
-          <section className="admin-panel p-5 sm:p-6">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Platform overview</p>
-                <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Core metrics</h2>
-              </div>
-              <Button variant="secondary" onClick={() => navigate('/admin/reports')}>Open Reports</Button>
-            </div>
-            <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
-              {cards.map(([label, value, detail, Icon, href, tone]) => (
-                <AdminMetricCard
-                  key={label}
-                  label={label}
-                  value={value}
-                  detail={detail}
-                  icon={Icon}
-                  tone={tone}
-                  loading={loading}
-                  onClick={() => navigate(href)}
-                />
-              ))}
-            </div>
-          </section>
+      <DashboardSection eyebrow="KPI section" title="Platform performance" description="Eight core indicators for LMS operations.">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {kpis.map((item) => <AdminMetricCard key={item.label} {...item} loading={loading} onClick={() => navigate(item.href)} />)}
+        </div>
+      </DashboardSection>
 
-          <section className="admin-panel p-5 sm:p-6">
+      <DashboardSection eyebrow="Analytics section" title="Learning and revenue analytics" description="Compare engagement trends and identify high-demand courses.">
+        <div className="grid gap-5 2xl:grid-cols-[minmax(0,1.55fr)_minmax(19rem,0.75fr)]">
+          <div className="theme-subcard rounded-xl p-4 sm:p-5">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Weekly activity</p>
-                <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Registrations, enrollments, completions</h2>
+                <h3 className="font-semibold text-[var(--text-primary)]">{chartMode === 'revenue' ? 'Paid revenue' : 'Learning engagement'}</h3>
+                <p className="mt-1 text-sm text-[var(--text-muted)]">Last {range} days</p>
               </div>
-              <Button variant="secondary" onClick={() => navigate('/admin/analytics')}>Analytics</Button>
+              <select value={chartMode} onChange={(event) => setChartMode(event.target.value)} className="admin-input min-h-11 w-full py-2 sm:w-48" aria-label="Analytics metric">
+                <option value="engagement">Engagement</option>
+                <option value="revenue">Revenue</option>
+              </select>
             </div>
-            <div className="mt-5 grid gap-3 text-sm sm:grid-cols-3">
-              <MiniMetric label="New users" value={weekActivity.reduce((sum, day) => sum + day.registrations, 0)} />
-              <MiniMetric label="New enrollments" value={weekActivity.reduce((sum, day) => sum + day.enrollments, 0)} />
-              <MiniMetric label="Completed courses" value={weekActivity.reduce((sum, day) => sum + day.completions, 0)} />
-            </div>
-            <div className="mt-6 h-72">
-              {hasGrowthData ? (
+            <div className="mt-5 h-72">
+              {loading ? <AdminLoadingState label="Loading analytics..." /> : chartHasData ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={weekActivity}>
-                    <CartesianGrid stroke="var(--border-color)" strokeDasharray="3 3" />
-                    <XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
-                    <YAxis stroke="var(--text-muted)" allowDecimals={false} />
-                    <Tooltip content={<ChartTooltip labelKey="fullDate" />} />
-                    <Line type="monotone" dataKey="registrations" name="Registrations" stroke="#22d3ee" strokeWidth={3} dot={false} />
-                    <Line type="monotone" dataKey="enrollments" name="Enrollments" stroke="#f59e0b" strokeWidth={3} dot={false} />
-                    <Line type="monotone" dataKey="completions" name="Completions" stroke="#10b981" strokeWidth={3} dot={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              ) : (
-                <EmptyAnalytics title="No weekly learning activity yet" message="The chart will populate from Monday to Sunday when users register, enroll, or complete courses." />
-              )}
-            </div>
-          </section>
-
-          <section className="grid gap-6 2xl:grid-cols-2">
-            <div className="admin-panel p-5 sm:p-6">
-              <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Course demand</p>
-              <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Top courses by real enrollments</h2>
-              <div className="mt-6 h-64">
-                {hasPopularCourses ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={metrics.popularCourses}>
-                      <CartesianGrid stroke="var(--border-color)" strokeDasharray="3 3" />
-                      <XAxis dataKey="title" hide />
-                      <YAxis stroke="var(--text-muted)" allowDecimals={false} />
-                      <Tooltip content={<ChartTooltip />} />
-                      <Bar dataKey="enrollments" name="Enrollments" fill="#22d3ee" radius={[6, 6, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <EmptyAnalytics title="No enrollments yet" message="Publish courses and enroll learners to see demand rankings." />
-                )}
-              </div>
-              <div className="mt-5 grid gap-2">
-                {metrics.popularCourses.length ? metrics.popularCourses.map((course) => (
-                  <button key={course.id} type="button" onClick={() => navigate('/admin/courses')} className="theme-subcard theme-subcard-hover flex items-center justify-between gap-3 rounded-lg p-3 text-left">
-                    <span className="min-w-0">
-                      <span className="block truncate font-semibold text-[var(--text-primary)]">{course.title}</span>
-                      <span className="text-xs text-[var(--text-muted)]">{course.category} | {course.lessons} lessons | {course.certificates} certificates</span>
-                    </span>
-                    <span className="rounded-full bg-cyan-400/10 px-3 py-1 text-sm font-semibold text-cyan-700 dark:text-cyan-200">{course.enrollments}</span>
-                  </button>
-                )) : null}
-              </div>
-            </div>
-
-            <div className="admin-panel p-5 sm:p-6">
-              <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Revenue and catalog health</p>
-              <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Revenue, progress, categories</h2>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <MiniMetric label="Paid payment rate" value={`${metrics.paidPaymentRate}%`} />
-                <MiniMetric label="Pending payments" value={metrics.pendingPayments} />
-                <MiniMetric label="Hours studied" value={compact(metrics.totalHoursStudied)} />
-                <MiniMetric label="Watch hours" value={compact(metrics.totalWatchHours)} />
-              </div>
-              <div className="mt-6 h-56">
-                {hasRevenueData ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={metrics.growth}>
-                      <CartesianGrid stroke="var(--border-color)" strokeDasharray="3 3" />
-                      <XAxis dataKey="date" hide />
-                      <YAxis stroke="var(--text-muted)" tickFormatter={(value) => compact(value / 100)} />
+                  {chartMode === 'revenue' ? (
+                    <BarChart data={chartData}>
+                      <ChartFrame />
                       <Tooltip content={<ChartTooltip formatter={(value) => money(value)} />} />
-                      <Bar dataKey="revenueCents" name="Paid revenue" fill="#f97316" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="revenueCents" name="Paid revenue" fill="var(--color-action)" radius={[6, 6, 0, 0]} />
                     </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <EmptyAnalytics title="No paid revenue in the last 30 days" message="Paid payments will appear here automatically." />
-                )}
-              </div>
-              <div className="mt-5 grid gap-2">
-                {metrics.categoryDemand.length ? metrics.categoryDemand.map((item) => (
-                  <div key={item.category} className="theme-subcard rounded-lg p-3">
-                    <div className="flex items-center justify-between gap-3 text-sm">
-                      <span className="font-semibold text-[var(--text-primary)]">{item.category}</span>
-                      <span className="text-[var(--text-muted)]">{item.courses} courses</span>
-                    </div>
-                    <div className="mt-2 h-2 rounded-full bg-[var(--bg-subtle)]">
-                      <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-teal-400" style={{ width: `${Math.max(8, Math.min(100, (item.courses / Math.max(...metrics.categoryDemand.map((entry) => entry.courses), 1)) * 100))}%` }} />
-                    </div>
-                  </div>
-                )) : null}
-              </div>
+                  ) : (
+                    <LineChart data={chartData}>
+                      <ChartFrame />
+                      <Tooltip content={<ChartTooltip />} />
+                      <Line type="monotone" dataKey="registrations" name="Registrations" stroke="var(--color-info)" strokeWidth={2.5} dot={false} />
+                      <Line type="monotone" dataKey="enrollments" name="Enrollments" stroke="var(--color-action)" strokeWidth={2.5} dot={false} />
+                      <Line type="monotone" dataKey="completions" name="Completions" stroke="var(--color-success)" strokeWidth={2.5} dot={false} />
+                    </LineChart>
+                  )}
+                </ResponsiveContainer>
+              ) : <AdminEmptyState title="No analytics for this period" message="Activity will appear as learners register, enroll, complete courses, or make payments." />}
             </div>
-          </section>
-        </main>
-
-        <aside className="min-w-0 space-y-6 xl:sticky xl:top-6 xl:self-start">
-          <section className="admin-panel p-5 sm:p-6">
-            <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Quick actions</p>
-            <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">Operational shortcuts</h2>
-            <div className="mt-5 grid gap-3">
-              <AdminQuickAction icon={BookOpenCheck} label="Create Course" description="Add a new catalog course" onClick={() => navigate('/admin/upload-course')} />
-              <AdminQuickAction icon={UserPlus} label="Add Intern" description="Create intern or learner access" onClick={() => navigate('/admin/add-learner')} tone="secondary" />
-              <AdminQuickAction icon={UserPlus} label="Add Instructor" description="Upload profile image and assign a course" onClick={() => navigate('/admin/add-instructor')} tone="secondary" />
-              <AdminQuickAction icon={ClipboardList} label="Approvals" description="Review users and publishing state" onClick={() => navigate('/admin/users')} tone="secondary" />
-              <AdminQuickAction icon={FileBarChart2} label="Reports" description="Open activity and analytics rows" onClick={() => navigate('/admin/reports')} tone="secondary" />
+            <div className="mt-4 grid gap-3 sm:grid-cols-3">
+              <Ratio label="Enrollments" value={compact(metrics.totalEnrollments)} />
+              <Ratio label="Completion rate" value={`${metrics.completionRate}%`} />
+              <Ratio label="Published catalog" value={`${metrics.publishRate}%`} />
             </div>
-          </section>
+          </div>
 
-          <section className="admin-panel p-5 sm:p-6">
-            <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Needs attention</p>
-            <div className="mt-5 grid gap-3">
-              <AttentionCard label="Approvals queue" value={metrics.pendingApprovals} detail="Review users that may need activation." action="Open users" onClick={() => navigate('/admin/users')} tone="amber" />
-              <AttentionCard label="Pending payments" value={metrics.pendingPayments} detail="Monitor payment records needing follow-up." action="Open payments" onClick={() => navigate('/admin/payments')} tone="orange" />
-              <AttentionCard label="Draft courses" value={Math.max(0, metrics.totalCourses - metrics.publishedCourses)} detail="Publish-ready catalog items improve learner discovery." action="Open courses" onClick={() => navigate('/admin/courses')} tone="cyan" />
-              <AttentionCard label="Active progress" value={metrics.activeProgress} detail="Learning activity tracked in the last 30 days." action="Open reports" onClick={() => navigate('/admin/reports')} tone="green" />
+          <div className="theme-subcard rounded-xl p-4 sm:p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div><h3 className="font-semibold text-[var(--text-primary)]">Course demand</h3><p className="mt-1 text-sm text-[var(--text-muted)]">Ranked by enrollments</p></div>
+              <button type="button" onClick={() => navigate('/admin/courses')} className="text-sm font-semibold text-[var(--accent-primary)]">View all</button>
             </div>
-          </section>
-
-          <section className="admin-panel p-5 sm:p-6">
-            <p className="theme-eyebrow text-sm uppercase tracking-[0.24em]">Recent users</p>
-            <div className="mt-5 grid gap-3">
-              {metrics.recentUsers.length ? metrics.recentUsers.slice(0, 5).map((user) => (
-                <button key={user.id} type="button" onClick={() => navigate('/admin/users')} className="theme-subcard theme-subcard-hover flex items-center justify-between gap-4 rounded-lg p-4 text-left">
-                  <span className="min-w-0">
-                    <span className="block truncate font-semibold text-[var(--text-primary)]">{user.name || user.fullName || user.email}</span>
-                    <span className="mt-1 block truncate text-sm text-[var(--text-muted)]">{user.email}</span>
-                  </span>
-                  <span className="shrink-0 rounded-full bg-cyan-400/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700 dark:text-cyan-200">{user.role}</span>
+            <div className="mt-5 grid gap-2">
+              {loading ? Array.from({ length: 5 }).map((_, index) => <span key={index} className="skeleton h-16 rounded-lg" />) : courseResults.length ? courseResults.slice(0, 5).map((course, index) => (
+                <button key={course.id} type="button" onClick={() => navigate('/admin/courses')} className="flex items-center gap-3 rounded-lg border border-[var(--border-color)] p-3 text-left transition hover:bg-[var(--bg-subtle)]">
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-xs font-bold text-[var(--accent-primary)]">{index + 1}</span>
+                  <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-[var(--text-primary)]">{course.title}</span><span className="block truncate text-xs text-[var(--text-muted)]">{course.category || 'Uncategorized'}</span></span>
+                  <span className="text-sm font-bold text-[var(--text-primary)]">{course.enrollments}</span>
                 </button>
-              )) : <p className="theme-subcard rounded-lg p-4 text-sm text-[var(--text-muted)]">No users found.</p>}
+              )) : <AdminEmptyState title={searchQuery ? 'No matching courses' : 'No enrollment data'} message={searchQuery ? 'Try a different dashboard search.' : 'Course demand appears after learners enroll.'} />}
             </div>
-          </section>
-        </aside>
-      </div>
+          </div>
+        </div>
+      </DashboardSection>
+
+      <DashboardSection eyebrow="Activity section" title="Recent activity and attention" description="A focused operational feed with only actionable exceptions.">
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.6fr)]">
+          <div className="theme-subcard rounded-xl p-4 sm:p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <h3 className="font-semibold text-[var(--text-primary)]">Recent platform activity</h3>
+              <select value={activityFilter} onChange={(event) => setActivityFilter(event.target.value)} className="admin-input min-h-11 w-full py-2 sm:w-44" aria-label="Activity type">
+                <option value="all">All activity</option><option value="users">Users</option><option value="courses">Courses</option><option value="payments">Payments</option>
+              </select>
+            </div>
+            <div className="mt-4 grid gap-2">
+              {loading ? Array.from({ length: 5 }).map((_, index) => <span key={index} className="skeleton h-16 rounded-lg" />) : activityResults.length ? activityResults.slice(0, 7).map((item, index) => (
+                <ActivityRow key={item.id || `${item.action}-${index}`} item={item} />
+              )) : <AdminEmptyState title="No matching activity" message="Try another filter or clear the dashboard search." />}
+            </div>
+          </div>
+          <div className="theme-subcard rounded-xl p-4 sm:p-5">
+            <h3 className="font-semibold text-[var(--text-primary)]">Needs attention</h3>
+            <p className="mt-1 text-sm text-[var(--text-muted)]">Outstanding operational work</p>
+            <div className="mt-4 grid gap-3">
+              {loading ? Array.from({ length: 3 }).map((_, index) => <span key={index} className="skeleton h-24 rounded-lg" />) : attention.length ? attention.map((item) => (
+                <button key={item.label} type="button" onClick={() => navigate(item.href)} className="rounded-lg border border-[var(--color-warning)]/30 bg-[var(--color-warning-soft)] p-4 text-left transition hover:-translate-y-0.5">
+                  <span className="flex items-start justify-between gap-4"><span><span className="block text-sm font-semibold text-[var(--text-primary)]">{item.label}</span><span className="mt-1 block text-xs text-[var(--text-secondary)]">{item.detail}</span></span><strong className="text-xl text-[var(--color-warning)]">{item.value}</strong></span>
+                </button>
+              )) : <AdminEmptyState title="Nothing needs attention" message="Approvals, payments, and publishing queues are clear." />}
+            </div>
+          </div>
+        </div>
+      </DashboardSection>
+
+      <DashboardSection eyebrow="Management section" title="Administration tools" description="All management actions, organized in one searchable workspace.">
+        {actionResults.length ? (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {actionResults.map((item, index) => <AdminQuickAction key={item.href} icon={item.icon} label={item.label} description={item.description} tone={index === 0 && !searchQuery ? 'primary' : 'secondary'} onClick={() => navigate(item.href)} />)}
+          </div>
+        ) : <AdminEmptyState title="No management tools found" message="Try a broader search term such as users, courses, or reports." actionLabel="Clear search" onAction={() => setSearchQuery('')} />}
+      </DashboardSection>
     </section>
   )
 }
 
-function MiniMetric({ label, value }) {
+function DashboardSection({ eyebrow, title, description, children }) {
   return (
-    <div className="theme-subcard rounded-lg p-3">
-      <p className="text-xs uppercase tracking-[0.16em] text-[var(--text-muted)]">{label}</p>
-      <p className="mt-2 text-lg font-semibold text-[var(--text-primary)]">{value}</p>
+    <section className="admin-panel p-4 sm:p-6" aria-labelledby={`section-${eyebrow.replace(/\s+/g, '-').toLowerCase()}`}>
+      <div className="mb-5"><p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.2em]">{eyebrow}</p><h2 id={`section-${eyebrow.replace(/\s+/g, '-').toLowerCase()}`} className="mt-2 text-xl font-semibold text-[var(--text-primary)]">{title}</h2><p className="mt-1 text-sm text-[var(--text-secondary)]">{description}</p></div>
+      {children}
+    </section>
+  )
+}
+
+function Ratio({ label, value }) {
+  return <div className="rounded-lg bg-[var(--bg-subtle)] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">{label}</p><p className="mt-1 text-lg font-bold text-[var(--text-primary)]">{value}</p></div>
+}
+
+function ActivityRow({ item }) {
+  const actor = item.user?.name || item.user?.fullName || item.user?.email || item.name || item.email || 'System'
+  return (
+    <div className="flex items-start gap-3 rounded-lg border border-[var(--border-color)] p-3">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]"><Activity size={16} /></span>
+      <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-[var(--text-primary)]">{activityLabel(item)}</span><span className="mt-0.5 block truncate text-xs text-[var(--text-muted)]">{actor}</span></span>
+      <span className="shrink-0 text-xs text-[var(--text-muted)]">{formatDate(item.createdAt)}</span>
     </div>
   )
 }
 
-function HealthCard({ label, value, status = false }) {
-  return (
-    <div className="admin-panel p-4">
-      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">{label}</p>
-      <div className="mt-3 flex items-center gap-3">
-        {status ? <span className="h-3 w-3 shrink-0 rounded-full bg-emerald-500 shadow-[0_0_0_6px_rgba(16,185,129,0.12)]" /> : null}
-        <p className="font-semibold text-[var(--text-primary)]">{value}</p>
-      </div>
-    </div>
-  )
+function ChartFrame() {
+  return <><CartesianGrid stroke="var(--border-color)" strokeDasharray="3 3" /><XAxis dataKey="date" stroke="var(--text-muted)" tick={{ fontSize: 11 }} minTickGap={24} /><YAxis stroke="var(--text-muted)" tick={{ fontSize: 11 }} allowDecimals={false} /></>
 }
 
-function AttentionCard({ label, value, detail, action, onClick, tone }) {
-  const toneClass = {
-    amber: 'border-amber-400/30 bg-amber-500/10',
-    orange: 'border-orange-400/30 bg-orange-500/10',
-    cyan: 'border-cyan-400/30 bg-cyan-500/10',
-    green: 'border-emerald-400/30 bg-emerald-500/10',
-  }[tone] || 'border-cyan-400/30 bg-cyan-500/10'
-
-  return (
-    <button type="button" onClick={onClick} className={`rounded-lg border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-soft ${toneClass}`}>
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-[var(--text-primary)]">{value}</p>
-      <p className="mt-1 min-h-10 text-sm leading-5 text-[var(--text-secondary)]">{detail}</p>
-      <span className="mt-3 inline-flex text-sm font-semibold text-[var(--accent-primary)]">{action}</span>
-    </button>
-  )
-}
-
-function EmptyAnalytics({ title, message }) {
-  return (
-    <div className="grid h-full place-items-center rounded-lg border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] p-6 text-center">
-      <div>
-        <p className="font-semibold text-[var(--text-primary)]">{title}</p>
-        <p className="mt-2 text-sm text-[var(--text-secondary)]">{message}</p>
-      </div>
-    </div>
-  )
-}
-
-function ChartTooltip({ active, payload, label, formatter, labelKey }) {
+function ChartTooltip({ active, payload, label, formatter }) {
   if (!active || !payload?.length) return null
-  const tooltipLabel = labelKey ? payload[0]?.payload?.[labelKey] : label
   return (
-    <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] p-3 text-sm shadow-soft">
-      {tooltipLabel ? <p className="mb-2 font-semibold text-[var(--text-primary)]">{tooltipLabel}</p> : null}
-      <div className="space-y-1">
-        {payload.map((item) => (
-          <p key={item.dataKey} className="flex items-center justify-between gap-6 text-[var(--text-secondary)]">
-            <span>{item.name}</span>
-            <span className="font-semibold text-[var(--text-primary)]">{formatter ? formatter(item.value) : item.value}</span>
-          </p>
-        ))}
-      </div>
+    <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-elevated)] p-3 text-sm shadow-[var(--shadow-lg)]">
+      <p className="mb-2 font-semibold text-[var(--text-primary)]">{label}</p>
+      {payload.map((item) => <p key={item.dataKey} className="flex items-center justify-between gap-6 text-[var(--text-secondary)]"><span>{item.name}</span><strong className="text-[var(--text-primary)]">{formatter ? formatter(item.value) : item.value}</strong></p>)}
     </div>
   )
 }

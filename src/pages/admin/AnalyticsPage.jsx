@@ -87,7 +87,7 @@ export default function AnalyticsPage() {
         actions={(
           <>
             <Button variant="secondary" onClick={() => setExported(true)}>Export</Button>
-            <Button variant="secondary" onClick={loadAnalytics} disabled={loading}>{loading ? 'Refreshing...' : 'Refresh'}</Button>
+            <Button variant="secondary" onClick={loadAnalytics} loading={loading} loadingLabel="Refreshing...">Refresh</Button>
           </>
         )}
       />
@@ -105,7 +105,7 @@ export default function AnalyticsPage() {
                 <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
                 <YAxis stroke="var(--text-muted)" allowDecimals={false} />
                 <Tooltip content={<ChartTooltip />} />
-                <Line type="monotone" dataKey="registrations" name="Registrations" stroke="#22d3ee" strokeWidth={3} dot={false} />
+                <Line type="monotone" dataKey="registrations" name="Registrations" stroke="#3b82f6" strokeWidth={3} dot={false} />
                 <Line type="monotone" dataKey="enrollments" name="Enrollments" stroke="#f59e0b" strokeWidth={3} dot={false} />
                 <Line type="monotone" dataKey="completions" name="Completions" stroke="#10b981" strokeWidth={3} dot={false} />
               </LineChart>
@@ -121,7 +121,7 @@ export default function AnalyticsPage() {
                 <XAxis dataKey="label" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
                 <YAxis stroke="var(--text-muted)" allowDecimals={false} />
                 <Tooltip content={<ChartTooltip />} />
-                <Bar dataKey="userCreations" name="Created" stackId="users" fill="#22d3ee" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="userCreations" name="Created" stackId="users" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="userApprovals" name="Approved" stackId="users" fill="#10b981" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="userRejections" name="Rejected" stackId="users" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="userSuspensions" name="Suspended" stackId="users" fill="#ef4444" radius={[4, 4, 0, 0]} />

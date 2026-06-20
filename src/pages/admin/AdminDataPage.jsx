@@ -23,7 +23,9 @@ import {
   fetchAdminPayments,
   fetchAdminUsers,
   rejectAdminUser,
+  requestAdminPaymentRefund,
   suspendAdminUser,
+  updateAdminPaymentStatus,
   updateAdminCourse,
 } from '../../api/api.js'
 import { formatRupeesFromPaise } from '../../utils/money.js'
@@ -110,6 +112,7 @@ const resources = {
     load: fetchAdminPayments,
     rows: (data) => data.payments || [],
     columns: ['user', 'course', 'amount', 'status', 'createdAt'],
+    actions: 'payments',
   },
   revenue: {
     eyebrow: 'Billing',
@@ -121,11 +124,11 @@ const resources = {
   },
   'activity-logs': {
     eyebrow: 'Security',
-    title: 'Activity logs',
-    description: 'Auth, settings, and operational activity.',
+    title: 'Learner activity logs',
+    description: 'Learner actions, auth, settings, course progress, assessments, practice questions, and operational activity.',
     load: fetchAdminActivityLogs,
     rows: (data) => data.activityLogs || [],
-    columns: ['action', 'user', 'entityType', 'ipAddress', 'createdAt'],
+    columns: ['action', 'user', 'entityType', 'entityId', 'details', 'ipAddress', 'createdAt'],
   },
   analytics: {
     eyebrow: 'Analytics',
@@ -141,21 +144,25 @@ const resources = {
     description: 'Operational report rows from activity logs.',
     load: fetchAdminActivityLogs,
     rows: (data) => data.activityLogs || [],
-    columns: ['action', 'user', 'entityType', 'ipAddress', 'createdAt'],
+    columns: ['action', 'user', 'entityType', 'entityId', 'details', 'ipAddress', 'createdAt'],
   },
 }
 
 const dateColumns = new Set(['createdAt', 'updatedAt', 'deletedAt', 'enrolledAt', 'issuedAt', 'expiresAt', 'completedAt'])
 const peopleResources = new Set(['users', 'learners', 'instructors'])
 
+function displayName(person) {
+  return person?.name || person?.fullName || person?.email || ''
+}
+
 function valueFor(row, column) {
-  if (column === 'learner') return row.user?.name || row.user?.email || ''
-  if (column === 'user') return row.user?.name || row.user?.email || ''
+  if (column === 'learner') return displayName(row.learner) || displayName(row.user)
+  if (column === 'user') return displayName(row.user) || displayName(row.learner)
   if (column === 'course') return row.course?.title || ''
-  if (column === 'currentInstructor') return row.currentInstructor?.name || ''
-  if (column === 'fromInstructor') return row.fromInstructor?.name || 'Original instructor'
-  if (column === 'toInstructor') return row.toInstructor?.name || ''
-  if (column === 'changedBy') return row.changedBy?.name || row.changedBy?.email || ''
+  if (column === 'currentInstructor') return displayName(row.currentInstructor)
+  if (column === 'fromInstructor') return displayName(row.fromInstructor) || 'Original instructor'
+  if (column === 'toInstructor') return displayName(row.toInstructor)
+  if (column === 'changedBy') return displayName(row.changedBy)
   if (column === 'instructorChanges') return row.instructorChanges?.length ?? 0
   if (column === 'approvalStatus') return row.approvalStatus || 'APPROVED'
   if (column === 'courses') return row._count?.courses ?? 0
@@ -163,10 +170,41 @@ function valueFor(row, column) {
   if (column === 'priceCents') return formatRupeesFromPaise(row.priceCents)
   if (column === 'amount') return new Intl.NumberFormat('en-IN', { style: 'currency', currency: row.currency || 'INR' }).format((row.amountCents || 0) / 100)
   if (column === 'revenueCents') return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format((row.revenueCents || 0) / 100)
+  if (column === 'details') return summarizeMetadata(row.metadata)
   const value = row[column]
   if (typeof value === 'boolean') return value ? 'Yes' : 'No'
   if (dateColumns.has(column) && value) return new Date(value).toLocaleString()
   return value ?? ''
+}
+
+function summarizeMetadata(metadata) {
+  if (!metadata || typeof metadata !== 'object') return ''
+  const preferred = [
+    ['courseTitle', 'Course'],
+    ['courseId', 'Course'],
+    ['assignmentName', 'Assessment'],
+    ['assignmentId', 'Assessment'],
+    ['submissionId', 'Submission'],
+    ['questionId', 'Question'],
+    ['questionType', 'Type'],
+    ['status', 'Status'],
+    ['result', 'Result'],
+    ['percentage', 'Score'],
+    ['percentComplete', 'Progress'],
+    ['watchedSeconds', 'Watch'],
+    ['instructorName', 'Instructor'],
+    ['roomId', 'Room'],
+    ['fields', 'Fields'],
+  ]
+  return preferred
+    .filter(([key]) => metadata[key] !== undefined && metadata[key] !== null && metadata[key] !== '')
+    .map(([key, label]) => {
+      const value = Array.isArray(metadata[key]) ? metadata[key].join(', ') : metadata[key]
+      if (key === 'percentage' || key === 'percentComplete') return `${label}: ${value}%`
+      if (key === 'watchedSeconds') return `${label}: ${Math.round(Number(value || 0))}s`
+      return `${label}: ${value}`
+    })
+    .join(' | ')
 }
 
 export default function AdminDataPage({ resource }) {
@@ -184,7 +222,7 @@ export default function AdminDataPage({ resource }) {
   const hasActions = config.actions || ['users', 'learners', 'instructors', 'categories'].includes(resource)
   const insights = buildInsights(resource, rows)
   const guidance = buildGuidance(resource)
-  const enterpriseSignals = buildEnterpriseSignals(resource, rows)
+  const enterpriseSignals = peopleResources.has(resource) ? null : buildEnterpriseSignals(resource, rows)
 
   function toast(type, message) {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -323,28 +361,46 @@ export default function AdminDataPage({ resource }) {
     }
   }
 
-  function archiveRows(items) {
-    const keys = new Set(items.map((item) => item.id))
-    setRows((currentRows) => currentRows.map((row) => (keys.has(row.id) ? { ...row, archived: true } : row)))
-    toast('warning', `${items.length} row${items.length === 1 ? '' : 's'} marked archived locally.`)
-  }
-
   function viewRow(row) {
     setModal({
       title: `${config.title} quick view`,
       message: '',
       confirmLabel: 'Done',
       onConfirm: () => setModal(null),
-      children: (
-        <RecordQuickView row={row} resource={resource} columns={config.columns} />
-      ),
+      children: peopleResources.has(resource)
+        ? <UserDetailsArea user={row} />
+        : <RecordQuickView row={row} resource={resource} columns={config.columns} />,
     })
   }
 
   function editRow(row) {
     if (resource === 'courses') navigate(`/admin/edit-course/${row.id}`)
     else if (resource === 'categories') navigate(`/admin/edit-category/${row.id}`)
-    else toast('warning', 'Inline edit is not configured for this resource yet.')
+    else viewRow(row)
+  }
+
+  async function updatePayment(row, status) {
+    try {
+      setActionKey(`${status}-${row.id}`)
+      const response = await updateAdminPaymentStatus(row.id, status)
+      setRows((items) => items.map((item) => item.id === row.id ? { ...item, ...response.data.payment } : item))
+      toast('success', `Payment marked ${status.toLowerCase()}.`)
+    } catch (err) { toast('error', err?.response?.data?.message || 'Could not update payment.') }
+    finally { setActionKey('') }
+  }
+
+  function confirmRefund(row) {
+    setModal({
+      title: 'Request payment refund',
+      message: `Request a full provider refund for ${valueFor(row, 'amount')}? The payment will remain refund-pending until the provider confirms it.`,
+      confirmLabel: 'Request refund',
+      tone: 'danger',
+      onConfirm: async () => {
+        try { setActionKey(`refund-${row.id}`); const response = await requestAdminPaymentRefund(row.id, { reason: 'Admin-requested refund' }); setRows((items) => items.map((item) => item.id === row.id ? { ...item, ...response.data.payment } : item)); toast('success', 'Refund request recorded for provider processing.'); setModal(null) }
+        catch (err) { toast('error', err?.response?.data?.message || 'Could not request refund.') }
+        finally { setActionKey('') }
+      },
+    })
   }
 
   return (
@@ -359,7 +415,7 @@ export default function AdminDataPage({ resource }) {
             {resource === 'categories' ? <Button onClick={() => navigate('/admin/create-category')}>Create Category</Button> : null}
             {resource === 'certificates' ? <Button onClick={() => navigate('/admin/generate-certificate')}>Generate Certificate</Button> : null}
             {resource === 'instructors' ? <Button onClick={() => navigate('/admin/add-instructor')}>Add Instructor</Button> : null}
-            <Button variant="secondary" onClick={load} disabled={loading}>{loading ? 'Loading...' : 'Refresh'}</Button>
+            <Button variant="secondary" onClick={load} loading={loading} loadingLabel="Loading...">Refresh</Button>
           </>
         )}
       />
@@ -368,7 +424,7 @@ export default function AdminDataPage({ resource }) {
 
       <AdminInsightStrip items={insights} />
       <EnterpriseOperationsPanel signals={enterpriseSignals} />
-      <AdminGuidancePanel title="Productivity workflow" items={guidance} />
+      {resource === 'users' ? null : <AdminGuidancePanel title="Productivity workflow" items={guidance} />}
 
       <AdminDataTable
         title={config.title}
@@ -381,11 +437,11 @@ export default function AdminDataPage({ resource }) {
         emptyState={<AdminEmptyState title={`No ${config.title} Yet`} message={emptyMessage(resource)} actionLabel={emptyAction(resource)?.label} onAction={emptyAction(resource)?.onClick ? () => navigate(emptyAction(resource).onClick) : undefined} />}
         renderActions={hasActions ? renderActions : null}
         onDeleteRows={confirmDelete}
-        onArchiveRows={archiveRows}
+        onArchiveRows={null}
         onViewRow={viewRow}
         onEditRow={editRow}
         onDeleteRow={confirmDelete}
-        onArchiveRow={(row) => archiveRows([row])}
+        onArchiveRow={null}
         toast={toast}
       />
       <AdminModal
@@ -404,6 +460,9 @@ export default function AdminDataPage({ resource }) {
   )
 
   function renderActions(row) {
+    if (config.actions === 'payments') {
+      return <div className="flex flex-wrap justify-end gap-2">{row.status === 'PENDING' ? <Button variant="secondary" loading={actionKey === `CANCELLED-${row.id}`} onClick={() => updatePayment(row, 'CANCELLED')}>Cancel</Button> : null}{row.status === 'PAID' ? <Button variant="secondary" loading={actionKey === `refund-${row.id}`} onClick={() => confirmRefund(row)}>Request refund</Button> : null}</div>
+    }
     if (config.actions === 'courses') {
       return (
         <div className="flex flex-wrap justify-end gap-2">
@@ -793,6 +852,40 @@ function RecordQuickView({ row, resource, columns }) {
         <p className="text-sm font-semibold text-[var(--text-primary)]">Recommended next action</p>
         <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">{quickViewRecommendation(resource, row)}</p>
       </div>
+    </div>
+  )
+}
+
+function UserDetailsArea({ user }) {
+  const name = user.name || user.fullName || 'Unnamed user'
+  const status = user.approvalStatus || (user.isActive === false ? 'SUSPENDED' : 'APPROVED')
+  const joined = user.createdAt ? new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(user.createdAt)) : 'Not available'
+  return (
+    <div className="overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)]">
+      <div className="flex flex-col items-center gap-4 border-b border-[var(--border-color)] bg-[var(--bg-subtle)] p-6 text-center sm:flex-row sm:text-left">
+        <span className="grid h-24 w-24 shrink-0 place-items-center overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-card)] text-3xl font-bold text-[var(--accent-primary)]">
+          {user.avatarUrl ? <img src={user.avatarUrl} alt={`${name} profile`} className="h-full w-full object-cover" /> : name.charAt(0).toUpperCase()}
+        </span>
+        <div className="min-w-0">
+          <h3 className="truncate text-xl font-semibold text-[var(--text-primary)]">{name}</h3>
+          <p className="mt-1 break-all text-sm text-[var(--text-secondary)]">{user.email || 'Email not provided'}</p>
+          <div className="mt-3 flex flex-wrap justify-center gap-2 sm:justify-start">
+            <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-bold uppercase tracking-[0.1em] text-[var(--accent-primary)]">{user.role || 'Learner'}</span>
+            <AdminStatusBadge value={status} />
+          </div>
+        </div>
+      </div>
+      <dl className="grid gap-px bg-[var(--border-color)] sm:grid-cols-2">
+        {[
+          ['Name', name], ['Email', user.email || 'Not provided'], ['Role', user.role || 'Learner'],
+          ['Status', status], ['Join date', joined],
+        ].map(([label, value]) => (
+          <div key={label} className="bg-[var(--bg-elevated)] p-4 last:sm:col-span-2">
+            <dt className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">{label}</dt>
+            <dd className="mt-2 break-words text-sm font-semibold text-[var(--text-primary)]">{value}</dd>
+          </div>
+        ))}
+      </dl>
     </div>
   )
 }

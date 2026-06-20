@@ -1,4 +1,5 @@
 import { AlertCircle, ArrowRight, CheckCircle2, ClipboardCheck, Loader2, SearchX, X } from 'lucide-react'
+import { useEffect, useRef } from 'react'
 
 export function AdminPageHeader({ eyebrow, title, description, actions }) {
   return (
@@ -46,12 +47,12 @@ export function AdminMetricCard({ label, value, detail, icon: Icon, tone = 'cyan
 export function AdminQuickAction({ icon: Icon, label, description, onClick, tone = 'primary' }) {
   const toneClass = tone === 'primary'
     ? 'border-transparent bg-[var(--brand-gradient)] text-white'
-    : 'border-[var(--border-color)] bg-[var(--bg-subtle)] text-[var(--text-primary)] hover:border-cyan-400/50'
+    : 'border-[var(--border-color)] bg-[var(--bg-subtle)] text-[var(--text-primary)] hover:border-[var(--accent-primary)]/50'
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition hover:-translate-y-0.5 hover:shadow-soft ${toneClass}`}
+      className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-colors hover:shadow-soft ${toneClass}`}
     >
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white/16">
         {Icon ? <Icon size={18} /> : null}
@@ -105,17 +106,27 @@ export function AdminFullPageLoader({ label = 'Loading...' }) {
 }
 
 export function AdminModal({ open, title, message, confirmLabel = 'Confirm', cancelLabel = 'Cancel', tone = 'info', onConfirm, onClose, children }) {
+  const closeButtonRef = useRef(null)
+  useEffect(() => {
+    if (!open) return undefined
+    closeButtonRef.current?.focus()
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') onClose?.()
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [onClose, open])
   if (!open) return null
-  const toneClass = tone === 'danger' ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-[#FF6B35] text-white hover:bg-[#e85f2f]'
+  const toneClass = tone === 'danger' ? 'bg-red-600 text-white hover:bg-red-700' : 'btn-primary text-white'
   return (
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/58 p-4 backdrop-blur-sm animate-upto-backdrop-enter">
-      <div className="w-full max-w-md rounded-lg border border-[var(--border-color)] bg-[var(--bg-elevated)] p-5 shadow-soft animate-upto-modal-enter">
+    <div className="fixed inset-0 z-[80] grid place-items-center bg-slate-950/58 p-4 backdrop-blur-sm animate-upto-backdrop-enter" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose?.() }}>
+      <div className="w-full max-w-md rounded-lg border border-[var(--border-color)] bg-[var(--bg-elevated)] p-5 shadow-soft animate-upto-modal-enter" role="dialog" aria-modal="true" aria-labelledby="admin-modal-title">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold text-[var(--text-primary)]">{title}</h2>
+            <h2 id="admin-modal-title" className="text-lg font-semibold text-[var(--text-primary)]">{title}</h2>
             {message ? <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{message}</p> : null}
           </div>
-          <button type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-lg hover:bg-[var(--bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]" aria-label="Close modal">
+          <button ref={closeButtonRef} type="button" onClick={onClose} className="grid h-10 w-10 place-items-center rounded-lg hover:bg-[var(--bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/70" aria-label="Close modal">
             <X size={18} />
           </button>
         </div>
@@ -131,7 +142,7 @@ export function AdminModal({ open, title, message, confirmLabel = 'Confirm', can
 
 export function AdminToastStack({ toasts, onDismiss }) {
   return (
-    <div className="fixed right-4 top-4 z-[90] grid w-[min(24rem,calc(100vw-2rem))] gap-3">
+    <div className="fixed right-4 top-4 z-[90] grid w-[min(24rem,calc(100vw-2rem))] gap-3" aria-live="polite" aria-label="Admin notifications">
       {toasts.map((toast) => {
         const styles = {
           success: 'border-emerald-500/30 bg-emerald-50 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-100',
@@ -143,7 +154,7 @@ export function AdminToastStack({ toasts, onDismiss }) {
           <div key={toast.id} className={`animate-upto-toast-in rounded-lg border px-4 py-3 text-sm shadow-soft ${styles}`}>
             <div className="flex items-start justify-between gap-3">
               <span>{toast.message}</span>
-              <button type="button" onClick={() => onDismiss(toast.id)} className="rounded focus:outline-none focus:ring-2 focus:ring-[#FF6B35]" aria-label="Dismiss toast">
+              <button type="button" onClick={() => onDismiss(toast.id)} className="rounded focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/70" aria-label="Dismiss toast">
                 <X size={16} />
               </button>
             </div>

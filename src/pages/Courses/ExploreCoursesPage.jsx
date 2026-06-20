@@ -1,16 +1,10 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import {
-  BarChart3,
-  Brain,
   Check,
   ChevronDown,
-  Cloud,
-  Code2,
-  Database,
   Grid2X2,
-  Layers3,
   Search,
   SlidersHorizontal,
   Sparkles,
@@ -21,15 +15,14 @@ import { motion } from 'framer-motion'
 import CourseCard from '../../components/ui/Course/CourseCard.jsx'
 import Button from '../../components/common/Button/Button.jsx'
 import { fadeInUp } from '../../utils/animationVariants.js'
-import { enrollCourseRequest, fetchCourses, unenrollCourseRequest } from '../../api/api.js'
-import { enrollCourse, unenrollCourse } from '../../store/slices/authSlice.js'
+import { createCheckout, enrollCourseRequest, fetchCourses, fetchSavedCourses, unenrollCourseRequest } from '../../api/api.js'
+import { enrollCourse, setWishlist, unenrollCourse } from '../../store/slices/authSlice.js'
 import { formatRupeesFromPaise } from '../../utils/money.js'
+import { resolveCourseThumbnail } from '../../utils/courseThumbnail.js'
 
 const levels = ['All', 'BEGINNER', 'INTERMEDIATE', 'ADVANCED']
 const priceFilters = ['All', 'Free', 'Paid']
 const ratingFilters = [4, 3, 2]
-const areaIcons = [Code2, BarChart3, Brain, Cloud, Database, Layers3]
-
 function countBy(items, getKey) {
   return items.reduce((acc, item) => {
     const key = getKey(item) || 'Uncategorized'
@@ -46,36 +39,107 @@ export default function ExploreCoursesPage() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const auth = useSelector((state) => state.auth)
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
+  const filterDrawerRef = useRef(null)
+  const restoringUrlState = useRef(false)
   const [courses, setCourses] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busyCourseId, setBusyCourseId] = useState('')
   const [selectedCategory, setSelectedCategory] = useState(() => searchParams.get('category') || 'All')
-  const [selectedLevel, setSelectedLevel] = useState('All')
-  const [selectedPrice, setSelectedPrice] = useState('All')
-  const [minimumRating, setMinimumRating] = useState(0)
-  const [query, setQuery] = useState('')
-  const [sortBy, setSortBy] = useState('popular')
+  const [selectedLevel, setSelectedLevel] = useState(() => searchParams.get('level') || 'All')
+  const [selectedPrice, setSelectedPrice] = useState(() => searchParams.get('price') || 'All')
+  const [minimumRating, setMinimumRating] = useState(() => Number(searchParams.get('rating') || 0))
+  const [query, setQuery] = useState(() => searchParams.get('search') || searchParams.get('q') || '')
+  const [sortBy, setSortBy] = useState(() => searchParams.get('sort') || 'popular')
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [activeSuggestion, setActiveSuggestion] = useState(-1)
 
   useEffect(() => {
-    async function loadCourses() {
-      try {
-        setLoading(true)
-        setError('')
-        const response = await fetchCourses()
-        setCourses(response.data.courses || [])
-      } catch (err) {
-        setError(err?.response?.data?.message || err.message || 'Failed to load courses.')
-        setCourses([])
-      } finally {
-        setLoading(false)
-      }
+    restoringUrlState.current = true
+    let frame
+    const timer = window.setTimeout(() => {
+      setSelectedCategory(searchParams.get('category') || 'All')
+      setSelectedLevel(searchParams.get('level') || 'All')
+      setSelectedPrice(searchParams.get('price') || 'All')
+      setMinimumRating(Number(searchParams.get('rating') || 0))
+      setQuery(searchParams.get('search') || searchParams.get('q') || '')
+      setSortBy(searchParams.get('sort') || 'popular')
+      frame = window.requestAnimationFrame(() => { restoringUrlState.current = false })
+    }, 0)
+    return () => { window.clearTimeout(timer); if (frame) window.cancelAnimationFrame(frame) }
+  }, [searchParams])
+
+  useEffect(() => {
+    if (restoringUrlState.current) return undefined
+    const timer = window.setTimeout(() => {
+      const next = new URLSearchParams()
+      if (query.trim()) next.set('q', query.trim())
+      if (selectedCategory !== 'All') next.set('category', selectedCategory)
+      if (selectedLevel !== 'All') next.set('level', selectedLevel)
+      if (selectedPrice !== 'All') next.set('price', selectedPrice)
+      if (minimumRating) next.set('rating', String(minimumRating))
+      if (sortBy !== 'popular') next.set('sort', sortBy)
+      if (next.toString() !== searchParams.toString()) setSearchParams(next, { replace: true })
+    }, 220)
+    return () => window.clearTimeout(timer)
+  }, [minimumRating, query, searchParams, selectedCategory, selectedLevel, selectedPrice, setSearchParams, sortBy])
+
+  const loadCourses = useCallback(async () => {
+    try {
+      setLoading(true)
+      setError('')
+      const response = await fetchCourses()
+      setCourses(response.data.courses || [])
+    } catch (err) {
+      setError(err?.response?.data?.message || err.message || 'Failed to load courses.')
+      setCourses([])
+    } finally {
+      setLoading(false)
     }
-    void loadCourses()
-  }, [auth.token])
+  }, [])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void loadCourses() }, 0)
+    return () => window.clearTimeout(timer)
+  }, [auth.token, loadCourses])
+
+  useEffect(() => {
+    if (!auth.user || String(auth.user.role || auth.role).toLowerCase() !== 'learner') return
+    fetchSavedCourses().then((response) => dispatch(setWishlist((response.data?.savedCourses || []).map((course) => course.id)))).catch(() => {})
+  }, [auth.role, auth.user, dispatch])
+
+  useEffect(() => {
+    if (!filtersOpen) return undefined
+    const previousFocus = document.activeElement
+    const drawer = filterDrawerRef.current
+    const focusableSelector = 'button:not([disabled]), input:not([disabled]), select:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+    const handleKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        setFiltersOpen(false)
+        return
+      }
+      if (event.key !== 'Tab' || !drawer) return
+      const focusable = [...drawer.querySelectorAll(focusableSelector)].filter((element) => element.offsetParent !== null)
+      if (!focusable.length) return
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus() }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus() }
+    }
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    document.addEventListener('keydown', handleKeyDown)
+    window.requestAnimationFrame(() => drawer?.querySelector(focusableSelector)?.focus())
+    return () => {
+      document.body.style.overflow = previousOverflow
+      document.removeEventListener('keydown', handleKeyDown)
+      previousFocus?.focus?.()
+    }
+  }, [filtersOpen])
 
   async function handleEnrollmentToggle(course) {
     if (!auth.user) {
@@ -111,7 +175,13 @@ export default function ExploreCoursesPage() {
     } catch (err) {
       if (err?.response?.status === 402) {
         const price = formatRupeesFromPaise(err.response.data?.priceCents || course.priceCents || 0)
-        setError(err.response.data?.message || `Payment required. Cost to enroll is ${price}.`)
+        try {
+          const checkout = await createCheckout({ courseId: course.id }, window.crypto.randomUUID())
+          if (checkout.data?.checkoutUrl) window.location.assign(checkout.data.checkoutUrl)
+          else setError(`Secure checkout could not be opened. Cost to enroll is ${price}.`)
+        } catch (checkoutError) {
+          setError(checkoutError?.response?.data?.message || err.response.data?.message || `Payment required. Cost to enroll is ${price}.`)
+        }
       } else {
         setError(err?.response?.data?.message || err.message || 'Could not update enrollment.')
       }
@@ -131,11 +201,6 @@ export default function ExploreCoursesPage() {
   }, [courses])
   const freeCount = useMemo(() => courses.filter((course) => Number(course.priceCents || 0) === 0).length, [courses])
   const paidCount = Math.max(0, courses.length - freeCount)
-  const popularAreas = useMemo(() => (
-    Object.entries(categoryCounts)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-  ), [categoryCounts])
   const trendingSearches = useMemo(() => {
     const tags = new Set()
     courses.forEach((course) => {
@@ -143,6 +208,39 @@ export default function ExploreCoursesPage() {
     })
     return [...tags].slice(0, 8)
   }, [courses])
+  const searchSuggestions = useMemo(() => {
+    const needle = query.trim().toLowerCase()
+    if (!needle) return []
+    return courses.filter((course) => [course.title, course.category, course.level, course.createdBy?.name, ...(course.tags || [])].filter(Boolean).join(' ').toLowerCase().includes(needle)).slice(0, 6)
+  }, [courses, query])
+
+  function openSuggestion(course) {
+    setSearchOpen(false)
+    setActiveSuggestion(-1)
+    navigate(`/course/${course.id}`)
+  }
+
+  function handleSearchKeyDown(event) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setSearchOpen(false)
+      setActiveSuggestion(-1)
+      return
+    }
+    if (!searchSuggestions.length) return
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      setSearchOpen(true)
+      setActiveSuggestion((current) => (current + 1) % searchSuggestions.length)
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      setSearchOpen(true)
+      setActiveSuggestion((current) => (current <= 0 ? searchSuggestions.length - 1 : current - 1))
+    } else if (event.key === 'Enter' && activeSuggestion >= 0) {
+      event.preventDefault()
+      openSuggestion(searchSuggestions[activeSuggestion])
+    }
+  }
 
   const filteredCourses = useMemo(
     () =>
@@ -197,7 +295,7 @@ export default function ExploreCoursesPage() {
     <div className="course-filter-panel enterprise-glass-panel space-y-5 rounded-none border-0 p-5 shadow-none xl:min-h-full xl:rounded-xl xl:border xl:border-[var(--border-color)] xl:shadow-soft">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">Filters</p>
-        <button type="button" onClick={resetFilters} className="text-xs font-semibold text-[var(--accent-primary)]">Clear all</button>
+        <button type="button" onClick={resetFilters} className="inline-flex min-h-11 items-center px-2 text-xs font-semibold text-[var(--accent-primary)]">Clear all</button>
       </div>
 
       <FilterGroup title="Categories">
@@ -250,7 +348,7 @@ export default function ExploreCoursesPage() {
       </FilterGroup>
 
       <Button className="w-full" onClick={() => setFiltersOpen(false)}>
-        <SlidersHorizontal size={16} className="mr-2" /> Apply Filters
+        <SlidersHorizontal size={16} className="mr-2" /> Show Results
       </Button>
     </div>
   )
@@ -272,173 +370,154 @@ export default function ExploreCoursesPage() {
               className="absolute inset-0 bg-slate-950/45"
               onClick={() => setFiltersOpen(false)}
             />
-            <aside className="absolute bottom-0 left-0 top-0 w-[min(22rem,88vw)] overflow-y-auto overscroll-contain bg-[var(--bg-card)] shadow-2xl">
+            <aside ref={filterDrawerRef} role="dialog" aria-modal="true" aria-labelledby="mobile-course-filters-title" tabIndex={-1} className="absolute bottom-0 left-0 top-0 w-[min(22rem,88vw)] overflow-y-auto overscroll-contain bg-[var(--bg-card)] shadow-2xl">
+              <h2 id="mobile-course-filters-title" className="sr-only">Filter courses</h2>
               {filterPanel}
             </aside>
           </div>
         ) : null}
 
         <div className="h-full min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-4 sm:px-5 lg:px-6">
-          <div className="grid min-w-0 gap-5 xl:grid-cols-[minmax(0,1fr)_18rem] 2xl:grid-cols-[minmax(0,1fr)_20rem]">
-            <div className="min-w-0 space-y-5">
-          <section className="course-hero-panel enterprise-mesh-panel rounded-xl border border-[var(--border-color)] p-5 shadow-soft sm:p-6">
-            <div className="grid gap-6">
-              <div>
-                <p className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-[var(--accent-primary)]">
-                  <Sparkles size={14} /> Explore courses
-                </p>
-                <h1 className="mt-4 max-w-3xl text-4xl font-bold leading-tight text-[var(--text-primary)] sm:text-5xl">
-                  Unlock skills. <span className="text-[var(--accent-primary)]">Build your future.</span>
-                </h1>
-                <p className="mt-4 max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">
-                  Discover your actual UptoSkills course catalog across categories, levels, instructors, pricing, and progress.
-                </p>
-                <label className="mt-6 flex min-h-12 max-w-3xl items-center gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 shadow-sm">
-                  <Search size={18} className="text-[var(--accent-primary)]" />
-                  <input
-                    value={query}
-                    onChange={(event) => setQuery(event.target.value)}
-                    className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--text-muted)]"
-                    placeholder="Search courses, instructors, or topics..."
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="mt-6 grid gap-3 sm:grid-cols-4">
-              <Metric value={courses.length} label="Courses" />
-              <Metric value={`${categories.length - 1}+`} label="Categories" />
-              <Metric value={`${totalLearners}+`} label="Learners" />
-              <Metric value={averageRating} label="Average Rating" icon={<Star size={14} className="fill-[var(--accent-warm)] text-[var(--accent-warm)]" />} />
-            </div>
-          </section>
-
-          {notice ? <p className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-100">{notice}</p> : null}
-          {error ? <p className="rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-100">{error}</p> : null}
-
-          <section className="course-toolbar-panel enterprise-glass-panel rounded-xl p-4 shadow-soft">
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
-              <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <span className="mr-2 text-xs font-bold text-[var(--text-primary)]">Trending Searches:</span>
-                {trendingSearches.map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => setQuery(tag)}
-                    className="rounded-full bg-[var(--bg-subtle)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:text-[var(--accent-primary)]"
-                  >
-                    {tag}
-                  </button>
-                ))}
-              </div>
-              <div className="flex shrink-0 items-center gap-2">
-                <Button variant="secondary" onClick={() => setFiltersOpen((value) => !value)} className="xl:hidden">
-                  {filtersOpen ? <X size={16} className="mr-2" /> : <SlidersHorizontal size={16} className="mr-2" />}
-                  Filters {activeFilterCount ? `(${activeFilterCount})` : ''}
-                </Button>
-                <div className="flex min-h-10 items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] px-3 shadow-sm">
-                  <span className="whitespace-nowrap text-xs font-semibold text-[var(--text-muted)]">Sort by</span>
-                  <label className="relative">
-                    <span className="sr-only">Sort courses by</span>
-                    <select
-                      value={sortBy}
-                      onChange={(event) => setSortBy(event.target.value)}
-                      className="min-h-0 w-32 appearance-none border-0 bg-transparent py-1 pl-0 pr-6 text-sm font-semibold text-[var(--text-primary)] outline-none"
-                    >
-                      <option value="popular">Most Popular</option>
-                      <option value="rating">Highest Rated</option>
-                      <option value="price-low">Lowest Price</option>
-                      <option value="newest">Newest</option>
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={15} />
+          <div className="min-w-0 space-y-4">
+            <section className="course-hero-panel enterprise-mesh-panel rounded-xl border border-[var(--border-color)] p-4 shadow-soft sm:p-5">
+              <div className="grid gap-4">
+                <div>
+                  <p className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-[var(--accent-primary)]">
+                    <Sparkles size={14} /> Explore courses
+                  </p>
+                  <h1 className="mt-3 max-w-3xl text-3xl font-bold leading-tight text-[var(--text-primary)] sm:text-4xl">
+                    Unlock skills. <span className="text-[var(--accent-primary)]">Build your future.</span>
+                  </h1>
+                  <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">
+                    Discover your actual UptoSkills course catalog across categories, levels, instructors, pricing, and progress.
+                  </p>
+                  <label className="relative mt-4 flex min-h-11 max-w-3xl items-center gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 shadow-sm focus-within:border-[var(--accent-primary)] focus-within:ring-4 focus-within:ring-[var(--focus-ring)]">
+                    <Search size={18} className="text-[var(--accent-primary)]" />
+                    <input
+                      value={query}
+                      onChange={(event) => { setQuery(event.target.value); setSearchOpen(true); setActiveSuggestion(-1) }}
+                      onFocus={() => setSearchOpen(true)}
+                      onBlur={() => window.setTimeout(() => setSearchOpen(false), 120)}
+                      onKeyDown={handleSearchKeyDown}
+                      className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--text-muted)]"
+                      placeholder="Search courses, instructors, or topics..."
+                      aria-label="Search courses, instructors, or topics"
+                      role="combobox"
+                      aria-autocomplete="list"
+                      aria-expanded={searchOpen && Boolean(query.trim())}
+                      aria-controls="course-search-suggestions"
+                      aria-activedescendant={activeSuggestion >= 0 ? `course-suggestion-${activeSuggestion}` : undefined}
+                    />
+                    {searchOpen && query.trim() ? (
+                      <div id="course-search-suggestions" role="listbox" className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-30 overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-2 shadow-[var(--shadow-overlay)]">
+                        {searchSuggestions.length ? searchSuggestions.map((course, index) => (
+                          <button id={`course-suggestion-${index}`} key={course.id} type="button" role="option" aria-selected={activeSuggestion === index} onMouseEnter={() => setActiveSuggestion(index)} onMouseDown={(event) => { event.preventDefault(); openSuggestion(course) }} className={`flex min-h-16 w-full items-center gap-3 rounded-lg p-2 text-left transition ${activeSuggestion === index ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-subtle)]'}`}>
+                            <span className="grid h-14 w-24 shrink-0 place-items-center overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)]"><img src={resolveCourseThumbnail(course)} alt="" className="h-full w-full object-contain" /></span>
+                            <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-[var(--text-primary)]">{course.title}</span><span className="mt-1 block truncate text-xs text-[var(--text-secondary)]">{course.createdBy?.name || 'Instructor'} · {course.level || 'Beginner'} · {course.category || 'Course'}</span></span>
+                          </button>
+                        )) : <div className="p-4 text-sm text-[var(--text-secondary)]">No live suggestions match “{query.trim()}”. Press Enter to keep filtering the catalog.</div>}
+                      </div>
+                    ) : null}
                   </label>
                 </div>
-                <span className="hidden h-10 w-10 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)] sm:grid">
-                  <Grid2X2 size={18} />
-                </span>
               </div>
-            </div>
 
-            <div className="mt-5 flex items-center justify-between border-t border-[var(--border-color)] pt-4">
-              <p className="text-sm font-bold text-[var(--text-primary)]">{sortedCourses.length} courses found</p>
-              {activeFilterCount ? <button type="button" onClick={resetFilters} className="text-sm font-semibold text-[var(--accent-primary)]">Clear filters</button> : null}
-            </div>
-          </section>
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <Metric value={courses.length} label="Courses" />
+                <Metric value={`${categories.length - 1}+`} label="Categories" />
+                <Metric value={`${totalLearners}+`} label="Learners" />
+                <Metric value={averageRating} label="Average Rating" icon={<Star size={14} className="fill-[var(--accent-warm)] text-[var(--accent-warm)]" />} />
+              </div>
+            </section>
 
-          <div className="grid min-h-0 gap-5 overflow-visible md:grid-cols-2 2xl:grid-cols-3">
-            {loading ? (
-              <div className="col-span-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-elevated)] p-8 text-center text-[var(--text-secondary)]">
-                Loading live courses...
-              </div>
-            ) : sortedCourses.length ? (
-              sortedCourses.map((course) => (
-                <CourseCard
-                  key={course.id}
-                  course={course}
-                  onViewDetails={() => navigate(`/course/${course.id}`)}
-                  onEnrollToggle={handleEnrollmentToggle}
-                  enrollmentBusy={busyCourseId === course.id}
-                />
-              ))
-            ) : (
-              <div className="col-span-full rounded-lg border border-[var(--border-color)] bg-[var(--bg-elevated)] p-8 text-center text-[var(--text-secondary)]">
-                No courses found. Try another keyword, category, level, price, or rating.
-              </div>
-            )}
-          </div>
-        </div>
+            {notice ? <p className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-100">{notice}</p> : null}
+            {error && courses.length ? <p className="rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-100">{error}</p> : null}
 
-        <aside className="hidden xl:block">
-          <section className="course-right-rail enterprise-glass-panel sticky top-0 grid gap-4 rounded-xl p-4 shadow-soft">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-bold text-[var(--text-primary)]">Popular Areas</p>
-                <p className="text-xs text-[var(--text-secondary)]">Explore top in-demand skills</p>
+            <section className="course-toolbar-panel enterprise-glass-panel rounded-xl p-4 shadow-soft">
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
+                  <span className="mr-2 text-xs font-bold text-[var(--text-primary)]">Trending Searches:</span>
+                  {trendingSearches.map((tag) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setQuery(tag)}
+                      className="min-h-11 rounded-full bg-[var(--bg-subtle)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:text-[var(--accent-primary)]"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <Button variant="secondary" onClick={() => setFiltersOpen((value) => !value)} className="xl:hidden">
+                    {filtersOpen ? <X size={16} className="mr-2" /> : <SlidersHorizontal size={16} className="mr-2" />}
+                    Filters {activeFilterCount ? `(${activeFilterCount})` : ''}
+                  </Button>
+                  <div className="flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] px-3 shadow-sm">
+                    <span className="whitespace-nowrap text-xs font-semibold text-[var(--text-muted)]">Sort by</span>
+                    <label className="relative">
+                      <span className="sr-only">Sort courses by</span>
+                      <select
+                        value={sortBy}
+                        onChange={(event) => setSortBy(event.target.value)}
+                        className="min-h-0 w-32 appearance-none border-0 bg-transparent py-1 pl-0 pr-6 text-sm font-semibold text-[var(--text-primary)] outline-none"
+                      >
+                        <option value="popular">Most Popular</option>
+                        <option value="rating">Highest Rated</option>
+                        <option value="price-low">Lowest Price</option>
+                        <option value="newest">Newest</option>
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={15} />
+                    </label>
+                  </div>
+                  <span className="hidden h-10 w-10 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)] sm:grid">
+                    <Grid2X2 size={18} />
+                  </span>
+                </div>
               </div>
-              <button type="button" onClick={() => setSelectedCategory('All')} className="text-xs font-semibold text-[var(--accent-primary)]">View all</button>
-            </div>
-            <div className="grid gap-3">
-              {(popularAreas.length ? popularAreas : [['Courses', courses.length]]).map(([category, count], index) => {
-                const Icon = areaIcons[index % areaIcons.length]
-                return (
-                  <button
-                    key={category}
-                    type="button"
-                    onClick={() => setSelectedCategory(category === 'Courses' ? 'All' : category)}
-                    className="enterprise-glow-card flex min-h-16 items-center gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-3 text-left"
-                  >
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">
-                      <Icon size={18} />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block truncate text-xs font-bold leading-snug text-[var(--text-primary)]">{category}</span>
-                      <span className="text-xs text-[var(--text-secondary)]">{count} courses</span>
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-            <div className="course-paths-promo grid gap-3 rounded-xl bg-[var(--bg-subtle)] p-4">
-              <div>
-                <p className="text-xs text-[var(--text-secondary)]">Become job-ready with</p>
-                <p className="text-lg font-bold text-[var(--text-primary)]">skill paths</p>
-                <p className="mt-1 text-xs text-[var(--text-secondary)]">Curated paths help you learn, build, and get hired.</p>
+
+              <div className="mt-5 flex items-center justify-between border-t border-[var(--border-color)] pt-4">
+                <p className="text-sm font-bold text-[var(--text-primary)]">{sortedCourses.length} courses found</p>
+                {activeFilterCount ? <button type="button" onClick={resetFilters} className="text-sm font-semibold text-[var(--accent-primary)]">Clear filters</button> : null}
               </div>
-              <Button variant="secondary" onClick={() => setSelectedLevel('BEGINNER')}>Explore Paths</Button>
+            </section>
+
+            <div className="grid min-h-0 gap-4 overflow-visible md:grid-cols-2 2xl:grid-cols-3">
+              {loading ? (
+                Array.from({ length: 6 }, (_, index) => <CourseCardSkeleton key={index} />)
+              ) : error && !courses.length ? (
+                <div className="col-span-full platform-empty-state" role="alert">
+                  <div>
+                    <X className="mx-auto text-[var(--danger)]" size={34} />
+                    <p className="mt-3 text-base font-bold text-[var(--text-primary)]">Courses could not be loaded</p>
+                    <p className="mt-1 max-w-md text-sm text-[var(--text-secondary)]">{error}</p>
+                    <Button className="mt-5" onClick={loadCourses}>Try again</Button>
+                  </div>
+                </div>
+              ) : sortedCourses.length ? (
+                sortedCourses.map((course) => (
+                  <CourseCard
+                    key={course.id}
+                    course={course}
+                    onViewDetails={() => navigate(`/course/${course.id}`)}
+                    onEnrollToggle={handleEnrollmentToggle}
+                    onContinue={() => navigate(`/player/${course.id}`)}
+                    enrollmentBusy={busyCourseId === course.id}
+                  />
+                ))
+              ) : (
+                <div className="col-span-full platform-empty-state">
+                  <div>
+                    <Search className="mx-auto text-[var(--text-muted)]" size={36} />
+                    <p className="mt-3 text-base font-bold text-[var(--text-primary)]">No matching courses found</p>
+                    <p className="mt-1 max-w-md text-sm text-[var(--text-secondary)]">
+                      Try a different keyword or clear filters to discover more learning paths.
+                    </p>
+                    <Button variant="secondary" className="mt-5" onClick={resetFilters}>Clear filters</Button>
+                  </div>
+                </div>
+              )}
             </div>
-            {[
-              ['Practice', 'Assignments unlock after enrollment.'],
-              ['Progress', 'Track lessons from the player.'],
-              ['Certificate', 'Earn a certificate after completion.'],
-              ['Mentor Support', 'Get guidance from industry experts.'],
-            ].map(([title, text]) => (
-              <div key={title} className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-3">
-                <p className="text-xs font-bold text-[var(--text-primary)]">{title}</p>
-                <p className="mt-1 text-[0.68rem] leading-4 text-[var(--text-secondary)]">{text}</p>
-              </div>
-            ))}
-          </section>
-        </aside>
           </div>
         </div>
       </div>
@@ -451,7 +530,7 @@ function FilterGroup({ title, children }) {
     <div className="border-t border-[var(--border-color)] pt-4">
       <div className="mb-3 flex items-center justify-between">
         <p className="text-xs font-bold text-[var(--text-primary)]">{title}</p>
-        <ChevronDown size={14} className="text-[var(--text-muted)]" />
+        <ChevronDown size={14} className="text-[var(--text-muted)]" aria-hidden="true" />
       </div>
       <div className="space-y-2">{children}</div>
     </div>
@@ -460,7 +539,7 @@ function FilterGroup({ title, children }) {
 
 function FilterOption({ checked, label, count, onClick, icon }) {
   return (
-    <button type="button" onClick={onClick} className="flex w-full items-center gap-2 text-left text-xs text-[var(--text-secondary)]">
+    <button type="button" onClick={onClick} aria-pressed={checked} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-1 text-left text-xs text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)]">
       <span className={`grid h-4 w-4 shrink-0 place-items-center rounded border ${checked ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white' : 'border-[var(--border-muted)] bg-[var(--bg-secondary)]'}`}>
         {checked ? <Check size={11} /> : null}
       </span>
@@ -472,11 +551,26 @@ function FilterOption({ checked, label, count, onClick, icon }) {
 
 function Metric({ value, label, icon }) {
   return (
-    <div className="enterprise-glow-card rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
-      <p className="flex items-center gap-1 text-2xl font-bold text-[var(--accent-primary)]">
+    <div className="enterprise-glow-card rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] px-3 py-2.5">
+      <p className="flex items-center gap-1 text-xl font-bold text-[var(--accent-primary)]">
         {value}{icon}
       </p>
       <p className="mt-1 text-xs font-semibold text-[var(--text-secondary)]">{label}</p>
+    </div>
+  )
+}
+
+function CourseCardSkeleton() {
+  return (
+    <div className="min-h-[25rem] animate-pulse rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-3" aria-label="Loading course" role="status">
+      <div className="aspect-video rounded-lg bg-[var(--bg-subtle)]" />
+      <div className="mt-4 flex gap-3">
+        <div className="h-10 w-10 rounded-lg bg-[var(--bg-subtle)]" />
+        <div className="flex-1 space-y-2"><div className="h-4 w-4/5 rounded bg-[var(--bg-subtle)]" /><div className="h-3 w-2/3 rounded bg-[var(--bg-subtle)]" /></div>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-2"><div className="h-9 rounded-lg bg-[var(--bg-subtle)]" /><div className="h-9 rounded-lg bg-[var(--bg-subtle)]" /><div className="h-9 rounded-lg bg-[var(--bg-subtle)]" /></div>
+      <div className="mt-4 flex gap-2"><div className="h-7 w-20 rounded-lg bg-[var(--bg-subtle)]" /><div className="h-7 w-24 rounded-lg bg-[var(--bg-subtle)]" /></div>
+      <div className="mt-8 h-11 rounded-lg bg-[var(--bg-subtle)]" />
     </div>
   )
 }

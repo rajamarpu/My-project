@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route, useLocation, Navigate, Outlet } from 'react-router-dom'
-import { AnimatePresence } from 'framer-motion'
 import { useEffect, useState } from 'react'
 import { Provider, useDispatch, useSelector } from 'react-redux'
 import store from './store/store.js'
@@ -14,9 +13,11 @@ import AuthCallbackPage from './pages/Auth/AuthCallbackPage.jsx'
 import ExploreCoursesPage from './pages/Courses/ExploreCoursesPage.jsx'
 import CourseDetailPage from './pages/Courses/CourseDetailPage.jsx'
 import StudentDashboard from './pages/Dashboard/StudentDashboard.jsx'
+import InstructorDashboard from './pages/Dashboard/InstructorDashboard.jsx'
 import AdminDashboard from './pages/Admin/AdminDashboard.jsx'
 import AdminDataPage from './pages/Admin/AdminDataPage.jsx'
 import AnalyticsPage from './pages/Admin/AnalyticsPage.jsx'
+import AdminReportsPage from './pages/Admin/AdminReportsPage.jsx'
 import AdminCourseFormPage from './pages/Admin/AdminCourseFormPage.jsx'
 import AdminCategoryFormPage from './pages/Admin/AdminCategoryFormPage.jsx'
 import QuestionManagementPage from './pages/Admin/QuestionManagementPage.jsx'
@@ -47,14 +48,15 @@ import {
   MentorsPage,
   NotificationsPage,
   PolicyPage,
+  PaymentHistoryPage,
   PricingPage,
   SavedCoursesPage,
-  ServicesPage,
   SettingsPage,
   SupportPage,
   TeamPage,
   AdminAddLearnerPage,
   AdminGenerateCertificatePage,
+  InstructorCoursesPage,
 } from './pages/Courses/LmsPages.jsx'
 import PersonalityShowcasePage from './pages/Courses/PersonalityShowcasePage.jsx'
 
@@ -62,7 +64,8 @@ function ProtectedRoute({ allowedRoles, redirectTo = '/login' }) {
   const auth = useSelector((state) => state.auth)
   const dispatch = useDispatch()
   const location = useLocation()
-  const [status, setStatus] = useState(auth.token ? 'checking' : 'guest')
+  const initialAllowed = Boolean(auth.token && auth.user && (!allowedRoles || allowedRoles.includes(auth.role || auth.user?.role)))
+  const [status, setStatus] = useState(initialAllowed ? 'verified' : auth.token ? 'checking' : 'guest')
   const rolesKey = allowedRoles?.join('|') || ''
   const loginPath = `${redirectTo}?next=${encodeURIComponent(`${location.pathname}${location.search}${location.hash}`)}`
 
@@ -71,6 +74,11 @@ function ProtectedRoute({ allowedRoles, redirectTo = '/login' }) {
     async function verifySession() {
       if (!auth.token) {
         setStatus('guest')
+        return
+      }
+
+      if (auth.user && (!allowedRoles || allowedRoles.includes(auth.role || auth.user.role))) {
+        setStatus('verified')
         return
       }
 
@@ -96,7 +104,7 @@ function ProtectedRoute({ allowedRoles, redirectTo = '/login' }) {
     return () => {
       active = false
     }
-  }, [rolesKey, auth.token, dispatch])
+  }, [rolesKey, auth.token, auth.role, auth.user, allowedRoles, dispatch])
 
   if (!auth.user || !auth.token) {
     return <Navigate to={loginPath} replace />
@@ -176,8 +184,7 @@ function AnimatedRoutes() {
 
   if (isAdminHost) {
     return (
-      <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
+        <Routes location={location}>
           <Route path="/" element={<Navigate to="/admin-login" replace />} />
           <Route path="/admin-login" element={<AuthPage />} />
           <Route element={<ProtectedRoute allowedRoles={['admin']} redirectTo="/admin-login" />}>
@@ -204,7 +211,7 @@ function AnimatedRoutes() {
             <Route path="/admin/payments" element={<AdminLayout><AdminDataPage resource="payments" /></AdminLayout>} />
             <Route path="/admin/profile" element={<AdminLayout><UserPage /></AdminLayout>} />
             <Route path="/admin/settings" element={<AdminLayout><AdminSettingsPage /></AdminLayout>} />
-            <Route path="/admin/reports" element={<AdminLayout><AdminDataPage resource="reports" /></AdminLayout>} />
+            <Route path="/admin/reports" element={<AdminLayout><AdminReportsPage /></AdminLayout>} />
             <Route path="/admin/create-course" element={<AdminLayout><AdminCourseFormPage /></AdminLayout>} />
             <Route path="/admin/upload-course" element={<AdminLayout><AdminCourseFormPage /></AdminLayout>} />
             <Route path="/admin/edit-course/:courseId" element={<AdminLayout><AdminCourseFormPage mode="edit" /></AdminLayout>} />
@@ -216,13 +223,11 @@ function AnimatedRoutes() {
           </Route>
           <Route path="*" element={<Navigate to="/admin-login" replace />} />
         </Routes>
-      </AnimatePresence>
     )
   }
 
   return (
-    <AnimatePresence mode="wait">
-      <Routes location={location} key={location.pathname}>
+      <Routes location={location}>
         <Route path="/" element={<MainLayout><LandingPage /></MainLayout>} />
         <Route path="/login" element={<AuthPage />} />
         <Route path="/auth/callback" element={<AuthCallbackPage />} />
@@ -232,7 +237,7 @@ function AnimatedRoutes() {
         <Route path="/reset-password" element={<AuthPage />} />
         <Route path="/otp-verification" element={<AuthPage />} />
         <Route path="/about" element={<MainLayout><AboutPage /></MainLayout>} />
-        <Route path="/services" element={<MainLayout><ServicesPage /></MainLayout>} />
+        <Route path="/services" element={<MainLayout><FeaturesPage /></MainLayout>} />
         <Route path="/courses" element={<MainLayout><ExploreCoursesPage /></MainLayout>} />
         <Route path="/features" element={<MainLayout><FeaturesPage /></MainLayout>} />
         <Route path="/team" element={<MainLayout><TeamPage /></MainLayout>} />
@@ -254,12 +259,12 @@ function AnimatedRoutes() {
         <Route path="/community/:topicId" element={<MainLayout><CommunityTopicPage /></MainLayout>} />
          <Route path="/personalities" element={<MainLayout><PersonalityShowcasePage /></MainLayout>} />
 
-         <Route element={<ProtectedRoute allowedRoles={['learner', 'admin']} />}>
+         <Route element={<ProtectedRoute allowedRoles={['learner']} />}>
           <Route path="/player/:courseId" element={<MainLayout><LearningPlayerPage /></MainLayout>} />
           <Route path="/course/:courseId/assessments" element={<MainLayout><AssessmentsPage /></MainLayout>} />
         </Route>
 
-        <Route element={<ProtectedRoute allowedRoles={['learner', 'admin']} />}>
+        <Route element={<ProtectedRoute allowedRoles={['learner']} />}>
           <Route path="/dashboard" element={<MainLayout><StudentDashboard /></MainLayout>} />
           <Route path="/questions" element={<MainLayout><QuestionPracticePage /></MainLayout>} />
           <Route path="/user" element={<MainLayout><UserPage /></MainLayout>} />
@@ -271,13 +276,22 @@ function AnimatedRoutes() {
           <Route path="/live-sessions" element={<MainLayout><LiveSessionsPage /></MainLayout>} />
           <Route path="/saved" element={<MainLayout><SavedCoursesPage /></MainLayout>} />
           <Route path="/reports" element={<MainLayout><LearnerReportsPage /></MainLayout>} />
+          <Route path="/payments" element={<MainLayout><PaymentHistoryPage /></MainLayout>} />
+        </Route>
+
+        <Route element={<ProtectedRoute allowedRoles={['instructor']} />}>
+          <Route path="/instructor" element={<MainLayout><InstructorDashboard /></MainLayout>} />
+          <Route path="/instructor/courses" element={<MainLayout><InstructorCoursesPage /></MainLayout>} />
+          <Route path="/instructor/live-sessions" element={<MainLayout><LiveSessionsPage /></MainLayout>} />
+          <Route path="/instructor/profile" element={<MainLayout><UserPage /></MainLayout>} />
+          <Route path="/instructor/settings" element={<MainLayout><SettingsPage /></MainLayout>} />
+          <Route path="/instructor/notifications" element={<MainLayout><NotificationsPage /></MainLayout>} />
         </Route>
 
         <Route path="/admin/*" element={<AdminHostRedirect />} />
 
         <Route path="*" element={<MainLayout><NotFoundPage /></MainLayout>} />
       </Routes>
-    </AnimatePresence>
   )
 }
 
@@ -285,7 +299,7 @@ function App() {
   return (
     <Provider store={store}>
       <ThemeProvider>
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
           <AnimatedRoutes />
         </BrowserRouter>
       </ThemeProvider>

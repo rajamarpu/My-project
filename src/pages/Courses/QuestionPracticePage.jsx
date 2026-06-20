@@ -3,11 +3,12 @@ import Button from '../../components/common/Button/Button.jsx'
 import { AdminEmptyState, AdminLoadingState, AdminNotice } from '../../components/admin/AdminUI.jsx'
 import { StudentQuestionCard } from '../../components/questions/QuestionRenderer.jsx'
 import { DIFFICULTY_LABELS, QUESTION_TYPE_LABELS } from '../../components/questions/questionUtils.js'
-import { fetchQuestions, validateQuestionAnswer } from '../../api/api.js'
+import { fetchCourses, fetchQuestions, validateQuestionAnswer } from '../../api/api.js'
 
 export default function QuestionPracticePage() {
   const [questions, setQuestions] = useState([])
-  const [filters, setFilters] = useState({ type: 'ALL', difficulty: 'ALL', page: 1, pageSize: 10 })
+  const [courses, setCourses] = useState([])
+  const [filters, setFilters] = useState({ type: 'ALL', difficulty: 'ALL', courseId: 'ALL', page: 1, pageSize: 10 })
   const [pagination, setPagination] = useState({ page: 1, pageSize: 10, total: 0, totalPages: 1 })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -16,7 +17,9 @@ export default function QuestionPracticePage() {
     try {
       setLoading(true)
       setError('')
-      const response = await fetchQuestions(filters)
+      const query = { ...filters }
+      if (query.courseId === 'ALL') delete query.courseId
+      const response = await fetchQuestions(query)
       setQuestions(response.data.questions || [])
       setPagination(response.data.pagination || pagination)
     } catch (err) {
@@ -32,39 +35,59 @@ export default function QuestionPracticePage() {
     }, 0)
     return () => window.clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.type, filters.difficulty, filters.page])
+  }, [filters.type, filters.difficulty, filters.courseId, filters.page])
+
+  useEffect(() => {
+    let active = true
+    async function loadCourses() {
+      try {
+        const response = await fetchCourses()
+        if (active) setCourses(response.data?.courses || response.data || [])
+      } catch {
+        if (active) setCourses([])
+      }
+    }
+    void loadCourses()
+    return () => {
+      active = false
+    }
+  }, [])
 
   async function submitAnswer(id, answer) {
     const response = await validateQuestionAnswer(id, answer)
-    return response.data.result
+    return { ...response.data.result, submissionId: response.data.submissionId }
   }
 
   return (
     <section className="space-y-6 pb-16">
       <div className="glass-card p-6 shadow-glow lg:p-8">
-        <p className="text-sm uppercase tracking-[0.28em] text-cyan-700 dark:text-cyan-300">Question practice</p>
-        <h1 className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">Online examination question bank</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600 dark:text-slate-300">
-          Practice MCQs, fill-in-the-blank questions, and descriptive responses with the same controls learners see during exams.
+        <p className="theme-eyebrow text-sm uppercase tracking-[0.28em]">Question practice</p>
+        <h1 className="mt-3 text-3xl font-semibold text-[var(--text-primary)]">Online examination question bank</h1>
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">
+          Practice questions created from the admin question bank. Use the course filter to find questions assigned by admins.
         </p>
       </div>
 
       <AdminNotice type="error">{error}</AdminNotice>
 
-      <div className="theme-card grid gap-3 rounded-lg p-4 sm:grid-cols-2 lg:grid-cols-[220px_180px_auto]">
-        <select className="admin-input" value={filters.type} onChange={(event) => setFilters((current) => ({ ...current, type: event.target.value, page: 1 }))}>
+      <div className="theme-card grid gap-3 rounded-lg p-4 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_220px_180px_auto]">
+        <select aria-label="Filter questions by course" className="admin-input" value={filters.courseId} onChange={(event) => setFilters((current) => ({ ...current, courseId: event.target.value, page: 1 }))}>
+          <option value="ALL">All courses</option>
+          {courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
+        </select>
+        <select aria-label="Filter questions by type" className="admin-input" value={filters.type} onChange={(event) => setFilters((current) => ({ ...current, type: event.target.value, page: 1 }))}>
           <option value="ALL">All question types</option>
           {Object.entries(QUESTION_TYPE_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
-        <select className="admin-input" value={filters.difficulty} onChange={(event) => setFilters((current) => ({ ...current, difficulty: event.target.value, page: 1 }))}>
+        <select aria-label="Filter questions by difficulty" className="admin-input" value={filters.difficulty} onChange={(event) => setFilters((current) => ({ ...current, difficulty: event.target.value, page: 1 }))}>
           <option value="ALL">All difficulty</option>
           {Object.entries(DIFFICULTY_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
-        <Button type="button" variant="secondary" onClick={loadQuestions} disabled={loading}>{loading ? 'Loading...' : 'Refresh'}</Button>
+        <Button type="button" variant="secondary" onClick={loadQuestions} loading={loading} loadingLabel="Loading...">Refresh</Button>
       </div>
 
       {loading ? <AdminLoadingState label="Loading practice questions..." /> : null}
-      {!loading && !questions.length ? <AdminEmptyState title="No questions available" message="Ask an admin to add questions to the question bank." /> : null}
+      {!loading && !questions.length ? <AdminEmptyState title="No questions available" message="No admin-created questions match this course/type/difficulty filter yet." /> : null}
 
       <div className="grid gap-4">
         {questions.map((question) => (

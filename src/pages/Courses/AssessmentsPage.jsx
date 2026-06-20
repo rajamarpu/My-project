@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { CheckCircle2, ClipboardList, Eye, FileText, LockKeyhole, RotateCcw, Timer, XCircle } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
-import { fetchCourseById, fetchMyAssessmentSubmissions, submitStructuredAssessment } from '../../api/api.js'
+import { fetchCourseById, fetchMyAssessmentSubmissions, fetchQuestions, submitStructuredAssessment } from '../../api/api.js'
 import { getCourseAssignments } from '../../utils/courseContent.js'
 
 export default function AssessmentsPage() {
@@ -15,6 +15,7 @@ export default function AssessmentsPage() {
   const [submissions, setSubmissions] = useState([])
   const [retakeGrants, setRetakeGrants] = useState([])
   const [localItems, setLocalItems] = useState([])
+  const [bankQuestions, setBankQuestions] = useState([])
   const [title, setTitle] = useState('')
   const [prompt, setPrompt] = useState('')
   const [answers, setAnswers] = useState({})
@@ -33,11 +34,16 @@ export default function AssessmentsPage() {
       if (!courseResponse.data.course?.isEnrolled && !isInstructor) {
         setSubmissions([])
         setRetakeGrants([])
+        setBankQuestions([])
         return
       }
-      const submissionsResponse = await fetchMyAssessmentSubmissions({ courseId })
+      const [submissionsResponse, bankResponse] = await Promise.all([
+        fetchMyAssessmentSubmissions({ courseId }),
+        fetchQuestions({ courseId, page: 1, pageSize: 50 }).catch(() => ({ data: { questions: [] } })),
+      ])
       setSubmissions(submissionsResponse.data.submissions || [])
       setRetakeGrants(submissionsResponse.data.retakeGrants || [])
+      setBankQuestions(bankResponse.data.questions || [])
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Could not load assignments.')
     } finally {
@@ -54,8 +60,23 @@ export default function AssessmentsPage() {
   }, [courseId])
 
   const persistedAssignments = useMemo(() => getCourseAssignments(course), [course])
+  const questionBankItem = useMemo(() => {
+    if (!bankQuestions.length) return null
+    return {
+      id: `question-bank-${courseId}`,
+      title: 'Question bank practice',
+      prompt: `${bankQuestions.length} admin-created question${bankQuestions.length === 1 ? '' : 's'} assigned to this course are ready for learner practice.`,
+      questions: bankQuestions,
+      resources: [],
+      durationMin: Math.max(10, Math.min(60, bankQuestions.length * 3)),
+      status: 'Practice',
+      persisted: true,
+      bankPractice: true,
+    }
+  }, [bankQuestions, courseId])
   const items = useMemo(() => [
     ...localItems,
+    ...(questionBankItem ? [questionBankItem] : []),
     ...persistedAssignments.map((assignment) => ({
       id: assignment.id,
       title: assignment.title,
@@ -67,7 +88,7 @@ export default function AssessmentsPage() {
       status: 'Open',
       persisted: true,
     })),
-  ], [localItems, persistedAssignments])
+  ], [localItems, persistedAssignments, questionBankItem])
 
   const submissionsByAssignment = useMemo(() => {
     const grouped = {}

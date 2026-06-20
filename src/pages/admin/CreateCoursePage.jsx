@@ -5,6 +5,7 @@ import Button from '../../components/common/Button/Button.jsx'
 import { createCourseRequest, createTaskRequest, uploadContentRequest } from '../../api/api.js'
 
 const steps = ['Basic Info', 'Upload Thumbnail', 'Add Lessons', 'Resources', 'Quiz', 'Pricing', 'Publish']
+const courseCategories = ['Development', 'Data Science', 'Artificial Intelligence', 'Design', 'Business', 'Marketing', 'Cloud Computing', 'Cybersecurity', 'Career Skills']
 
 export default function CreateCoursePage() {
   const [activeStep, setActiveStep] = useState(1)
@@ -124,7 +125,10 @@ export default function CreateCoursePage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <input value={courseForm.duration} onChange={(e) => updateCourse('duration', e.target.value)} className="rounded-3xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[var(--text-primary)] outline-none" placeholder="Duration" />
               <input value={courseForm.price} onChange={(e) => updateCourse('price', e.target.value)} className="rounded-3xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[var(--text-primary)] outline-none" placeholder="Price" />
-              <input value={courseForm.category} onChange={(e) => updateCourse('category', e.target.value)} className="rounded-3xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[var(--text-primary)] outline-none" placeholder="Category" />
+              <select value={courseForm.category} onChange={(e) => updateCourse('category', e.target.value)} className="rounded-3xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[var(--text-primary)] outline-none" aria-label="Course category">
+                <option value="">Select category</option>
+                {courseCategories.map((category) => <option key={category} value={category}>{category}</option>)}
+              </select>
               <select value={courseForm.level} onChange={(e) => updateCourse('level', e.target.value)} className="rounded-3xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[var(--text-primary)] outline-none">
                 <option>Beginner</option>
                 <option>Intermediate</option>
@@ -168,7 +172,7 @@ export default function CreateCoursePage() {
             <p className="theme-eyebrow text-sm uppercase tracking-[0.25em]">Create task</p>
             <input value={taskForm.courseId} onChange={(e) => updateTask('courseId', e.target.value)} className="w-full rounded-3xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[var(--text-primary)] outline-none" placeholder="Course ID (optional)" />
             <input value={taskForm.title} onChange={(e) => updateTask('title', e.target.value)} className="w-full rounded-3xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[var(--text-primary)] outline-none" placeholder="Task title" />
-            <input value={taskForm.dueDate} onChange={(e) => updateTask('dueDate', e.target.value)} className="w-full rounded-3xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[var(--text-primary)] outline-none" placeholder="Due date" />
+            <input type="date" value={taskForm.dueDate} onChange={(e) => updateTask('dueDate', e.target.value)} className="w-full rounded-3xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[var(--text-primary)] outline-none" aria-label="Task due date" />
             <textarea value={taskForm.instructions} onChange={(e) => updateTask('instructions', e.target.value)} className="h-40 w-full rounded-3xl border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 py-3 text-[var(--text-primary)] outline-none" placeholder="Task instructions for learners" />
             <Button type="button" onClick={createTask} disabled={busy}>Create task</Button>
           </section>

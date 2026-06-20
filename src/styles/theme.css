@@ -1,27 +1,28 @@
 :root {
-  --upto-bg: #f8fafc;
-  --upto-bg-deep: #0f172a;
-  --upto-orange: #f59e0b;
-  --upto-teal: #10b981;
-  --upto-cyan: #6366f1;
-  --upto-blue: #4f46e5;
-  --upto-navy: #0f172a;
-  --upto-indigo: #4f46e5;
-  --upto-violet: #8b5cf6;
+  --upto-bg: #f6f9ff;
+  --upto-bg-deep: #07111f;
+  --upto-orange: #ff6b35;
+  --upto-teal: #14b8a6;
+  --upto-cyan: #22d3ee;
+  --upto-blue: #2563eb;
+  --upto-navy: #07111f;
+  --upto-indigo: #2563eb;
+  --upto-violet: #7c3aed;
+  --upto-pink: #ec4899;
   --upto-radius-sm: 0.5rem;
   --upto-radius-md: 0.75rem;
   --upto-radius-lg: 1rem;
   --upto-radius-xl: 1.25rem;
-  --upto-shadow-soft: 0 24px 70px rgba(15, 23, 42, 0.12);
-  --upto-shadow-glow: 0 24px 70px rgba(79, 70, 229, 0.2);
-  --upto-gradient-brand: linear-gradient(135deg, #4f46e5 0%, #6366f1 48%, #8b5cf6 100%);
-  --upto-gradient-hologram: linear-gradient(135deg, rgba(79, 70, 229, 0.14), rgba(99, 102, 241, 0.12), rgba(139, 92, 246, 0.14));
+  --upto-shadow-soft: 0 22px 60px rgba(37, 99, 235, 0.12);
+  --upto-shadow-glow: 0 24px 70px rgba(124, 58, 237, 0.22);
+  --upto-gradient-brand: linear-gradient(135deg, #2563eb 0%, #06b6d4 42%, #8b5cf6 72%, #ec4899 100%);
+  --upto-gradient-hologram: linear-gradient(135deg, rgba(37, 99, 235, 0.14), rgba(124, 58, 237, 0.12), rgba(236, 72, 153, 0.12));
 }
 
 .upto-premium-panel {
   border: 1px solid var(--border-color);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(241, 251, 249, 0.84)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 251, 255, 0.9)),
     var(--upto-gradient-hologram);
   box-shadow: var(--upto-shadow-soft);
 }

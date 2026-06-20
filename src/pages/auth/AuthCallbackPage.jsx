@@ -24,7 +24,7 @@ export default function AuthCallbackPage() {
       if (!token || !encodedUser) throw new Error('Login callback is missing session data.')
       const user = decodeUser(encodedUser)
       dispatch(login({ user, role, token }))
-      navigate(role === 'admin' ? '/admin' : '/dashboard', { replace: true })
+      navigate(role === 'admin' ? '/admin' : role === 'instructor' ? '/instructor' : '/dashboard', { replace: true })
     } catch (error) {
       window.setTimeout(() => {
         setMessage(error.message || 'Login failed. Please try again.')

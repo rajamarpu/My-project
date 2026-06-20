@@ -57,7 +57,7 @@ function highlightedText(value, query) {
   return (
     <>
       {text.slice(0, index)}
-      <mark className="rounded bg-orange-200 px-0.5 text-slate-950">{text.slice(index, index + needle.length)}</mark>
+      <mark className="rounded bg-[var(--accent-soft)] px-0.5 text-[var(--accent-primary)]">{text.slice(index, index + needle.length)}</mark>
       {text.slice(index + needle.length)}
     </>
   )
@@ -204,7 +204,7 @@ export default function AdminDataTable({
           <p className="mt-2 max-w-md text-sm text-[var(--text-secondary)]">We encountered an error. Please try again or contact support if it continues.</p>
           <div className="mt-5 flex flex-wrap justify-center gap-3">
             <Button onClick={onRetry}>Retry</Button>
-            <Button variant="secondary" onClick={() => toast?.('warning', 'Support contact workflow is not configured yet.')}>Contact Support</Button>
+            <Button variant="secondary" onClick={() => { window.location.href = 'mailto:support@uptoskills.com?subject=LMS%20admin%20table%20support' }}>Contact Support</Button>
           </div>
         </div>
       </div>
@@ -215,7 +215,7 @@ export default function AdminDataTable({
     <div className="space-y-4">
       <div className="admin-panel p-4">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-          <label className="flex min-h-11 flex-1 items-center gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] px-4 text-[var(--text-secondary)] focus-within:ring-4 focus-within:ring-[#FF6B35]/20">
+          <label className="flex min-h-11 flex-1 items-center gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] px-4 text-[var(--text-secondary)] focus-within:ring-4 focus-within:ring-[var(--accent-primary)]/20">
             <Search size={20} />
             <input
               value={query}
@@ -242,7 +242,7 @@ export default function AdminDataTable({
                 key={chip.key}
                 type="button"
                 onClick={() => removeFilterChip(chip)}
-                className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[#FF6B35]/30 bg-[#FFF5F0] px-3 text-xs font-semibold text-[#9A3412] transition hover:border-[#FF6B35] hover:bg-orange-100 focus:outline-none focus:ring-2 focus:ring-[#FF6B35] dark:bg-orange-500/10 dark:text-orange-100"
+                className="inline-flex min-h-9 items-center gap-2 rounded-full border border-[var(--accent-primary)]/30 bg-[var(--accent-soft)] px-3 text-xs font-semibold text-[var(--accent-primary)] transition hover:border-[var(--accent-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/70"
                 aria-label={`Remove ${chip.label} filter ${chip.value}`}
               >
                 <span>{chip.label}: {chip.value}</span>
@@ -254,7 +254,7 @@ export default function AdminDataTable({
       </div>
 
       {selected.length ? (
-        <div className="admin-panel flex flex-col gap-3 border-[#FF6B35]/40 bg-orange-50/90 p-4 dark:bg-orange-500/10 sm:flex-row sm:items-center sm:justify-between">
+        <div className="admin-panel flex flex-col gap-3 border-[var(--accent-primary)]/40 bg-[var(--accent-soft)] p-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm font-semibold text-[var(--text-primary)]">{selected.length} row{selected.length === 1 ? '' : 's'} selected</p>
           <div className="flex flex-wrap gap-2">
             <Button variant="secondary" onClick={() => handleExport(selectedRows())}><Download size={16} /> Export</Button>
@@ -284,13 +284,13 @@ export default function AdminDataTable({
                       />
                     </th>
                     {columns.map((column) => (
-                      <th key={column} className={cn('relative min-w-36 whitespace-nowrap px-4 py-3 text-left align-top', sort.column === column && 'text-[#FF6B35]')} aria-sort={sort.column === column ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                      <th key={column} className={cn('relative min-w-36 whitespace-nowrap px-4 py-3 text-left align-top', sort.column === column && 'text-[var(--accent-primary)]')} aria-sort={sort.column === column ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
                         <div className="flex items-center gap-2">
-                          <button type="button" onClick={() => toggleSort(column)} className="inline-flex min-h-11 items-center gap-1 whitespace-nowrap rounded px-1 font-semibold uppercase tracking-[0.08em] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]">
+                          <button type="button" onClick={() => toggleSort(column)} className="inline-flex min-h-11 items-center gap-1 whitespace-nowrap rounded px-1 font-semibold uppercase tracking-[0.08em] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/70">
                             {columnLabel(column)}
                             {sort.column === column ? <ChevronDown className={sort.direction === 'asc' ? 'rotate-180' : ''} size={16} /> : <ChevronsUpDown size={16} />}
                           </button>
-                          <button type="button" onClick={() => setOpenFilter(openFilter === column ? '' : column)} className="grid h-11 w-11 shrink-0 place-items-center rounded hover:bg-[#FFF5F0] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]" aria-label={`Filter ${columnLabel(column)}`} aria-expanded={openFilter === column}>
+                          <button type="button" onClick={() => setOpenFilter(openFilter === column ? '' : column)} className="grid h-11 w-11 shrink-0 place-items-center rounded hover:bg-[var(--bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/70" aria-label={`Filter ${columnLabel(column)}`} aria-expanded={openFilter === column}>
                             <Filter size={16} />
                           </button>
                         </div>
@@ -398,7 +398,7 @@ function FilterMenu({ options, selected, onChange }) {
     <div className="absolute left-4 top-14 z-20 w-64 rounded-lg border border-[var(--border-color)] bg-[var(--bg-elevated)] p-3 text-sm shadow-soft animate-upto-dropdown">
       <div className="max-h-56 space-y-2 overflow-y-auto">
         {options.length ? options.map((option) => (
-          <label key={option} className="flex min-h-11 items-center gap-2 rounded px-2 hover:bg-[#FFF5F0] dark:hover:bg-white/5">
+          <label key={option} className="flex min-h-11 items-center gap-2 rounded px-2 hover:bg-[var(--bg-subtle)]">
             <input
               type="checkbox"
               checked={selected.includes(option)}
@@ -422,13 +422,13 @@ function RowMenu({ open, onOpen, onView, onEdit, onDelete, onArchive }) {
   if (!items.length) return null
   return (
     <span className="relative ml-2 inline-flex">
-      <button type="button" onClick={onOpen} className="grid h-10 w-10 place-items-center rounded-lg border border-[var(--border-color)] hover:bg-[#FFF5F0] focus:outline-none focus:ring-2 focus:ring-[#FF6B35]" aria-label="Open row actions">
+      <button type="button" onClick={onOpen} className="grid h-10 w-10 place-items-center rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/70" aria-label="Open row actions">
         <MoreVertical size={18} />
       </button>
       {open ? (
         <span className="absolute right-0 top-11 z-20 grid w-40 gap-1 rounded-lg border border-[var(--border-color)] bg-[var(--bg-elevated)] p-2 text-left shadow-soft animate-upto-dropdown">
           {items.map(([label, Icon, handler]) => (
-            <button key={label} type="button" onClick={handler} className="flex min-h-11 items-center gap-2 rounded px-2 text-sm font-semibold text-[var(--text-primary)] hover:bg-[#FFF5F0] focus:outline-none focus:ring-2 focus:ring-[#FF6B35] dark:hover:bg-white/5">
+            <button key={label} type="button" onClick={handler} className="flex min-h-11 items-center gap-2 rounded px-2 text-sm font-semibold text-[var(--text-primary)] hover:bg-[var(--bg-subtle)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/70">
               <Icon size={16} />
               {label}
             </button>
@@ -452,7 +452,7 @@ function Pagination({ currentPage, totalPages, pageSize, totalRows, onPageChange
             {[10, 25, 50].map((value) => <option key={value} value={value}>{value}</option>)}
           </select>
         </label>
-        <button type="button" onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="grid h-11 w-11 place-items-center rounded-lg border border-[var(--border-color)] disabled:opacity-45">
+        <button type="button" aria-label="Previous page" onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="grid h-11 w-11 place-items-center rounded-lg border border-[var(--border-color)] disabled:opacity-45">
           <ChevronLeft size={18} />
         </button>
         <label className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
@@ -460,7 +460,7 @@ function Pagination({ currentPage, totalPages, pageSize, totalRows, onPageChange
           <input className="admin-input min-h-11 w-20 py-2" type="number" min="1" max={totalPages} value={currentPage} onChange={(event) => onPageChange(Math.min(totalPages, Math.max(1, Number(event.target.value) || 1)))} />
           of {totalPages}
         </label>
-        <button type="button" onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className="grid h-11 w-11 place-items-center rounded-lg border border-[var(--border-color)] disabled:opacity-45">
+        <button type="button" aria-label="Next page" onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages} className="grid h-11 w-11 place-items-center rounded-lg border border-[var(--border-color)] disabled:opacity-45">
           <ChevronRight size={18} />
         </button>
       </div>

@@ -356,7 +356,7 @@ export default function QuestionManagementPage() {
           </div>
 
           <div className="mt-5 flex flex-wrap gap-3">
-            <Button type="submit" disabled={saving}>{saving ? 'Saving...' : editingId ? 'Update Question' : 'Add Question'}</Button>
+            <Button type="submit" loading={saving} loadingLabel="Saving...">{editingId ? 'Update Question' : 'Add Question'}</Button>
             <Button type="button" variant="secondary" onClick={() => { setEditingId(''); setForm(newDraft()) }}>Reset</Button>
           </div>
         </form>

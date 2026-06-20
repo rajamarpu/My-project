@@ -1,300 +1,162 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ArrowRight, BookOpen, CheckCircle2, Play, Sparkles, Trophy, Zap, Users, Target } from 'lucide-react'
+import {
+  ArrowRight, Award, BookOpen, BriefcaseBusiness, CheckCircle2, Compass,
+  GraduationCap, Layers3, PlayCircle, Sparkles, Target,
+} from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import CourseCard from '../../components/ui/Course/CourseCard.jsx'
-import PersonalityCard from '../../components/ui/TeacherSwitcher/PersonalityCard.jsx'
-import { fetchCourses, fetchPlatformSummary } from '../../api/api.js'
-import { aiPersonalities } from '../../constants/aiPersonalities.js'
+import { fetchCourses, fetchLearnerDashboard, fetchPlatformSummary } from '../../api/api.js'
 import Button from '../../components/common/Button/Button.jsx'
 import { pageTransition } from '../../utils/animationVariants.js'
 
-function generateParticlePositions(count) {
-  return Array.from({ length: count }, (_, index) => ({
-    left: `${(index * 37) % 100}%`,
-    top: `${(index * 53) % 100}%`,
-    duration: 3 + (index % 5),
-    delay: (index % 6) * 0.22,
-  }))
-}
-
-const learningPaths = ['Prompt Engineering', 'Fullstack AI Apps', 'Data Analyst Launchpad', 'Product Design Sprint']
-const faqs = [
-  ['Can I switch virtual teachers mid-course?', 'Yes. The selected teacher changes the tone, pacing, voice preview, and lesson guidance without resetting progress.'],
-  ['Is this ready for real backend APIs?', 'The frontend is structured around protected routes, JWT storage, Axios services, and role-based views.'],
-  ['How is this different from a generic course marketplace?', 'The core experience is the Indian celebrity-inspired AI teacher layer: personality, voice style, teaching style, mentor suggestions, and adaptive recommendations.'],
+const learningPaths = [
+  { title: 'Campus to Career', text: 'Build foundational workplace and interview-ready skills.', icon: BriefcaseBusiness },
+  { title: 'AI and Technology', text: 'Learn practical tools, development, and emerging AI workflows.', icon: Sparkles },
+  { title: 'Professional Growth', text: 'Strengthen communication, leadership, and business capability.', icon: Target },
+  { title: 'Certificate Sprint', text: 'Follow a focused route from lessons to verified achievement.', icon: Award },
 ]
+
+const benefits = [
+  { title: 'Structured learning', text: 'Clear course sequences replace random browsing.', icon: Layers3 },
+  { title: 'Expert instruction', text: 'Learn with experienced instructors and guided mentors.', icon: GraduationCap },
+  { title: 'Practical assessment', text: 'Assignments and assessments reinforce every skill.', icon: Target },
+  { title: 'Visible progress', text: 'Track course completion, study time, and streaks.', icon: Compass },
+  { title: 'Verified certificates', text: 'Turn completed learning into shareable credentials.', icon: Award },
+  { title: 'Career readiness', text: 'Connect practical skills to employability outcomes.', icon: BriefcaseBusiness },
+]
+
+function enrollmentCount(course) {
+  return Number(course.enrollmentCount ?? course._count?.enrollments ?? course.enrollments?.length ?? 0)
+}
 
 export default function LandingPage() {
   const navigate = useNavigate()
   const auth = useSelector((state) => state.auth)
-  const particles = useMemo(() => generateParticlePositions(26), [])
   const [courses, setCourses] = useState([])
-  const [summary, setSummary] = useState({
-    totalLearners: 0,
-    totalInstructors: 0,
-    totalCourses: 0,
-    totalCategories: 0,
-  })
+  const [enrolledCourses, setEnrolledCourses] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [summary, setSummary] = useState({ totalLearners: 0, totalInstructors: 0, totalCourses: 0, totalCategories: 0 })
 
   useEffect(() => {
-    let isMounted = true
-    async function loadLiveData() {
-      try {
-        const [summaryRes, coursesRes] = await Promise.all([
-          fetchPlatformSummary().catch(() => ({ data: {} })),
-          fetchCourses().catch(() => ({ data: { courses: [] } })),
-        ])
-        if (!isMounted) return
-        const liveSummary = summaryRes.data?.summary || summaryRes.data || {}
-        setSummary({
-          totalLearners: liveSummary.totalLearners ?? 0,
-          totalInstructors: liveSummary.totalInstructors ?? 0,
-          totalCourses: liveSummary.totalCourses ?? 0,
-          totalCategories: liveSummary.totalCategories ?? 0,
-        })
-        setCourses(coursesRes.data?.courses || coursesRes.data || [])
-      } catch (error) {
-        console.error('Failed to load landing data:', error)
-      }
+    let active = true
+    async function loadHome() {
+      const [summaryResponse, courseResponse, dashboardResponse] = await Promise.all([
+        fetchPlatformSummary().catch(() => ({ data: {} })),
+        fetchCourses().catch(() => ({ data: { courses: [] } })),
+        auth.user && auth.token ? fetchLearnerDashboard().catch(() => ({ data: { dashboard: { enrollments: [] } } })) : Promise.resolve({ data: { dashboard: { enrollments: [] } } }),
+      ])
+      if (!active) return
+      const liveSummary = summaryResponse.data?.summary || summaryResponse.data || {}
+      setSummary({
+        totalLearners: liveSummary.totalLearners ?? 0,
+        totalInstructors: liveSummary.totalInstructors ?? 0,
+        totalCourses: liveSummary.totalCourses ?? 0,
+        totalCategories: liveSummary.totalCategories ?? 0,
+      })
+      setCourses(courseResponse.data?.courses || courseResponse.data || [])
+      setEnrolledCourses((dashboardResponse.data?.dashboard?.enrollments || []).map((enrollment) => ({ ...enrollment.course, progress: Math.round(Number(enrollment.completionPct || 0)), enrollment })).filter((course) => course.id))
+      setLoading(false)
     }
-    void loadLiveData()
-    return () => {
-      isMounted = false
-    }
-  }, [])
+    void loadHome()
+    return () => { active = false }
+  }, [auth.token, auth.user])
 
   const categories = useMemo(() => {
-    const counts = courses.reduce((acc, course) => {
-      const category = course.category || 'Uncategorized'
-      acc.set(category, (acc.get(category) || 0) + 1)
-      return acc
-    }, new Map())
-    return Array.from(counts, ([name, count]) => ({ id: name, name, count })).slice(0, 6)
+    const counts = new Map()
+    courses.forEach((course) => counts.set(course.category || 'Uncategorized', (counts.get(course.category || 'Uncategorized') || 0) + 1))
+    return Array.from(counts, ([name, count]) => ({ name, count })).slice(0, 8)
   }, [courses])
+  const popular = useMemo(() => [...courses].sort((a, b) => enrollmentCount(b) - enrollmentCount(a)).slice(0, 3), [courses])
+  const popularIds = useMemo(() => new Set(popular.map((course) => course.id)), [popular])
+  const recommended = useMemo(() => courses.filter((course) => !popularIds.has(course.id)).slice(0, 4), [courses, popularIds])
 
-  const startLearning = () => {
-    if (auth.user && auth.token) {
-      navigate('/dashboard')
-      return
-    }
-    navigate('/register')
+  function startLearning() {
+    navigate(auth.user && auth.token ? '/dashboard' : '/register')
   }
 
   return (
-    <motion.section className="w-full max-w-full space-y-8 pb-14 sm:space-y-10 xl:space-y-12" variants={pageTransition} initial="hidden" animate="enter" exit="exit">
-      <section className="relative isolate w-full max-w-full overflow-hidden rounded-xl border border-[var(--border-color)] bg-white px-[clamp(16px,4vw,48px)] py-[clamp(20px,3vw,40px)] text-[var(--text-primary)] shadow-[0_28px_90px_rgba(37,99,235,0.14)] transition-colors dark:bg-[var(--bg-secondary)] sm:rounded-[2rem]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_15%,rgba(37,99,235,0.15),transparent_28%),radial-gradient(circle_at_82%_16%,rgba(6,182,212,0.16),transparent_30%),radial-gradient(circle_at_54%_90%,rgba(219,39,119,0.10),transparent_26%),linear-gradient(180deg,rgba(255,255,255,0.96),rgba(248,251,255,0.96))] dark:bg-[radial-gradient(circle_at_18%_15%,rgba(56,189,248,0.22),transparent_28%),radial-gradient(circle_at_82%_16%,rgba(45,212,191,0.16),transparent_30%),linear-gradient(135deg,rgba(7,29,47,0.98),rgba(8,62,87,0.94))]" />
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-[var(--accent-secondary)]/50 to-transparent" />
-        {particles.map((pos, index) => (
-          <motion.span
-            key={index}
-            className="absolute h-1 w-1 rounded-full bg-[var(--accent-secondary)]/70"
-            style={{ left: pos.left, top: pos.top }}
-            animate={{ opacity: [0.15, 0.9, 0.15], y: [0, -16, 0] }}
-            transition={{ duration: pos.duration, repeat: Infinity, delay: pos.delay }}
-          />
-        ))}
-
-        <div className="relative grid w-full gap-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)] lg:items-center xl:gap-8 2xl:grid-cols-[minmax(0,1.15fr)_minmax(400px,0.85fr)]">
-          <div className="w-full max-w-[72rem] space-y-5">
-            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--accent-secondary)]/35 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-700 dark:bg-white/10 dark:text-cyan-100">
-              <Sparkles size={16} />
-              XP tracks, badges, and AI teachers built for freshers
-            </div>
-            <div className="space-y-4">
-              <h1 className="text-[clamp(2rem,5vw,4.5rem)] font-semibold leading-[1.04] tracking-normal text-slate-800 dark:text-white">
-                Learn faster with a
-                <span className="block text-[var(--accent-bold)] dark:text-pink-300">
-                  gamified skill campus
-                </span>
-                built for
-                <span className="bg-gradient-to-r from-blue-600 via-cyan-500 to-orange-500 bg-clip-text text-transparent">
-                  {' '}your career.
-                </span>
-              </h1>
-              <motion.p
-                className="max-w-[56rem] text-base leading-7 text-[var(--text-secondary)] dark:text-slate-300 sm:text-lg sm:leading-8 xl:text-xl xl:leading-9"
-                initial={{ opacity: 0.2 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.8 }}
-              >
-                Switch between AI mentor personalities, earn achievements as you progress, and follow clean course paths that make serious upskilling feel playful and approachable.
-              </motion.p>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Button onClick={startLearning} className="min-h-12">
-                Start learning <ArrowRight size={16} className="ml-2" />
-              </Button>
-              <Button variant="secondary" onClick={() => navigate('/personalities')} className="min-h-12 border-cyan-400/45 text-cyan-700 dark:text-cyan-100">
-                <Play size={16} className="mr-2" /> Preview teachers
-              </Button>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3 xl:max-w-4xl">
-              {[
-                [summary.totalLearners, 'learners on leaderboard'],
-                [summary.totalInstructors, 'AI mentor styles'],
-                [summary.totalCourses, 'skill quests live'],
-              ].map(([value, label]) => (
-                <div key={label} className="rounded-2xl border border-[var(--border-color)] bg-white/90 p-4 shadow-[0_18px_48px_rgba(37,99,235,0.10)] dark:bg-white/[0.07]">
-                  <p className="text-2xl font-semibold text-blue-600 dark:text-white">{value}</p>
-                  <p className="mt-1 text-sm text-[var(--text-muted)] dark:text-slate-300">{label}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="relative w-full">
-            <div className="absolute -inset-3 rounded-[2rem] bg-gradient-to-r from-blue-500/18 via-cyan-400/18 to-pink-500/12 blur-2xl sm:-inset-5" />
-            <div className="relative rounded-xl border border-[var(--border-color)] bg-white/88 p-4 shadow-2xl backdrop-blur-xl dark:bg-white/[0.08] sm:rounded-[2rem] sm:p-5">
-              <div className="flex flex-col gap-4 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
-                <div>
-                  <p className="text-sm uppercase tracking-[0.2em] text-cyan-700 dark:text-cyan-200">Career-ready progress</p>
-                  <h2 className="mt-2 text-2xl font-semibold text-slate-800 dark:text-white">Build proof as you learn</h2>
-                  <p className="mt-1 text-sm text-[var(--text-secondary)] dark:text-slate-300">Turn lessons into XP, badges, and visible milestones recruiters can understand.</p>
-                </div>
-                <div className="grid h-20 w-20 shrink-0 place-items-center rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50 shadow-[0_16px_38px_rgba(245,158,11,0.18)] dark:border-amber-200/30 dark:from-slate-900 dark:to-slate-800">
-                  <Trophy className="h-10 w-10 text-amber-500" />
-                </div>
-              </div>
-
-            <div className="mt-4 space-y-3">
-              <div className="flex items-center justify-between rounded-3xl border border-blue-200 bg-gradient-to-br from-blue-50 to-cyan-50 p-4 shadow-soft dark:border-white/10 dark:from-slate-900/80 dark:to-slate-800/80">
-                  <div className="flex items-center gap-3">
-                    <Zap className="text-amber-500" />
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800 dark:text-white">XP Points</p>
-                      <p className="text-xs text-[var(--text-muted)] dark:text-slate-400">Complete lessons to earn more</p>
-                    </div>
-                  </div>
-                  <span className="text-2xl font-bold text-amber-500">0</span>
-                </div>
-
-                <div className="flex items-center justify-between rounded-3xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-teal-50 p-4 shadow-soft dark:border-white/10 dark:from-slate-900/80 dark:to-slate-800/80">
-                  <div className="flex items-center gap-3">
-                    <Target className="text-emerald-500" />
-                    <div>
-                      <p className="text-sm font-semibold text-slate-800 dark:text-white">Skill Badges</p>
-                      <p className="text-xs text-[var(--text-muted)] dark:text-slate-400">Unlock by mastering topics</p>
-                    </div>
-                  </div>
-                  <span className="text-2xl font-bold text-emerald-500">0</span>
-                </div>
-
-                <div className="rounded-3xl border border-[var(--border-color)] bg-white/75 p-4 shadow-soft dark:bg-slate-950/75">
-                  <div className="flex items-center gap-3 text-slate-800 dark:text-slate-100">
-                    <Sparkles className="text-cyan-600 dark:text-cyan-200" />
-                    <p className="text-sm leading-6">
-                      Start your first course to begin earning achievements and tracking your learning streak.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+    <motion.section className="w-full space-y-10 pb-16 xl:space-y-14" variants={pageTransition} initial="hidden" animate="enter" exit="exit">
+      <section className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(23rem,0.88fr)]">
+        <div className="enterprise-mesh-panel relative overflow-hidden rounded-2xl border border-[var(--border-color)] px-[clamp(20px,4vw,56px)] py-[clamp(36px,5vw,68px)] shadow-soft">
+          <div className="relative max-w-4xl">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--bg-elevated)] px-4 py-2 text-sm font-semibold text-[var(--accent-primary)] shadow-soft"><Sparkles size={16} /> Practical learning for real careers</span>
+            <h1 className="mt-6 text-[clamp(2.5rem,5vw,4.75rem)] font-bold leading-[1.03] text-[var(--text-primary)]">Build skills. Prove progress. <span className="upto-brand-text">Move your career forward.</span></h1>
+            <p className="mt-6 max-w-3xl text-base leading-8 text-[var(--text-secondary)] sm:text-lg">Learn through structured courses, practical assignments, assessments, expert guidance, and certificates designed for employability.</p>
+            <div className="mt-8 flex flex-wrap gap-3"><Button onClick={startLearning} className="min-h-12">{auth.user ? 'Open dashboard' : 'Start learning'} <ArrowRight size={17} /></Button><Button variant="secondary" onClick={() => navigate('/courses')} className="min-h-12"><Compass size={17} /> Explore courses</Button></div>
           </div>
         </div>
-      </section>
 
-      <section className="w-full max-w-full space-y-6">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-          <div>
-            <p className="text-sm uppercase tracking-[0.25em] text-cyan-300">Indian celebrity AI teachers</p>
-            <h2 className="mt-2 text-[clamp(1.65rem,4vw,2.35rem)] font-semibold leading-tight text-white">Pick an actor or cricketer personality for the lesson</h2>
+        <aside className="platform-card flex flex-col overflow-hidden rounded-2xl p-5 shadow-[var(--shadow-lg)] sm:p-6">
+          <div className="flex items-start justify-between gap-4">
+            <div><p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">Your learning journey</p><h2 className="mt-2 text-2xl font-bold text-[var(--text-primary)]">From first lesson to career proof</h2></div>
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]"><GraduationCap size={23} /></span>
           </div>
-          <Button variant="secondary" onClick={() => navigate('/personalities')}>View all</Button>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-          {aiPersonalities.map((personality) => (
-            <PersonalityCard key={personality.id} personality={personality} />
-          ))}
-        </div>
-      </section>
 
-      <section className="w-full max-w-full space-y-6">
-        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-          <div>
-            <p className="text-sm uppercase tracking-[0.25em] text-cyan-300">Trending AI courses</p>
-            <h2 className="mt-2 text-[clamp(1.65rem,4vw,2.35rem)] font-semibold leading-tight text-white">Career tracks with adaptive guidance</h2>
-          </div>
-          <Button variant="secondary" onClick={() => navigate('/explore')}>Explore catalog</Button>
-        </div>
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-          {courses.length ? (
-            courses.slice(0, 3).map((course) => (
-              <CourseCard key={course.id} course={course} onViewDetails={() => navigate(`/course/${course.id}`)} />
-            ))
-          ) : (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-6 text-slate-300 lg:col-span-3">
-              Courses published by admin will appear here automatically.
-            </div>
-          )}
-        </div>
-      </section>
-
-      <section className="grid w-full max-w-full gap-5 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
-        <div className="glass-card p-6">
-          <p className="text-sm uppercase tracking-[0.25em] text-cyan-300">Learning paths</p>
-          <h2 className="mt-2 text-[clamp(1.65rem,4vw,2.35rem)] font-semibold leading-tight text-white">Structured routes, not random browsing</h2>
-          <p className="mt-4 text-slate-300">Each path pairs courses with an AI mentor mode, weekly goals, and project checkpoints.</p>
-          <div className="mt-6 space-y-3">
-            {learningPaths.map((path) => (
-              <div key={path} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/55 p-4 text-slate-200">
-                <CheckCircle2 className="text-emerald-300" size={18} />
-                {path}
+          <div className="mt-6 grid gap-3">
+            {[
+              ['Discover', 'Choose the right course and learning path.', Compass],
+              ['Learn', 'Follow structured lessons with expert guidance.', BookOpen],
+              ['Practice', 'Complete assignments and skill assessments.', Target],
+              ['Prove', 'Earn certificates and visible progress records.', Award],
+            ].map(([title, text, Icon], index) => (
+              <div key={title} className="theme-subcard flex items-center gap-3 rounded-xl p-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]"><Icon size={18} /></span>
+                <span className="min-w-0 flex-1"><strong className="block text-sm text-[var(--text-primary)]">{index + 1}. {title}</strong><span className="mt-0.5 block text-xs leading-5 text-[var(--text-secondary)]">{text}</span></span>
+                <CheckCircle2 size={17} className="shrink-0 text-[var(--color-success)]" />
               </div>
             ))}
           </div>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {categories.length ? categories.map((category) => (
-            <button
-              key={category.id}
-              type="button"
-              onClick={() => navigate(`/explore?category=${encodeURIComponent(category.name)}`)}
-              className="rounded-2xl border border-white/10 bg-white/[0.05] p-5 text-left transition hover:-translate-y-1 hover:border-cyan-300/40 hover:bg-white/[0.08]"
-            >
-              <BookOpen className="text-cyan-300" />
-              <p className="mt-4 text-lg font-semibold text-white">{category.name}</p>
-              <p className="mt-1 text-sm text-slate-400">{category.count} courses</p>
-            </button>
-          )) : (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.05] p-5 text-slate-300 sm:col-span-2">
-              {summary.totalCategories} categories are available in the database.
-            </div>
-          )}
-        </div>
+
+          {popular[0] ? <button type="button" onClick={() => navigate(`/course/${popular[0].id}`)} className="mt-5 rounded-xl border border-[var(--accent-primary)]/25 bg-[var(--accent-soft)] p-4 text-left transition hover:border-[var(--accent-primary)]"><span className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--accent-primary)]">Popular now</span><span className="mt-2 flex items-center justify-between gap-3"><strong className="truncate text-sm text-[var(--text-primary)]">{popular[0].title}</strong><ArrowRight size={16} className="shrink-0 text-[var(--accent-primary)]" /></span></button> : null}
+
+          <div className="mt-auto grid grid-cols-3 gap-2 pt-5">{[[summary.totalLearners, 'Learners'], [summary.totalCourses, 'Courses'], [summary.totalInstructors, 'Mentors']].map(([value, label]) => <div key={label} className="rounded-xl bg-[var(--bg-subtle)] p-3 text-center"><strong className="block text-xl text-[var(--accent-primary)]">{value}</strong><span className="mt-1 block text-[0.68rem] font-semibold text-[var(--text-muted)]">{label}</span></div>)}</div>
+        </aside>
       </section>
 
-      <section className="grid w-full max-w-full gap-5 md:grid-cols-3">
-        {[
-          ['Learners', summary.totalLearners],
-          ['Courses', summary.totalCourses],
-          ['Categories', summary.totalCategories],
-        ].map(([label, value]) => (
-          <div key={label} className="glass-card p-6">
-            <Users className="text-teal-300" />
-            <p className="mt-5 text-3xl font-semibold text-white">{value}</p>
-            <p className="mt-2 text-sm text-slate-400">{label} from the live database</p>
-          </div>
-        ))}
-      </section>
+      <HomeSection eyebrow="Continue Learning" title={auth.user ? 'Resume where you left off' : 'Start your learning journey'} action={auth.user ? <Button variant="secondary" onClick={() => navigate('/dashboard')}>Open dashboard</Button> : null}>
+        {auth.user && enrolledCourses.length ? <div className="grid gap-3">{enrolledCourses.slice(0, 3).map((course) => <ContinueRow key={course.id} course={course} onContinue={() => navigate(`/player/${course.id}`)} />)}</div> : <div className="theme-card grid gap-5 rounded-xl p-6 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-center"><span className="grid h-14 w-14 place-items-center rounded-2xl bg-[var(--accent-soft)] text-[var(--accent-primary)]"><PlayCircle size={27} /></span><div><h3 className="font-bold text-[var(--text-primary)]">{auth.user ? 'Choose your first course' : 'Create your learner account'}</h3><p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">Your active courses and progress will stay organized here.</p></div><Button onClick={startLearning}>{auth.user ? 'Browse courses' : 'Get started'}</Button></div>}
+      </HomeSection>
 
-      <section className="glass-card w-full max-w-full p-5 sm:p-8">
-        <p className="text-sm uppercase tracking-[0.25em] text-cyan-300">FAQ</p>
-        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {faqs.map(([question, answer]) => (
-            <div key={question} className="rounded-2xl border border-white/10 bg-slate-950/50 p-5">
-              <h3 className="font-semibold text-white">{question}</h3>
-              <p className="mt-3 text-sm leading-6 text-slate-400">{answer}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <HomeSection eyebrow="Popular Courses" title="What learners are choosing" action={<Button variant="secondary" onClick={() => navigate('/courses')}>View all</Button>}>
+        <CourseGrid courses={popular} loading={loading} onOpen={(course) => navigate(`/course/${course.id}`)} empty="Popular courses will appear after enrollment activity begins." />
+      </HomeSection>
+
+      <HomeSection eyebrow="Recommended Courses" title="Continue building career-ready skills">
+        <CourseGrid courses={recommended} loading={loading} onOpen={(course) => navigate(`/course/${course.id}`)} empty="New course recommendations will appear as the catalog grows." columns="xl:grid-cols-4" />
+      </HomeSection>
+
+      <HomeSection eyebrow="Learning Paths" title="Structured routes to meaningful outcomes">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{learningPaths.map((path) => <button key={path.title} type="button" onClick={() => navigate('/learning-path')} className="theme-card theme-subcard-hover rounded-xl p-5 text-left"><span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]"><path.icon size={20} /></span><h3 className="mt-4 font-bold text-[var(--text-primary)]">{path.title}</h3><p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{path.text}</p><span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent-primary)]">Explore path <ArrowRight size={15} /></span></button>)}</div>
+      </HomeSection>
+
+      <HomeSection eyebrow="Categories" title="Explore learning by skill area" action={<Button variant="secondary" onClick={() => navigate('/categories')}>All categories</Button>}>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{categories.length ? categories.map((category) => <button key={category.name} type="button" onClick={() => navigate(`/explore?category=${encodeURIComponent(category.name)}`)} className="theme-subcard theme-subcard-hover flex items-center gap-4 rounded-xl p-4 text-left"><span className="grid h-10 w-10 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]"><BookOpen size={18} /></span><span className="min-w-0 flex-1"><strong className="block truncate text-[var(--text-primary)]">{category.name}</strong><span className="text-sm text-[var(--text-muted)]">{category.count} courses</span></span><ArrowRight size={16} className="text-[var(--text-muted)]" /></button>) : <div className="sm:col-span-2 lg:col-span-3 xl:col-span-4"><EmptyMessage text="No learning categories are available yet. Check back after new courses are published." /></div>}</div>
+      </HomeSection>
+
+      <HomeSection eyebrow="Platform Benefits" title="Everything learners need in one LMS">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{benefits.map((benefit) => <div key={benefit.title} className="theme-card rounded-xl p-5"><span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]"><benefit.icon size={20} /></span><h3 className="mt-4 font-bold text-[var(--text-primary)]">{benefit.title}</h3><p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{benefit.text}</p></div>)}</div>
+      </HomeSection>
     </motion.section>
   )
 }
 
+function HomeSection({ eyebrow, title, action, children }) {
+  return <section className="w-full"><div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.2em]">{eyebrow}</p><h2 className="mt-2 text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">{title}</h2></div>{action}</div>{children}</section>
+}
 
+function ContinueRow({ course, onContinue }) {
+  const progress = Math.max(0, Math.min(100, Number(course.progress || 0)))
+  return <div className="theme-card grid gap-4 rounded-xl p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"><div className="min-w-0"><span className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--accent-primary)]">{course.category || 'Active course'}</span><h3 className="mt-2 truncate font-bold text-[var(--text-primary)]">{course.title}</h3><div className="mt-3 flex items-center gap-3"><span className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--bg-subtle)]"><span className="block h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${progress}%` }} /></span><span className="text-xs font-bold text-[var(--text-secondary)]">{progress}%</span></div></div><Button onClick={onContinue}>Continue <ArrowRight size={15} /></Button></div>
+}
+
+function CourseGrid({ courses, loading, onOpen, empty, columns = 'xl:grid-cols-3' }) {
+  if (loading) return <div className={`grid gap-5 md:grid-cols-2 ${columns}`}>{Array.from({ length: columns.includes('4') ? 4 : 3 }).map((_, index) => <span key={index} className="skeleton h-[31rem] rounded-xl" />)}</div>
+  if (!courses.length) return <EmptyMessage text={empty} />
+  return <div className={`grid items-stretch gap-5 md:grid-cols-2 ${columns}`}>{courses.map((course) => <CourseCard key={course.id} course={course} onViewDetails={() => onOpen(course)} />)}</div>
+}
+
+function EmptyMessage({ text }) {
+  return <div className="rounded-xl border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] p-8 text-center"><CheckCircle2 className="mx-auto text-[var(--text-muted)]" size={28} /><p className="mt-3 text-sm font-semibold text-[var(--text-secondary)]">{text}</p></div>
+}
