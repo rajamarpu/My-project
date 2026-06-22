@@ -85,7 +85,7 @@ export default function AdminLayout({ children }) {
   }
 
   return (
-    <div className="admin-shell min-h-screen text-[var(--text-primary)]" style={{ '--admin-sidebar-width': collapsed ? '84px' : '276px' }}>
+    <div className="admin-shell min-h-screen text-[var(--text-primary)]" style={{ '--admin-sidebar-width': collapsed ? '112px' : '276px' }}>
       <RouteProgress />
       <div className="min-h-screen lg:block">
         <div className="sticky top-0 z-30 border-b border-[var(--border-color)] bg-[var(--bg-elevated)]/95 p-4 backdrop-blur lg:hidden">
@@ -107,7 +107,7 @@ export default function AdminLayout({ children }) {
 
         {navOpen ? <button type="button" aria-label="Close admin menu overlay" onClick={() => setNavOpen(false)} className="fixed inset-0 z-30 bg-slate-950/40 backdrop-blur-sm lg:hidden" /> : null}
 
-        <aside className={`${navOpen ? 'flex animate-upto-fade-slide' : 'hidden'} fixed inset-x-3 top-20 z-40 max-h-[calc(100dvh-6rem)] flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-3 shadow-soft backdrop-blur-xl transition-[width] duration-200 sm:inset-x-4 sm:p-4 lg:inset-y-0 lg:left-0 lg:top-0 lg:flex lg:h-screen ${collapsed ? 'lg:w-[84px] lg:p-4' : 'lg:w-[276px] lg:p-5'} lg:max-h-none lg:rounded-none lg:border-x-0 lg:border-y-0 lg:border-r lg:shadow-none`}>
+        <aside className={`${navOpen ? 'flex animate-upto-fade-slide' : 'hidden'} fixed inset-x-3 top-20 z-40 max-h-[calc(100dvh-6rem)] flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-3 shadow-soft backdrop-blur-xl transition-[width] duration-200 sm:inset-x-4 sm:p-4 lg:inset-y-0 lg:left-0 lg:top-0 lg:flex lg:h-screen ${collapsed ? 'lg:w-[112px] lg:p-3' : 'lg:w-[276px] lg:p-5'} lg:max-h-none lg:rounded-none lg:border-x-0 lg:border-y-0 lg:border-r lg:shadow-none`}>
           <div className="shrink-0 flex items-center justify-between gap-3">
             <Logo to="/admin" admin compact={collapsed} className={collapsed ? 'lg:[&>span:nth-child(2)]:hidden' : ''} />
             {!collapsed ? <div className="hidden lg:block"><ThemeToggleButton /></div> : null}

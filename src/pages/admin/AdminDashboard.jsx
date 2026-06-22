@@ -108,13 +108,13 @@ export default function AdminDashboard() {
   const assignmentCount = useMemo(() => new Set(submissions.map((item) => item.assignmentId).filter(Boolean)).size, [submissions])
   const kpis = useMemo(() => [
     { label: 'Users', value: compact(metrics.totalUsers), detail: 'all platform accounts', icon: Users, href: '/admin/users', tone: 'blue' },
-    { label: 'Students', value: compact(metrics.totalLearners), detail: 'registered learners', icon: GraduationCap, href: '/admin/learners', tone: 'cyan' },
+    { label: 'Students', value: compact(metrics.totalLearners), detail: 'registered learners', icon: GraduationCap, href: '/admin/learners', tone: 'teal' },
     { label: 'Instructors', value: compact(metrics.totalInstructors), detail: 'teaching accounts', icon: Users, href: '/admin/instructors', tone: 'orange' },
-    { label: 'Courses', value: compact(metrics.totalCourses), detail: `${metrics.publishRate}% published`, icon: BookOpenCheck, href: '/admin/courses', tone: 'blue' },
-    { label: 'Revenue', value: money(metrics.revenueCents), detail: 'confirmed payments', icon: BadgeIndianRupee, href: '/admin/revenue', tone: 'orange' },
-    { label: 'Certificates', value: compact(metrics.totalCertificates), detail: 'issued credentials', icon: Award, href: '/admin/certificates', tone: 'green' },
-    { label: 'Assignments', value: compact(assignmentCount), detail: 'unique assigned assessments', icon: ClipboardCheck, href: '/admin/evaluations', tone: 'cyan' },
-    { label: 'Assessments', value: compact(submissions.length), detail: 'learner submissions', icon: FileBarChart2, href: '/admin/evaluations', tone: 'green' },
+    { label: 'Courses', value: compact(metrics.totalCourses), detail: `${metrics.publishRate}% published`, icon: BookOpenCheck, href: '/admin/courses', tone: 'rose' },
+    { label: 'Revenue', value: money(metrics.revenueCents), detail: 'confirmed payments', icon: BadgeIndianRupee, href: '/admin/revenue', tone: 'violet' },
+    { label: 'Certificates', value: compact(metrics.totalCertificates), detail: 'issued credentials', icon: Award, href: '/admin/certificates', tone: 'sky' },
+    { label: 'Assignments', value: compact(assignmentCount), detail: 'unique assigned assessments', icon: ClipboardCheck, href: '/admin/evaluations', tone: 'emerald' },
+    { label: 'Assessments', value: compact(submissions.length), detail: 'learner submissions', icon: FileBarChart2, href: '/admin/evaluations', tone: 'amber' },
   ], [assignmentCount, metrics, submissions.length])
 
   const chartData = useMemo(() => metrics.growth.slice(-Number(range)), [metrics.growth, range])
@@ -181,7 +181,7 @@ export default function AdminDashboard() {
 
       <DashboardSection eyebrow="KPI section" title="Platform performance" description="Eight core indicators for LMS operations.">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {kpis.map((item) => <AdminMetricCard key={item.label} {...item} loading={loading} onClick={() => navigate(item.href)} />)}
+          {kpis.map((item) => <AdminMetricCard key={item.label} {...item} loading={loading} />)}
         </div>
       </DashboardSection>
 

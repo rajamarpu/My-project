@@ -520,24 +520,33 @@ function EnterpriseOperationsPanel({ signals }) {
         <p className="mt-2 max-w-4xl text-sm leading-6 text-[var(--text-secondary)]">{signals.summary}</p>
       </div>
 
-      <div className="mt-5 grid gap-3 md:grid-cols-3">
-        {signals.cards.map((card) => {
-          const Icon = card.icon
-          return (
-            <div key={card.label} className="theme-subcard rounded-lg p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">{card.label}</p>
-                <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--bg-card)] text-[var(--accent-primary)]">
-                  <Icon size={17} />
-                </span>
-              </div>
-              <p className="mt-3 text-xl font-bold text-[var(--text-primary)]">{card.value}</p>
-              <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{card.detail}</p>
-            </div>
-          )
-        })}
+      <div className="mt-5 grid gap-3 md:grid-cols-[repeat(3,minmax(0,1fr))]">
+        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">Score</p>
+          <p className="mt-2 text-3xl font-bold text-[var(--text-primary)]">{signals.score}</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Operational health rating</p>
+        </div>
+        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">Priority</p>
+          <p className="mt-2 text-sm font-semibold text-[var(--text-primary)]">{signals.priority}</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">What the team should do next</p>
+        </div>
+        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">Risk</p>
+          <p className="mt-2 text-sm font-semibold text-[var(--text-primary)]">{signals.risk}</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Current watch-out for this view</p>
+        </div>
       </div>
-
+      <div className="mt-4 grid gap-3 md:grid-cols-2">
+        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">Automation</p>
+          <p className="mt-2 text-sm leading-6 text-[var(--text-primary)]">{signals.automation}</p>
+        </div>
+        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">Review note</p>
+          <p className="mt-2 text-sm leading-6 text-[var(--text-primary)]">{signals.review}</p>
+        </div>
+      </div>
     </div>
   )
 }
@@ -554,9 +563,9 @@ function buildEnterpriseSignals(resource, rows) {
     automation: 'Use filters and bulk actions to reduce repeated one-row admin work.',
     review: 'Open quick view before editing or deleting records.',
     cards: [
-      { label: 'Rows monitored', value: total, detail: 'records loaded into this module', icon: BarChart3 },
-      { label: 'Productivity', value: total > 25 ? 'High' : 'Normal', detail: 'table tools are ready for sorting, filtering, and export', icon: Zap },
-      { label: 'Governance', value: 'Tracked', detail: 'quick view and export support admin review', icon: ShieldCheck },
+      { label: 'Rows monitored', value: total, detail: 'records loaded into this module', icon: BarChart3, tone: 'blue' },
+      { label: 'Productivity', value: total > 25 ? 'High' : 'Normal', detail: 'table tools are ready for sorting, filtering, and export', icon: Zap, tone: 'teal' },
+      { label: 'Governance', value: 'Tracked', detail: 'quick view and export support admin review', icon: ShieldCheck, tone: 'orange' },
     ],
   }
 
@@ -576,9 +585,9 @@ function buildEnterpriseSignals(resource, rows) {
       automation: 'Use filtered exports for weekly onboarding, approval, and learner success queues.',
       review: 'Check quick view before approve, suspend, reject, or delete actions.',
       cards: [
-        { label: 'Approved rate', value: `${total ? Math.round((approved / total) * 100) : 0}%`, detail: `${approved}/${total} accounts approved`, icon: UserCheck },
-        { label: 'Pending queue', value: pending, detail: 'accounts awaiting admin decision', icon: Clock3 },
-        { label: 'Access risk', value: suspended, detail: 'inactive or suspended records', icon: AlertTriangle },
+        { label: 'Approved rate', value: `${total ? Math.round((approved / total) * 100) : 0}%`, detail: `${approved}/${total} accounts approved`, icon: UserCheck, tone: 'blue' },
+        { label: 'Pending queue', value: pending, detail: 'accounts awaiting admin decision', icon: Clock3, tone: 'amber' },
+        { label: 'Access risk', value: suspended, detail: 'inactive or suspended records', icon: AlertTriangle, tone: 'rose' },
       ],
     }
   }
@@ -599,9 +608,9 @@ function buildEnterpriseSignals(resource, rows) {
       automation: 'Use saved filtered exports for draft review, published catalog QA, and high-demand course planning.',
       review: 'Before publishing, check title, category, thumbnail, lessons, assignments, and certificate readiness.',
       cards: [
-        { label: 'Publish rate', value: `${total ? Math.round((published / total) * 100) : 0}%`, detail: `${published}/${total} courses visible`, icon: CheckCircle2 },
-        { label: 'Demand', value: enrollments, detail: 'enrollments across visible rows', icon: TrendingUp },
-        { label: 'Draft risk', value: drafts, detail: 'courses not yet published', icon: Clock3 },
+        { label: 'Publish rate', value: `${total ? Math.round((published / total) * 100) : 0}%`, detail: `${published}/${total} courses visible`, icon: CheckCircle2, tone: 'blue' },
+        { label: 'Demand', value: enrollments, detail: 'enrollments across visible rows', icon: TrendingUp, tone: 'teal' },
+        { label: 'Draft risk', value: drafts, detail: 'courses not yet published', icon: Clock3, tone: 'amber' },
       ],
     }
   }
@@ -621,32 +630,58 @@ function buildEnterpriseSignals(resource, rows) {
       automation: 'Export at-risk cohorts for reminder campaigns or mentor follow-up.',
       review: 'Compare completion percentage, hours studied, and instructor assignment before intervention.',
       cards: [
-        { label: 'Average progress', value: `${avg}%`, detail: 'mean completion across rows', icon: Gauge },
-        { label: 'Completed', value: completed, detail: 'enrollments at 100%', icon: Award },
-        { label: 'At risk', value: atRisk, detail: 'below 25% progress', icon: AlertTriangle },
+        { label: 'Average progress', value: `${avg}%`, detail: 'mean completion across rows', icon: Gauge, tone: 'blue' },
+        { label: 'Completed', value: completed, detail: 'enrollments at 100%', icon: Award, tone: 'emerald' },
+        { label: 'At risk', value: atRisk, detail: 'below 25% progress', icon: AlertTriangle, tone: 'rose' },
       ],
     }
   }
 
-  if (resource === 'payments' || resource === 'revenue') {
+  if (resource === 'payments') {
+    const paid = rows.filter((row) => String(row.status || '').toUpperCase() === 'PAID')
+    const pending = rows.filter((row) => String(row.status || '').toUpperCase() === 'PENDING')
+    const failed = rows.filter((row) => String(row.status || '').toUpperCase() === 'FAILED')
+    return {
+      ...base,
+      title: 'Billing operations snapshot',
+      summary: 'Transaction status, payment exceptions, and support follow-up are separated so finance can work faster.',
+      score: failed.length ? 7 : paid.length ? 9 : 6,
+      tone: failed.length ? 'risk' : pending.length ? 'watch' : 'good',
+      priority: failed.length ? `Investigate ${failed.length} failed payment${failed.length === 1 ? '' : 's'} before reconciliation.` : 'Review pending transactions for support follow-up.',
+      risk: pending.length ? `${pending.length} pending payment${pending.length === 1 ? '' : 's'} may still need closure.` : 'No pending payment state is visible in this module.',
+      automation: 'Create filtered finance exports for paid, pending, and failed payment queues.',
+      review: 'Confirm learner, course, amount, and status before refund or payment resolution decisions.',
+      cards: [
+        { label: 'Transactions', value: rows.length, detail: 'payment records in view', icon: CreditCard, tone: 'blue' },
+        { label: 'Paid', value: paid.length, detail: 'successful payments', icon: CheckCircle2, tone: 'emerald' },
+        { label: 'Pending', value: pending.length, detail: 'awaiting closure', icon: Clock3, tone: 'amber' },
+        { label: 'Failed', value: failed.length, detail: 'payment exceptions', icon: AlertTriangle, tone: 'rose' },
+      ],
+    }
+  }
+
+  if (resource === 'revenue') {
     const paid = rows.filter((row) => String(row.status || '').toUpperCase() === 'PAID')
     const pending = rows.filter((row) => String(row.status || '').toUpperCase() === 'PENDING')
     const failed = rows.filter((row) => String(row.status || '').toUpperCase() === 'FAILED')
     const revenue = paid.reduce((sum, row) => sum + Number(row.amountCents || 0), 0)
+    const averageTicket = paid.length ? revenue / paid.length : 0
+    const paidRate = total ? Math.round((paid.length / total) * 100) : 0
     return {
       ...base,
-      title: 'Billing operations snapshot',
-      summary: 'Revenue quality and payment exceptions are separated so finance review is faster and cleaner.',
-      score: failed.length ? 7 : paid.length ? 9 : 6,
-      tone: failed.length ? 'risk' : pending.length ? 'watch' : 'good',
-      priority: failed.length ? `Investigate ${failed.length} failed payment${failed.length === 1 ? '' : 's'} before reconciliation.` : 'Export paid rows for finance reporting.',
-      risk: pending.length ? `${pending.length} pending payment${pending.length === 1 ? '' : 's'} may need support follow-up.` : 'No pending payment state is visible in this module.',
-      automation: 'Create filtered finance exports for paid, pending, and failed payment queues.',
-      review: 'Confirm learner, course, amount, and status before refund or revenue reporting decisions.',
+      title: 'Revenue operations snapshot',
+      summary: 'Earnings, average ticket size, and paid throughput are surfaced so leadership can read growth at a glance.',
+      score: revenue > 0 ? (failed.length ? 8 : 9) : 6,
+      tone: failed.length ? 'watch' : revenue > 0 ? 'good' : 'risk',
+      priority: revenue > 0 ? 'Track paid revenue and ticket size before running weekly finance summaries.' : 'Drive more paid transactions so revenue has a stronger signal.',
+      risk: pending.length ? `${pending.length} pending payment${pending.length === 1 ? '' : 's'} may delay revenue recognition.` : 'No pending payments are visible in this module.',
+      automation: 'Export revenue by paid transaction, average ticket, and settlement rate for reporting.',
+      review: 'Review paid totals, average ticket, and settlement status before finance close.',
       cards: [
-        { label: 'Paid revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'from paid rows only', icon: CreditCard },
-        { label: 'Pending', value: pending.length, detail: 'payments awaiting closure', icon: Clock3 },
-        { label: 'Failed', value: failed.length, detail: 'payment exceptions', icon: AlertTriangle },
+        { label: 'Total revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'paid revenue only', icon: TrendingUp, tone: 'violet' },
+        { label: 'Paid transactions', value: paid.length, detail: 'closed payment rows', icon: CheckCircle2, tone: 'emerald' },
+        { label: 'Average ticket', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(averageTicket / 100), detail: 'mean paid order value', icon: CreditCard, tone: 'sky' },
+        { label: 'Paid rate', value: `${paidRate}%`, detail: 'paid vs total rows', icon: ShieldCheck, tone: 'blue' },
       ],
     }
   }
@@ -669,11 +704,11 @@ function buildEnterpriseSignals(resource, rows) {
       automation: 'Export weekly growth rows for leadership trend reviews and course demand planning.',
       review: 'Read registrations, enrollments, completions, and revenue together before making catalog decisions.',
       cards: [
-        { label: 'Registrations', value: registrations, detail: 'new users in this window', icon: Users },
-        { label: 'User actions', value: userActions, detail: 'admin moderation events', icon: ShieldCheck },
-        { label: 'Enrollments', value: enrollments, detail: 'course starts tracked daily', icon: GraduationCap },
-        { label: 'Completions', value: completions, detail: 'learning outcomes recorded', icon: Award },
-        { label: 'Revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'paid revenue by day', icon: CreditCard },
+        { label: 'Registrations', value: registrations, detail: 'new users in this window', icon: Users, tone: 'blue' },
+        { label: 'User actions', value: userActions, detail: 'admin moderation events', icon: ShieldCheck, tone: 'teal' },
+        { label: 'Enrollments', value: enrollments, detail: 'course starts tracked daily', icon: GraduationCap, tone: 'orange' },
+        { label: 'Completions', value: completions, detail: 'learning outcomes recorded', icon: Award, tone: 'emerald' },
+        { label: 'Revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'paid revenue by day', icon: CreditCard, tone: 'violet' },
       ],
     }
   }
@@ -693,9 +728,9 @@ function buildEnterpriseSignals(resource, rows) {
       automation: 'Export module-specific audit rows for weekly security, support, and operations reviews.',
       review: 'Use actor, module, IP address, and timestamp together before drawing conclusions.',
       cards: [
-        { label: 'Audit events', value: total, detail: 'records available for review', icon: Activity },
-        { label: 'Actors', value: actors, detail: 'unique users represented', icon: Users },
-        { label: 'Modules', value: modules, detail: 'platform areas touched', icon: ShieldCheck },
+        { label: 'Audit events', value: total, detail: 'records available for review', icon: Activity, tone: 'blue' },
+        { label: 'Actors', value: actors, detail: 'unique users represented', icon: Users, tone: 'teal' },
+        { label: 'Modules', value: modules, detail: 'platform areas touched', icon: ShieldCheck, tone: 'orange' },
       ],
     }
   }
@@ -708,61 +743,72 @@ function buildInsights(resource, rows) {
   if (peopleResources.has(resource)) {
     const approved = rows.filter((row) => String(row.approvalStatus || 'APPROVED').toUpperCase() === 'APPROVED').length
     const inactive = rows.filter((row) => row.isActive === false || String(row.approvalStatus || '').toUpperCase() === 'SUSPENDED').length
-    return [
-      { label: 'Directory size', value: total, detail: 'accounts in this view', icon: Users },
-      { label: 'Approved', value: approved, detail: 'ready for platform access', icon: UserCheck },
-      { label: 'Needs attention', value: Math.max(0, total - approved), detail: 'pending or rejected state', icon: ShieldCheck },
-      { label: 'Risk flags', value: inactive, detail: 'inactive or suspended accounts', icon: Activity },
-    ]
+      return [
+        { label: 'Directory size', value: total, detail: 'accounts in this view', icon: Users, tone: 'blue', href: '/admin/users' },
+        { label: 'Approved', value: approved, detail: 'ready for platform access', icon: UserCheck, tone: 'teal', href: '/admin/users' },
+        { label: 'Needs attention', value: Math.max(0, total - approved), detail: 'pending or rejected state', icon: ShieldCheck, tone: 'orange', href: '/admin/users' },
+        { label: 'Risk flags', value: inactive, detail: 'inactive or suspended accounts', icon: Activity, tone: 'rose', href: '/admin/users' },
+      ]
   }
   if (resource === 'courses') {
     const published = rows.filter((row) => row.isPublished).length
     const enrollments = rows.reduce((sum, row) => sum + Number(row._count?.enrollments ?? row.enrollments ?? 0), 0)
-    return [
-      { label: 'Catalog size', value: total, detail: 'courses in database', icon: BookOpenCheck },
-      { label: 'Published', value: published, detail: `${total ? Math.round((published / total) * 100) : 0}% publish rate`, icon: CheckCircle2 },
-      { label: 'Enrollments', value: enrollments, detail: 'visible demand signal', icon: TrendingUp },
-      { label: 'Draft risk', value: Math.max(0, total - published), detail: 'unpublished courses', icon: Clock3 },
-    ]
+      return [
+        { label: 'Catalog size', value: total, detail: 'courses in database', icon: BookOpenCheck, tone: 'blue', href: '/admin/courses' },
+        { label: 'Published', value: published, detail: `${total ? Math.round((published / total) * 100) : 0}% publish rate`, icon: CheckCircle2, tone: 'emerald', href: '/admin/courses' },
+        { label: 'Enrollments', value: enrollments, detail: 'visible demand signal', icon: TrendingUp, tone: 'violet', href: '/admin/enrollments' },
+        { label: 'Draft risk', value: Math.max(0, total - published), detail: 'unpublished courses', icon: Clock3, tone: 'amber', href: '/admin/courses' },
+      ]
   }
   if (resource === 'categories') {
     const active = rows.filter((row) => row.isActive !== false).length
     const courseCount = rows.reduce((sum, row) => sum + Number(row._count?.courses ?? 0), 0)
-    return [
-      { label: 'Categories', value: total, detail: 'catalog groups', icon: FolderTree },
-      { label: 'Active', value: active, detail: 'available for browsing', icon: CheckCircle2 },
-      { label: 'Course links', value: courseCount, detail: 'distribution across categories', icon: BarChart3 },
-      { label: 'Empty groups', value: rows.filter((row) => Number(row._count?.courses ?? 0) === 0).length, detail: 'need course assignment', icon: BookOpenCheck },
-    ]
+      return [
+        { label: 'Categories', value: total, detail: 'catalog groups', icon: FolderTree, tone: 'blue', href: '/admin/categories' },
+        { label: 'Active', value: active, detail: 'available for browsing', icon: CheckCircle2, tone: 'teal', href: '/admin/categories' },
+        { label: 'Course links', value: courseCount, detail: 'distribution across categories', icon: BarChart3, tone: 'sky', href: '/admin/categories' },
+        { label: 'Empty groups', value: rows.filter((row) => Number(row._count?.courses ?? 0) === 0).length, detail: 'need course assignment', icon: BookOpenCheck, tone: 'orange', href: '/admin/categories' },
+      ]
   }
   if (resource === 'enrollments') {
     const completed = rows.filter((row) => Number(row.completionPct || 0) >= 100).length
     const atRisk = rows.filter((row) => Number(row.completionPct || 0) < 25).length
     const avg = total ? Math.round(rows.reduce((sum, row) => sum + Number(row.completionPct || 0), 0) / total) : 0
-    return [
-      { label: 'Enrollments', value: total, detail: 'learner-course records', icon: GraduationCap },
-      { label: 'Completed', value: completed, detail: '100% progress', icon: Award },
-      { label: 'At risk', value: atRisk, detail: 'below 25% progress', icon: Activity },
-      { label: 'Average progress', value: `${avg}%`, detail: 'completion forecast signal', icon: TrendingUp },
-    ]
+      return [
+        { label: 'Enrollments', value: total, detail: 'learner-course records', icon: GraduationCap, tone: 'blue', href: '/admin/enrollments' },
+        { label: 'Completed', value: completed, detail: '100% progress', icon: Award, tone: 'emerald', href: '/admin/enrollments' },
+        { label: 'At risk', value: atRisk, detail: 'below 25% progress', icon: Activity, tone: 'rose', href: '/admin/enrollments' },
+        { label: 'Average progress', value: `${avg}%`, detail: 'completion forecast signal', icon: TrendingUp, tone: 'teal', href: '/admin/enrollments' },
+      ]
   }
-  if (resource === 'payments' || resource === 'revenue') {
+  if (resource === 'payments') {
+    const paid = rows.filter((row) => String(row.status || '').toUpperCase() === 'PAID')
+      return [
+        { label: 'Transactions', value: total, detail: 'payment records', icon: CreditCard, tone: 'blue', href: '/admin/payments' },
+        { label: 'Paid', value: paid.length, detail: 'successful payments', icon: CheckCircle2, tone: 'emerald', href: '/admin/payments' },
+        { label: 'Pending', value: rows.filter((row) => String(row.status || '').toUpperCase() === 'PENDING').length, detail: 'awaiting closure', icon: Clock3, tone: 'orange', href: '/admin/payments' },
+        { label: 'Failed', value: rows.filter((row) => String(row.status || '').toUpperCase() === 'FAILED').length, detail: 'payment exceptions', icon: Activity, tone: 'rose', href: '/admin/payments' },
+      ]
+  }
+  if (resource === 'revenue') {
     const paid = rows.filter((row) => String(row.status || '').toUpperCase() === 'PAID')
     const revenue = paid.reduce((sum, row) => sum + Number(row.amountCents || 0), 0)
-    return [
-      { label: 'Transactions', value: total, detail: 'payment records', icon: CreditCard },
-      { label: 'Paid', value: paid.length, detail: 'successful payments', icon: CheckCircle2 },
-      { label: 'Pending or failed', value: Math.max(0, total - paid.length), detail: 'monitor closely', icon: Activity },
-      { label: 'Revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'from paid rows', icon: TrendingUp },
-    ]
+    const averageTicket = paid.length ? revenue / paid.length : 0
+    const paidRate = total ? Math.round((paid.length / total) * 100) : 0
+      return [
+        { label: 'Revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'paid revenue', icon: TrendingUp, tone: 'violet', href: '/admin/revenue' },
+        { label: 'Paid transactions', value: paid.length, detail: 'successful payments', icon: CheckCircle2, tone: 'emerald', href: '/admin/revenue' },
+        { label: 'Average ticket', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(averageTicket / 100), detail: 'mean paid order value', icon: CreditCard, tone: 'sky', href: '/admin/revenue' },
+        { label: 'Paid rate', value: `${paidRate}%`, detail: 'paid vs total rows', icon: ShieldCheck, tone: 'blue', href: '/admin/revenue' },
+      ]
   }
   if (resource === 'certificates') {
-    return [
-      { label: 'Certificates', value: total, detail: 'issued credential rows', icon: Award },
-      { label: 'Verified status', value: rows.filter((row) => String(row.status || 'ISSUED').toUpperCase() === 'ISSUED').length, detail: 'ready to share', icon: CheckCircle2 },
-      { label: 'Course coverage', value: new Set(rows.map((row) => row.course?.id || row.course?.title).filter(Boolean)).size, detail: 'courses represented', icon: BookOpenCheck },
-      { label: 'Learners certified', value: new Set(rows.map((row) => row.user?.id || row.user?.email).filter(Boolean)).size, detail: 'unique recipients', icon: Users },
-    ]
+      return [
+        { label: 'Certificates', value: total, detail: 'issued credential rows', icon: Award, tone: 'blue', href: '/admin/certificates' },
+        { label: 'Verified status', value: rows.filter((row) => String(row.status || 'ISSUED').toUpperCase() === 'ISSUED').length, detail: 'ready to share', icon: CheckCircle2, tone: 'emerald', href: '/admin/certificates' },
+        { label: 'Course coverage', value: new Set(rows.map((row) => row.course?.id || row.course?.title).filter(Boolean)).size, detail: 'courses represented', icon: BookOpenCheck, tone: 'sky', href: '/admin/courses' },
+        { label: 'Learners certified', value: new Set(rows.map((row) => row.user?.id || row.user?.email).filter(Boolean)).size, detail: 'unique recipients', icon: Users, tone: 'violet', href: '/admin/certificates' },
+      ]
   }
   if (resource === 'analytics') {
     const registrations = rows.reduce((sum, row) => sum + Number(row.registrations || 0), 0)
@@ -770,25 +816,25 @@ function buildInsights(resource, rows) {
     const enrollments = rows.reduce((sum, row) => sum + Number(row.enrollments || 0), 0)
     const completions = rows.reduce((sum, row) => sum + Number(row.completions || 0), 0)
     const revenue = rows.reduce((sum, row) => sum + Number(row.revenueCents || 0), 0)
-    return [
-      { label: 'Registrations', value: registrations, detail: 'new users in this window', icon: Users },
-      { label: 'User actions', value: userActions, detail: 'admin actions from users pages', icon: ShieldCheck },
-      { label: 'Enrollments', value: enrollments, detail: 'course starts in this window', icon: GraduationCap },
-      { label: 'Completions', value: completions, detail: 'finished courses', icon: Award },
-      { label: 'Revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'paid revenue', icon: TrendingUp },
-    ]
+      return [
+        { label: 'Registrations', value: registrations, detail: 'new users in this window', icon: Users, tone: 'blue', href: '/admin/users' },
+        { label: 'User actions', value: userActions, detail: 'admin actions from users pages', icon: ShieldCheck, tone: 'teal', href: '/admin/users' },
+        { label: 'Enrollments', value: enrollments, detail: 'course starts in this window', icon: GraduationCap, tone: 'orange', href: '/admin/enrollments' },
+        { label: 'Completions', value: completions, detail: 'finished courses', icon: Award, tone: 'emerald', href: '/admin/enrollments' },
+        { label: 'Revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'paid revenue', icon: TrendingUp, tone: 'violet', href: '/admin/revenue' },
+      ]
   }
   if (resource === 'activity-logs' || resource === 'reports') {
-    return [
-      { label: 'Log events', value: total, detail: 'audit records in view', icon: Activity },
-      { label: 'Actors', value: new Set(rows.map((row) => row.user?.id || row.user?.email).filter(Boolean)).size, detail: 'unique users', icon: Users },
-      { label: 'Modules', value: new Set(rows.map((row) => row.entityType || row.action).filter(Boolean)).size, detail: 'areas touched', icon: ShieldCheck },
-      { label: 'Security review', value: rows.filter((row) => String(row.action || '').toLowerCase().includes('login')).length, detail: 'login-related events', icon: Clock3 },
-    ]
+      return [
+        { label: 'Log events', value: total, detail: 'audit records in view', icon: Activity, tone: 'blue', href: '/admin/activity-logs' },
+        { label: 'Actors', value: new Set(rows.map((row) => row.user?.id || row.user?.email).filter(Boolean)).size, detail: 'unique users', icon: Users, tone: 'teal', href: '/admin/activity-logs' },
+        { label: 'Modules', value: new Set(rows.map((row) => row.entityType || row.action).filter(Boolean)).size, detail: 'areas touched', icon: ShieldCheck, tone: 'orange', href: '/admin/activity-logs' },
+        { label: 'Security review', value: rows.filter((row) => String(row.action || '').toLowerCase().includes('login')).length, detail: 'login-related events', icon: Clock3, tone: 'rose', href: '/admin/activity-logs' },
+      ]
   }
   return [
-    { label: 'Rows', value: total, detail: 'records in this view', icon: BarChart3 },
-    { label: 'Current status', value: loadingLabel(total), detail: 'latest API response', icon: CheckCircle2 },
+    { label: 'Rows', value: total, detail: 'records in this view', icon: BarChart3, tone: 'blue' },
+    { label: 'Current status', value: loadingLabel(total), detail: 'latest API response', icon: CheckCircle2, tone: 'teal' },
   ]
 }
 

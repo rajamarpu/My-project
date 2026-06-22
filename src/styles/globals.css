@@ -1733,6 +1733,13 @@ button:disabled {
   color: var(--dark-text-primary) !important;
 }
 
+.dark .courses-page .glass-card.enterprise-glow-card .course-card-overlay {
+  background: transparent !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  color: transparent !important;
+}
+
 .dark .courses-page .glass-card.enterprise-glow-card img {
   opacity: 0.98;
 }
@@ -1746,13 +1753,13 @@ button:disabled {
   background-color: var(--dark-surface-2) !important;
 }
 
-.dark .courses-page .glass-card.enterprise-glow-card button:not(.btn-primary) {
+.dark .courses-page .glass-card.enterprise-glow-card .course-card-action {
   border-color: var(--dark-border);
   background: #0B1220;
   color: var(--dark-text-primary);
 }
 
-.dark .courses-page .glass-card.enterprise-glow-card button:not(.btn-primary):hover {
+.dark .courses-page .glass-card.enterprise-glow-card .course-card-action:hover {
   border-color: var(--dark-orange-border);
   background: var(--dark-card-hover);
 }
@@ -5367,8 +5374,16 @@ body,
   color: var(--accent-secondary) !important;
 }
 
+:where(.app-shell, .admin-shell) :where(.text-emerald-100, .text-emerald-200, .text-emerald-300, .text-emerald-400, .text-emerald-500, .text-emerald-600, .text-emerald-700, .text-green-100, .text-green-200, .text-green-300, .text-green-400, .text-green-500, .text-green-600, .text-green-700) {
+  color: var(--success) !important;
+}
+
 :where(.app-shell, .admin-shell) :where(.text-orange-300, .text-orange-400, .text-orange-500, .text-orange-600, .text-orange-700, .text-amber-300, .text-amber-400, .text-amber-500, .text-amber-600, .text-amber-700) {
   color: var(--accent-warm) !important;
+}
+
+:where(.app-shell, .admin-shell) :where(.text-red-100, .text-red-200, .text-red-300, .text-red-400, .text-red-500, .text-red-600, .text-red-700, .text-rose-100, .text-rose-200, .text-rose-300, .text-rose-400, .text-rose-500, .text-rose-600, .text-rose-700) {
+  color: var(--danger) !important;
 }
 
 :where(.app-shell, .admin-shell) :where(.text-blue-300, .text-blue-400, .text-blue-500, .text-blue-600, .text-blue-700, .text-indigo-300, .text-indigo-400, .text-indigo-500, .text-indigo-600, .text-purple-300, .text-purple-400, .text-purple-500, .text-purple-600) {
@@ -5383,12 +5398,48 @@ body,
   background: var(--warm-gradient) !important;
 }
 
+:where(.app-shell, .admin-shell) :where(.bg-emerald-400, .bg-emerald-500, .bg-green-400, .bg-green-500) {
+  background: color-mix(in srgb, var(--success) 18%, transparent) !important;
+}
+
+:where(.app-shell, .admin-shell) :where(.bg-red-400, .bg-red-500, .bg-red-600, .bg-rose-400, .bg-rose-500, .bg-rose-600) {
+  background: color-mix(in srgb, var(--danger) 18%, transparent) !important;
+}
+
 :where(.app-shell, .admin-shell) [class*="bg-cyan-500/"],
 :where(.app-shell, .admin-shell) [class*="bg-blue-500/"],
 :where(.app-shell, .admin-shell) [class*="bg-purple-500/"],
 :where(.app-shell, .admin-shell) [class*="bg-orange-500/"],
-:where(.app-shell, .admin-shell) [class*="bg-amber-500/"] {
+:where(.app-shell, .admin-shell) [class*="bg-amber-500/"],
+:where(.app-shell, .admin-shell) [class*="bg-emerald-500/"],
+:where(.app-shell, .admin-shell) [class*="bg-green-500/"],
+:where(.app-shell, .admin-shell) [class*="bg-red-500/"],
+:where(.app-shell, .admin-shell) [class*="bg-rose-500/"] {
   background-color: color-mix(in srgb, var(--accent-primary) 12%, transparent) !important;
+}
+
+:where(.app-shell, .admin-shell) :where(.border-cyan-200, .border-cyan-300, .border-cyan-400, .border-blue-200, .border-blue-300, .border-blue-400, .border-indigo-200, .border-indigo-300, .border-indigo-400, .border-purple-200, .border-purple-300, .border-purple-400) {
+  border-color: color-mix(in srgb, var(--accent-primary) 54%, var(--border-color)) !important;
+}
+
+:where(.app-shell, .admin-shell) :where(.border-amber-200, .border-amber-300, .border-amber-400, .border-orange-200, .border-orange-300, .border-orange-400) {
+  border-color: color-mix(in srgb, var(--accent-warm) 52%, var(--border-color)) !important;
+}
+
+:where(.app-shell, .admin-shell) :where(.border-emerald-200, .border-emerald-300, .border-emerald-400, .border-green-200, .border-green-300, .border-green-400) {
+  border-color: color-mix(in srgb, var(--success) 52%, var(--border-color)) !important;
+}
+
+:where(.app-shell, .admin-shell) :where(.border-red-200, .border-red-300, .border-red-400, .border-rose-200, .border-rose-300, .border-rose-400) {
+  border-color: color-mix(in srgb, var(--danger) 52%, var(--border-color)) !important;
+}
+
+:where(.app-shell, .admin-shell) :where(.text-emerald-800, .text-emerald-700, .text-green-800, .text-green-700) {
+  color: color-mix(in srgb, var(--success) 88%, black) !important;
+}
+
+:where(.app-shell, .admin-shell) :where(.text-red-800, .text-red-700, .text-rose-800, .text-rose-700) {
+  color: color-mix(in srgb, var(--danger) 88%, black) !important;
 }
 
 :where(.app-shell, .admin-shell) :where(.accent-cyan-400, .text-cyan-600) {

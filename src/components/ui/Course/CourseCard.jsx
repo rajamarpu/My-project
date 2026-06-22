@@ -43,7 +43,12 @@ export default function CourseCard({ course, onViewDetails, onEnrollToggle, onCo
     <article
       className="course-card enterprise-glow-card group glass-card relative flex min-h-[25rem] min-w-0 flex-col overflow-hidden rounded-xl p-3 transition duration-200 hover:-translate-y-1 hover:shadow-[var(--shadow-lg)]"
     >
-      <button type="button" onClick={onViewDetails} className="absolute inset-0 z-[1] cursor-pointer rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[var(--accent-primary)]" aria-label={`View details for ${course.title}`} />
+      <button
+        type="button"
+        onClick={onViewDetails}
+        className="course-card-overlay absolute inset-0 z-[1] cursor-pointer rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[var(--accent-primary)]"
+        aria-label={`View details for ${course.title}`}
+      />
       <div className={cn('pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-r opacity-40 blur-xl transition-opacity duration-150 group-hover:opacity-65', glowClass)} />
       <div className="relative aspect-video w-full shrink-0 overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)]">
         <img
@@ -133,7 +138,7 @@ export default function CourseCard({ course, onViewDetails, onEnrollToggle, onCo
           onClick={updateWishlist}
           disabled={savingWishlist || !user}
           className={cn(
-            'inline-flex h-11 w-11 items-center justify-center rounded-lg border transition',
+            'course-card-action inline-flex h-11 w-11 items-center justify-center rounded-lg border transition',
             active
               ? 'border-[var(--accent-primary)] bg-[var(--accent-soft)] text-[var(--accent-primary)]'
               : 'border-[var(--border-color)] bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)]',

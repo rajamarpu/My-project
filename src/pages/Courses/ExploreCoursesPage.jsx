@@ -415,7 +415,7 @@ export default function ExploreCoursesPage() {
                             <span className="grid h-14 w-24 shrink-0 place-items-center overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)]"><img src={resolveCourseThumbnail(course)} alt="" className="h-full w-full object-contain" /></span>
                             <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-[var(--text-primary)]">{course.title}</span><span className="mt-1 block truncate text-xs text-[var(--text-secondary)]">{course.createdBy?.name || 'Instructor'} · {course.level || 'Beginner'} · {course.category || 'Course'}</span></span>
                           </button>
-                        )) : <div className="p-4 text-sm text-[var(--text-secondary)]">No live suggestions match “{query.trim()}”. Press Enter to keep filtering the catalog.</div>}
+                        )) : <div className="p-4 text-sm text-[var(--text-secondary)]">No live suggestions match "{query.trim()}". Press Enter to keep filtering the catalog.</div>}
                       </div>
                     ) : null}
                   </label>

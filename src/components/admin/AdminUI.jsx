@@ -1,5 +1,6 @@
 import { AlertCircle, ArrowRight, CheckCircle2, ClipboardCheck, Loader2, SearchX, X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
+import MetricCard from '../ui/Dashboard/MetricCard.jsx'
 
 export function AdminPageHeader({ eyebrow, title, description, actions }) {
   return (
@@ -16,31 +17,21 @@ export function AdminPageHeader({ eyebrow, title, description, actions }) {
   )
 }
 
-export function AdminMetricCard({ label, value, detail, icon: Icon, tone = 'cyan', onClick, loading }) {
-  const toneClass = {
-    cyan: 'from-cyan-400/18 to-teal-400/10 text-cyan-700 dark:text-cyan-100',
-    orange: 'from-orange-400/18 to-amber-400/10 text-orange-700 dark:text-orange-100',
-    green: 'from-emerald-400/18 to-teal-400/10 text-emerald-700 dark:text-emerald-100',
-    blue: 'from-blue-400/18 to-cyan-400/10 text-blue-700 dark:text-blue-100',
-    red: 'from-red-400/18 to-orange-400/10 text-red-700 dark:text-red-100',
-  }[tone]
-
-  const Wrapper = onClick ? 'button' : 'div'
+export function AdminMetricCard({ label, value, detail, icon: Icon, tone = 'cyan', onClick, href, loading, className, trendLabel, trendValue }) {
   return (
-    <Wrapper
-      type={onClick ? 'button' : undefined}
+    <MetricCard
+      title={label}
+      value={value}
+      detail={detail}
+      icon={Icon}
+      tone={tone}
       onClick={onClick}
-      className="admin-panel admin-panel-hover min-h-[144px] w-full p-5 text-left"
-    >
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">{label}</p>
-        <span className={`grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br ${toneClass}`}>
-          {Icon ? <Icon size={19} /> : null}
-        </span>
-      </div>
-      <p className="mt-5 text-2xl font-semibold text-[var(--text-primary)]">{loading ? <span className="skeleton inline-block h-8 w-20" /> : value}</p>
-      <p className="mt-1 text-sm text-[var(--text-muted)]">{detail}</p>
-    </Wrapper>
+      href={href}
+      loading={loading}
+      className={className}
+      trendLabel={trendLabel}
+      trendValue={trendValue}
+    />
   )
 }
 
@@ -207,21 +198,23 @@ export function AdminStatusBadge({ value }) {
 
 export function AdminInsightStrip({ items = [] }) {
   if (!items.length) return null
+  const defaultTones = ['blue', 'teal', 'orange', 'rose', 'violet', 'emerald', 'sky', 'amber']
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {items.map((item) => {
-        const Icon = item.icon || ClipboardCheck
+      {items.map((item, index) => {
         return (
-          <div key={item.label} className="admin-panel p-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">{item.label}</p>
-              <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">
-                <Icon size={17} />
-              </span>
-            </div>
-            <p className="mt-3 text-xl font-semibold text-[var(--text-primary)]">{item.value}</p>
-            {item.detail ? <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{item.detail}</p> : null}
-          </div>
+          <MetricCard
+            key={item.label}
+            title={item.label}
+            value={item.value}
+            detail={item.detail}
+            icon={item.icon || ClipboardCheck}
+            tone={item.tone || defaultTones[index % defaultTones.length]}
+            trendValue={item.trendValue}
+            trendLabel={item.trendLabel}
+            href={item.href}
+            className="min-h-[170px]"
+          />
         )
       })}
     </div>

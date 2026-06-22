@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ClipboardCheck, Download, Eye, RotateCcw, Save, Search, Sparkles } from 'lucide-react'
+import { CheckCircle2, ClipboardCheck, Download, Eye, RotateCcw, Save, Search, Sparkles, TrendingUp, XCircle } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
-import { AdminEmptyState, AdminGuidancePanel, AdminLoadingState, AdminNotice, AdminPageHeader } from '../../components/admin/AdminUI.jsx'
+import { AdminEmptyState, AdminGuidancePanel, AdminLoadingState, AdminMetricCard, AdminNotice, AdminPageHeader } from '../../components/admin/AdminUI.jsx'
 import { downloadAssessmentSubmissionUrl, evaluateAssessmentSubmission, fetchAdminAssessmentSubmissions, grantAssessmentRetake } from '../../api/api.js'
 
 const statusOptions = [
@@ -141,11 +141,61 @@ export default function AssessmentEvaluationsPage() {
       ) : null}
 
       <div className="grid gap-3 md:grid-cols-5">
-        <Metric label="Total submissions" value={metrics.total} />
-        <Metric label="Pending" value={metrics.pending} />
-        <Metric label="Passed" value={metrics.passed} />
-        <Metric label="Failed" value={metrics.failed} />
-        <Metric label="Avg score" value={`${metrics.averageScore}%`} />
+        <AdminMetricCard
+          label="Total submissions"
+          value={metrics.total}
+          detail="all assessment records"
+          icon={ClipboardCheck}
+          tone="blue"
+          className="min-h-[170px]"
+          trendLabel="queued and completed"
+          trendValue="Live"
+          href="/admin/evaluations"
+        />
+        <AdminMetricCard
+          label="Pending"
+          value={metrics.pending}
+          detail="awaiting manual review"
+          icon={Eye}
+          tone="amber"
+          className="min-h-[170px]"
+          trendLabel="needs attention"
+          trendValue="Review now"
+          href="/admin/evaluations"
+        />
+        <AdminMetricCard
+          label="Passed"
+          value={metrics.passed}
+          detail="meeting the pass mark"
+          icon={CheckCircle2}
+          tone="emerald"
+          className="min-h-[170px]"
+          trendLabel="successful submissions"
+          trendValue="Passing"
+          href="/admin/evaluations"
+        />
+        <AdminMetricCard
+          label="Failed"
+          value={metrics.failed}
+          detail="below the pass mark"
+          icon={XCircle}
+          tone="rose"
+          className="min-h-[170px]"
+          trendLabel="needs retake"
+          trendValue="Action"
+          href="/admin/evaluations"
+        />
+        <AdminMetricCard
+          label="Avg score"
+          value={`${metrics.averageScore}%`}
+          detail="mean score across submissions"
+          icon={TrendingUp}
+          tone="violet"
+          className="min-h-[170px]"
+          trendLabel="overall class average"
+          trendValue="Summary"
+          href="/admin/evaluations"
+        />
       </div>
 
       <div className="admin-panel grid gap-3 p-4 lg:grid-cols-[1fr_190px_160px_150px_150px_150px]">
@@ -206,10 +256,50 @@ export default function AssessmentEvaluationsPage() {
               </div>
 
               <div className="grid gap-3 sm:grid-cols-4">
-                <Metric label="Score" value={`${selected.obtainedMarks}/${selected.totalMarks}`} compact />
-                <Metric label="Percentage" value={`${selected.percentage}%`} compact />
-                <Metric label="Status" value={selected.status.replaceAll('_', ' ')} compact />
-                <Metric label="Manual items" value={(selected.questionReviews || []).filter((review) => review.needsManualEvaluation || review.questionType === 'DESCRIPTIVE').length} compact />
+                <AdminMetricCard
+                  label="Score"
+                  value={`${selected.obtainedMarks}/${selected.totalMarks}`}
+                  detail="raw marks on this submission"
+                  icon={ClipboardCheck}
+                  tone="blue"
+                  className="min-h-[150px]"
+                  trendLabel="marks awarded"
+                  trendValue="Result"
+                  href="/admin/evaluations"
+                />
+                <AdminMetricCard
+                  label="Percentage"
+                  value={`${selected.percentage}%`}
+                  detail="overall score percentage"
+                  icon={TrendingUp}
+                  tone="teal"
+                  className="min-h-[150px]"
+                  trendLabel="performance indicator"
+                  trendValue="Percent"
+                  href="/admin/evaluations"
+                />
+                <AdminMetricCard
+                  label="Status"
+                  value={selected.status.replaceAll('_', ' ')}
+                  detail="current evaluation state"
+                  icon={CheckCircle2}
+                  tone={selected.status === 'PASSED' ? 'emerald' : selected.status === 'FAILED' ? 'rose' : 'amber'}
+                  className="min-h-[150px]"
+                  trendLabel="workflow state"
+                  trendValue="Live"
+                  href="/admin/evaluations"
+                />
+                <AdminMetricCard
+                  label="Manual items"
+                  value={(selected.questionReviews || []).filter((review) => review.needsManualEvaluation || review.questionType === 'DESCRIPTIVE').length}
+                  detail="questions needing human grading"
+                  icon={Sparkles}
+                  tone="violet"
+                  className="min-h-[150px]"
+                  trendLabel="evaluation queue"
+                  trendValue="Review"
+                  href="/admin/evaluations"
+                />
               </div>
 
               <div className="grid gap-4">
@@ -230,18 +320,6 @@ export default function AssessmentEvaluationsPage() {
         </div>
       </div>
     </section>
-  )
-}
-
-function Metric({ label, value, compact }) {
-  return (
-    <div className={`admin-panel ${compact ? 'p-3' : 'p-4'}`}>
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">{label}</p>
-      <div className="mt-2 flex items-center gap-2">
-        {label === 'Pending' ? <ClipboardCheck className="text-amber-500" size={17} /> : null}
-        <p className={`${compact ? 'text-lg' : 'text-2xl'} font-semibold text-[var(--text-primary)]`}>{value}</p>
-      </div>
-    </div>
   )
 }
 

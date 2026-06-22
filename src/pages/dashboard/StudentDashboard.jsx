@@ -2,14 +2,35 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import {
-  ArrowRight, Award, BookOpenCheck, CalendarCheck, Clock3,
-  Compass, FileQuestion, Flame, GraduationCap, RefreshCw, Target, TrendingUp,
+  ArrowRight,
+  Award,
+  BookOpenCheck,
+  CalendarCheck,
+  Clock3,
+  Compass,
+  FileQuestion,
+  Flame,
+  GraduationCap,
+  LifeBuoy,
+  Mail,
+  RefreshCw,
+  Target,
+  TrendingUp,
 } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
+import KpiCard from '../../components/ui/Dashboard/KpiCard.jsx'
 import { fetchCourses, fetchLearnerDashboard, fetchMyAssessmentSubmissions, fetchUserAnalytics } from '../../api/api.js'
 import { getCourseAssignments } from '../../utils/courseContent.js'
 
-const emptyAnalytics = { completion: 0, hoursStudied: 0, quiz: 0, streak: 0, certificates: 0, weekly: [], recent: [] }
+const emptyAnalytics = {
+  completion: 0,
+  hoursStudied: 0,
+  quiz: 0,
+  streak: 0,
+  certificates: 0,
+  weekly: [],
+  recent: [],
+}
 
 function number(value) {
   const parsed = Number(value)
@@ -41,7 +62,15 @@ export default function StudentDashboard() {
         fetchMyAssessmentSubmissions().catch(() => ({ data: { submissions: [] } })),
       ])
       const enrollments = dashboardResponse.data?.dashboard?.enrollments || []
-      setCourses(enrollments.map((enrollment) => ({ ...enrollment.course, enrollment, progress: progressFor(enrollment), isEnrolled: true })).filter((course) => course.id))
+      const nextCourses = enrollments
+        .map((enrollment) => ({
+          ...enrollment.course,
+          enrollment,
+          progress: progressFor(enrollment),
+          isEnrolled: true,
+        }))
+        .filter((course) => course?.id)
+      setCourses(nextCourses)
       setAnalytics({ ...emptyAnalytics, ...(analyticsResponse.data?.analytics || {}) })
       setCatalog(catalogResponse.data?.courses || catalogResponse.data || [])
       setSubmissions(assessmentResponse.data?.submissions || [])
@@ -52,16 +81,102 @@ export default function StudentDashboard() {
     }
   }
 
-  useEffect(() => { void Promise.resolve().then(loadDashboard) }, [])
+  useEffect(() => {
+    void Promise.resolve().then(loadDashboard)
+  }, [])
 
-  const sortedCourses = useMemo(() => [...courses].sort((a, b) => new Date(b.enrollment?.enrolledAt || 0) - new Date(a.enrollment?.enrolledAt || 0)), [courses])
+  const sortedCourses = useMemo(
+    () => [...courses].sort((a, b) => new Date(b.enrollment?.enrolledAt || 0) - new Date(a.enrollment?.enrolledAt || 0)),
+    [courses],
+  )
   const activeCourse = sortedCourses.find((course) => course.progress < 100) || sortedCourses[0]
-  const averageProgress = courses.length ? Math.round(courses.reduce((sum, course) => sum + course.progress, 0) / courses.length) : number(analytics.completion)
-  const assignments = useMemo(() => courses.flatMap((course) => getCourseAssignments(course).map((assignment) => ({ ...assignment, course }))), [courses])
+  const averageProgress = courses.length
+    ? Math.round(courses.reduce((sum, course) => sum + course.progress, 0) / courses.length)
+    : number(analytics.completion)
+  const completedCourses = courses.filter((course) => course.progress >= 100).length
+  const inProgressCourses = courses.filter((course) => course.progress > 0 && course.progress < 100).length
+  const assignments = useMemo(
+    () => courses.flatMap((course) => getCourseAssignments(course).map((assignment) => ({ ...assignment, course }))),
+    [courses],
+  )
   const enrolledIds = useMemo(() => new Set(courses.map((course) => course.id)), [courses])
   const recommended = useMemo(() => catalog.filter((course) => !enrolledIds.has(course.id)).slice(0, 4), [catalog, enrolledIds])
-  const weekly = Array.isArray(analytics.weekly) && analytics.weekly.length ? analytics.weekly : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => ({ day, hours: 0 }))
+  const weekly = Array.isArray(analytics.weekly) && analytics.weekly.length
+    ? analytics.weekly
+    : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => ({ day, hours: 0 }))
   const maxWeeklyHours = Math.max(1, ...weekly.map((day) => number(day.hours)))
+  const latestSubmission = submissions[0] || null
+  const latestSubmissionCourseId = latestSubmission?.course?.id || latestSubmission?.courseId || activeCourse?.id || ''
+  const activeCoursePlayerHref = activeCourse ? `/player/${activeCourse.id}` : '/courses'
+  const activeCourseAssessmentsHref = latestSubmissionCourseId ? `/course/${latestSubmissionCourseId}/assessments` : '/questions'
+  const certificatesEarned = number(analytics.certificates) || completedCourses
+
+  const kpis = [
+    {
+      title: 'Active Courses',
+      value: courses.length,
+      detail: `${inProgressCourses} in progress`,
+      icon: BookOpenCheck,
+      tone: 'blue',
+      href: activeCourse ? `/player/${activeCourse.id}` : '/courses',
+    },
+    {
+      title: 'Completed Courses',
+      value: completedCourses,
+      detail: 'finished learning paths',
+      icon: Award,
+      tone: 'emerald',
+      href: '/certificates',
+    },
+    {
+      title: 'In Progress',
+      value: inProgressCourses,
+      detail: 'currently underway',
+      icon: TrendingUp,
+      tone: 'cyan',
+      href: '/courses',
+    },
+    {
+      title: 'Assignments Available',
+      value: assignments.length,
+      detail: 'course work items',
+      icon: CalendarCheck,
+      tone: 'cyan',
+      href: activeCourseAssessmentsHref,
+    },
+    {
+      title: 'Certificates Earned',
+      value: certificatesEarned,
+      detail: 'verified achievements',
+      icon: Award,
+      tone: 'amber',
+      href: '/certificates',
+    },
+    {
+      title: 'Quiz Score',
+      value: `${number(analytics.quiz)}%`,
+      detail: 'average assessment performance',
+      icon: Target,
+      tone: 'violet',
+      href: activeCourseAssessmentsHref,
+    },
+    {
+      title: 'Study Streak',
+      value: `${number(analytics.streak)}d`,
+      detail: 'current learning rhythm',
+      icon: Flame,
+      tone: 'orange',
+      href: activeCoursePlayerHref,
+    },
+    {
+      title: 'Hours Learned',
+      value: `${number(analytics.hoursStudied)}h`,
+      detail: 'tracked learning time',
+      icon: Clock3,
+      tone: 'teal',
+      href: activeCoursePlayerHref,
+    },
+  ]
 
   return (
     <section className="mx-auto w-full max-w-[1440px] space-y-6 pb-16">
@@ -70,95 +185,324 @@ export default function StudentDashboard() {
           <div className="max-w-3xl">
             <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.2em]">Learner dashboard</p>
             <h1 className="mt-3 text-3xl font-bold text-[var(--text-primary)] sm:text-4xl">Welcome back, {user?.name || user?.fullName || 'learner'}.</h1>
-            <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)] sm:text-base">Continue your courses, review progress, complete assignments, and turn learning into verified achievement.</p>
+            <p className="mt-3 text-sm leading-6 text-[var(--text-secondary)] sm:text-base">
+              Continue your courses, review progress, complete assignments, and turn learning into verified achievement.
+            </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button onClick={() => navigate(activeCourse ? `/player/${activeCourse.id}` : '/courses')}>{activeCourse ? 'Continue learning' : 'Find a course'} <ArrowRight size={16} /></Button>
-            <Button variant="secondary" onClick={() => navigate('/courses')}><Compass size={16} /> Explore courses</Button>
+            <Button onClick={() => navigate(activeCoursePlayerHref)}>
+              {activeCourse ? 'Continue learning' : 'Find a course'} <ArrowRight size={16} />
+            </Button>
+            <Button variant="secondary" onClick={() => navigate('/courses')}>
+              <Compass size={16} /> Explore courses
+            </Button>
+            <Button variant="secondary" onClick={() => navigate('/support')}>
+              <LifeBuoy size={16} /> Support
+            </Button>
+            <Button variant="secondary" onClick={() => navigate('/contact')}>
+              <Mail size={16} /> Contact Us
+            </Button>
           </div>
         </div>
       </header>
 
-      {error ? <div className="flex flex-col gap-3 rounded-xl border border-[var(--color-danger)]/30 bg-[var(--color-danger-soft)] p-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm font-semibold text-[var(--color-danger)]">{error}</p><Button variant="secondary" onClick={loadDashboard}><RefreshCw size={16} /> Retry</Button></div> : null}
+      {error ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-[var(--color-danger)]/30 bg-[var(--color-danger-soft)] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-sm font-semibold text-[var(--color-danger)]">{error}</p>
+          <Button variant="secondary" onClick={loadDashboard}>
+            <RefreshCw size={16} /> Retry
+          </Button>
+        </div>
+      ) : null}
+
+      <section className="admin-panel p-5 sm:p-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="max-w-2xl">
+            <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.2em]">Need help?</p>
+            <h2 className="mt-2 text-xl font-bold text-[var(--text-primary)]">Quick learner support links</h2>
+            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+              Jump straight to the FAQ, open the support center, or send the team a message from one place.
+            </p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3 lg:w-auto">
+            <HelpActionCard
+              title="FAQ"
+              text="Browse quick answers for common learning questions."
+              icon={FileQuestion}
+              tone="blue"
+              onClick={() => navigate('/faq')}
+            />
+            <HelpActionCard
+              title="Support"
+              text="Open the support center for guided troubleshooting."
+              icon={LifeBuoy}
+              tone="teal"
+              onClick={() => navigate('/support')}
+            />
+            <HelpActionCard
+              title="Contact Us"
+              text="Send the team a direct message for personal help."
+              icon={Mail}
+              tone="orange"
+              onClick={() => navigate('/contact')}
+            />
+          </div>
+        </div>
+      </section>
+
+      <DashboardSection eyebrow="Overview" title="Your learning metrics">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {kpis.map((metric) => (
+            <KpiCard key={metric.title} loading={loading} {...metric} />
+          ))}
+        </div>
+      </DashboardSection>
 
       <DashboardSection eyebrow="Continue Learning" title="Your active courses" action={<Button variant="secondary" onClick={() => navigate('/courses')}>Browse courses</Button>}>
         <div className="grid gap-3">
-          {loading ? <><CourseSkeleton /><CourseSkeleton /></> : sortedCourses.length ? sortedCourses.slice(0, 5).map((course) => <LearningCourseRow key={course.id} course={course} onContinue={() => navigate(`/player/${course.id}`)} onDetails={() => navigate(`/course/${course.id}`)} />) : <EmptyState icon={GraduationCap} title="No active courses" text="Enroll in a course and your learning queue will appear here." action="Explore courses" onAction={() => navigate('/courses')} />}
+          {loading
+            ? (
+              <>
+                <CourseSkeleton />
+                <CourseSkeleton />
+              </>
+              )
+            : sortedCourses.length
+              ? sortedCourses.slice(0, 5).map((course) => (
+                <LearningCourseRow
+                  key={course.id}
+                  course={course}
+                  onContinue={() => navigate(`/player/${course.id}`)}
+                  onDetails={() => navigate(`/course/${course.id}`)}
+                />
+              ))
+              : (
+                <EmptyState
+                  icon={GraduationCap}
+                  title="No active courses"
+                  text="Enroll in a course and your learning queue will appear here."
+                  action="Explore courses"
+                  onAction={() => navigate('/courses')}
+                />
+                )}
         </div>
       </DashboardSection>
 
       <DashboardSection eyebrow="Learning Progress" title="Progress and study activity">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-            <StatCard icon={TrendingUp} label="Average progress" value={`${averageProgress}%`} detail={`${courses.length} enrolled course${courses.length === 1 ? '' : 's'}`} />
-            <StatCard icon={Clock3} label="Study time" value={`${number(analytics.hoursStudied)}h`} detail="tracked learning time" />
-            <StatCard icon={Target} label="Average assessment" value={`${number(analytics.quiz)}%`} detail="quiz performance" />
+            <KpiCard
+              title="Average progress"
+              value={`${averageProgress}%`}
+              detail={`${courses.length} enrolled course${courses.length === 1 ? '' : 's'}`}
+              icon={TrendingUp}
+              tone="blue"
+              loading={loading}
+              onClick={() => navigate(activeCoursePlayerHref)}
+            />
+            <KpiCard
+              title="Study time"
+              value={`${number(analytics.hoursStudied)}h`}
+              detail="tracked learning time"
+              icon={Clock3}
+              tone="teal"
+              loading={loading}
+              onClick={() => navigate(activeCoursePlayerHref)}
+            />
+            <KpiCard
+              title="Average assessment"
+              value={`${number(analytics.quiz)}%`}
+              detail="quiz performance"
+              icon={Target}
+              tone="amber"
+              loading={loading}
+              onClick={() => navigate(activeCourseAssessmentsHref)}
+            />
           </div>
-          <div className="theme-subcard rounded-xl p-5">
-            <p className="text-sm font-semibold text-[var(--text-primary)]">This week</p>
-            <div className="mt-5 grid gap-4">
+          <div className="theme-subcard flex min-h-[32rem] flex-col rounded-xl p-5">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-[var(--text-primary)]">This week</p>
+              <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-bold text-[var(--accent-primary)]">
+                {number(analytics.hoursStudied).toFixed(1)}h total
+              </span>
+            </div>
+            <div className="mt-5 flex flex-1 flex-col justify-between gap-4">
               {weekly.map((day) => {
                 const hours = number(day.hours)
-                return <div key={day.day} className="grid grid-cols-[2.5rem_minmax(0,1fr)_3.5rem] items-center gap-3"><span className="text-sm font-bold text-[var(--text-secondary)]">{day.day}</span><span className="h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]"><span className="block h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${hours ? Math.max(8, (hours / maxWeeklyHours) * 100) : 0}%` }} /></span><span className="text-right text-xs font-semibold text-[var(--text-muted)]">{hours}h</span></div>
+                const width = hours ? Math.max(18, (hours / maxWeeklyHours) * 100) : 0
+                return (
+                  <div key={day.day} className="grid flex-1 grid-cols-[2.8rem_minmax(0,1fr)_3.5rem] items-center gap-4">
+                    <span className="text-sm font-bold text-[var(--text-secondary)]">{day.day}</span>
+                    <span className="h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+                      <span
+                        className="block h-full rounded-full bg-[var(--brand-gradient)]"
+                        style={{ width: `${width}%` }}
+                      />
+                    </span>
+                    <span className="text-right text-xs font-semibold text-[var(--text-muted)]">{hours}h</span>
+                  </div>
+                )
               })}
             </div>
           </div>
         </div>
       </DashboardSection>
 
-      <div className="grid items-stretch gap-6 xl:grid-cols-3">
-        <DashboardSection eyebrow="Certificates" title="Verified achievements" compact>
-          <FeatureMetric icon={Award} value={number(analytics.certificates)} text="earned certificates" action="View certificates" onAction={() => navigate('/certificates')} />
-        </DashboardSection>
-        <DashboardSection eyebrow="Assignments" title="Course work" compact>
-          <FeatureMetric icon={CalendarCheck} value={assignments.length} text="available assignments" action="Review courses" onAction={() => navigate(activeCourse ? `/course/${activeCourse.id}/assessments` : '/courses')} />
-        </DashboardSection>
-        <DashboardSection eyebrow="Assessments" title="Submitted work" compact>
-          <FeatureMetric icon={FileQuestion} value={submissions.length} text={`${submissions.filter((item) => String(item.status).toUpperCase() === 'PENDING').length} awaiting review`} action="Open assessments" onAction={() => navigate(activeCourse ? `/course/${activeCourse.id}/assessments` : '/questions')} />
-        </DashboardSection>
-      </div>
-
       <DashboardSection eyebrow="Learning Streak" title="Build a consistent learning rhythm">
         <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
-          <div className="flex items-center gap-4 rounded-xl bg-[var(--color-warning-soft)] p-5"><span className="grid h-14 w-14 place-items-center rounded-2xl bg-[var(--bg-elevated)] text-[var(--color-warning)]"><Flame size={28} /></span><span><strong className="block text-3xl text-[var(--text-primary)]">{number(analytics.streak)} days</strong><span className="text-sm text-[var(--text-secondary)]">current streak</span></span></div>
-          <div className="theme-subcard rounded-xl p-5"><p className="font-semibold text-[var(--text-primary)]">{number(analytics.streak) ? 'Keep your momentum going' : 'Start your streak today'}</p><p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">Complete one lesson or practice activity today. Short, consistent sessions make course completion easier.</p><Button className="mt-4" onClick={() => navigate(activeCourse ? `/player/${activeCourse.id}` : '/courses')}>Learn now</Button></div>
+          <div className="flex items-center gap-4 rounded-xl bg-[var(--color-warning-soft)] p-5">
+            <span className="grid h-14 w-14 place-items-center rounded-2xl bg-[var(--bg-elevated)] text-[var(--color-warning)]">
+              <Flame size={28} />
+            </span>
+            <span>
+              <strong className="block text-3xl text-[var(--text-primary)]">{number(analytics.streak)} days</strong>
+              <span className="text-sm text-[var(--text-secondary)]">current streak</span>
+            </span>
+          </div>
+          <div className="theme-subcard rounded-xl p-5">
+            <p className="font-semibold text-[var(--text-primary)]">{number(analytics.streak) ? 'Keep your momentum going' : 'Start your streak today'}</p>
+            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
+              Complete one lesson or practice activity today. Short, consistent sessions make course completion easier.
+            </p>
+            <Button className="mt-4" onClick={() => navigate(activeCoursePlayerHref)}>Learn now</Button>
+          </div>
         </div>
       </DashboardSection>
 
       <DashboardSection eyebrow="Recommended Courses" title="Your next learning opportunities" action={<Button variant="secondary" onClick={() => navigate('/courses')}>View catalog</Button>}>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {loading ? Array.from({ length: 4 }).map((_, index) => <span key={index} className="skeleton h-48 rounded-xl" />) : recommended.length ? recommended.map((course) => <RecommendedCourse key={course.id} course={course} onOpen={() => navigate(`/course/${course.id}`)} />) : <div className="sm:col-span-2 xl:col-span-4"><EmptyState icon={BookOpenCheck} title="No recommendations yet" text="New published courses will appear here automatically." /></div>}
+          {loading
+            ? Array.from({ length: 4 }).map((_, index) => <span key={index} className="skeleton h-48 rounded-xl" />)
+            : recommended.length
+              ? recommended.map((course) => (
+                <RecommendedCourse
+                  key={course.id}
+                  course={course}
+                  onOpen={() => navigate(`/course/${course.id}`)}
+                />
+              ))
+              : (
+                <div className="sm:col-span-2 xl:col-span-4">
+                  <EmptyState
+                    icon={BookOpenCheck}
+                    title="No recommendations yet"
+                    text="New published courses will appear here automatically."
+                  />
+                </div>
+                )}
         </div>
       </DashboardSection>
     </section>
   )
 }
 
+function HelpActionCard({ title, text, icon: Icon, tone = 'blue', onClick }) {
+  const toneStyles = {
+    blue: 'from-blue-500 via-sky-500 to-cyan-400',
+    teal: 'from-cyan-500 via-teal-500 to-emerald-400',
+    orange: 'from-orange-500 via-amber-400 to-yellow-300',
+  }[tone] || 'from-blue-500 via-sky-500 to-cyan-400'
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`group min-h-28 min-w-0 rounded-[18px] bg-gradient-to-br ${toneStyles} p-4 text-left text-white shadow-[0_16px_36px_rgba(15,23,42,0.16)] transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)]`}
+    >
+      <div className="flex h-full flex-col justify-between gap-4">
+        <span className="grid h-11 w-11 place-items-center rounded-2xl border border-white/20 bg-white/15 text-white backdrop-blur">
+          <Icon size={20} />
+        </span>
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.14em] text-white/90">{title}</p>
+          <p className="mt-1 text-sm leading-5 text-white/85">{text}</p>
+        </div>
+      </div>
+    </button>
+  )
+}
+
 function DashboardSection({ eyebrow, title, action, children, compact = false }) {
-  return <section className={`admin-panel h-full ${compact ? 'p-5' : 'p-5 sm:p-6'}`}><div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">{eyebrow}</p><h2 className="mt-2 text-xl font-bold text-[var(--text-primary)]">{title}</h2></div>{action}</div>{children}</section>
+  return (
+    <section className={`admin-panel h-full ${compact ? 'p-5' : 'p-5 sm:p-6'}`}>
+      <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">{eyebrow}</p>
+          <h2 className="mt-2 text-xl font-bold text-[var(--text-primary)]">{title}</h2>
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  )
 }
 
 function LearningCourseRow({ course, onContinue, onDetails }) {
-  return <article className="theme-subcard grid gap-4 rounded-xl p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"><div className="min-w-0"><div className="flex flex-wrap gap-2"><span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-bold text-[var(--accent-primary)]">{course.level || 'Beginner'}</span><span className="text-xs font-semibold text-[var(--text-muted)]">{course.category || 'Course'}</span></div><h3 className="mt-2 truncate font-bold text-[var(--text-primary)]">{course.title}</h3><div className="mt-3 flex items-center gap-3"><span className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--bg-card)]"><span className="block h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${course.progress}%` }} /></span><span className="w-12 text-right text-xs font-bold text-[var(--text-secondary)]">{course.progress}%</span></div></div><div className="flex gap-2"><Button onClick={onContinue}>Continue</Button><Button variant="secondary" onClick={onDetails}>Details</Button></div></article>
-}
-
-function StatCard({ icon: Icon, label, value, detail }) {
-  return <div className="theme-subcard flex items-center gap-4 rounded-xl p-4"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]"><Icon size={19} /></span><span><span className="block text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">{label}</span><strong className="mt-1 block text-2xl text-[var(--text-primary)]">{value}</strong><span className="text-xs text-[var(--text-secondary)]">{detail}</span></span></div>
-}
-
-function FeatureMetric({ icon: Icon, value, text, action, onAction }) {
-  return <div><span className="grid h-12 w-12 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]"><Icon size={21} /></span><p className="mt-5 text-3xl font-bold text-[var(--text-primary)]">{value}</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{text}</p><Button variant="secondary" className="mt-5 w-full" onClick={onAction}>{action}</Button></div>
+  return (
+    <article className="theme-subcard grid gap-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-4 shadow-soft dark:bg-slate-950/80 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+      <div className="min-w-0">
+        <div className="flex flex-wrap gap-2">
+          <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-bold text-[var(--accent-primary)] dark:bg-cyan-500/15 dark:text-cyan-300">
+            {course.level || 'Beginner'}
+          </span>
+          <span className="text-xs font-semibold text-[var(--text-muted)]">{course.category || 'Course'}</span>
+        </div>
+        <h3 className="mt-2 truncate font-bold text-[var(--text-primary)] dark:text-slate-100">{course.title}</h3>
+        <div className="mt-3 flex items-center gap-3">
+          <span className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200/90 dark:bg-slate-700/80">
+            <span className="block h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${course.progress}%` }} />
+          </span>
+          <span className="w-12 text-right text-xs font-bold text-[var(--text-secondary)] dark:text-slate-300">{course.progress}%</span>
+        </div>
+      </div>
+      <div className="flex gap-2">
+        <Button onClick={onContinue}>Continue</Button>
+        <Button variant="secondary" onClick={onDetails}>Details</Button>
+      </div>
+    </article>
+  )
 }
 
 function RecommendedCourse({ course, onOpen }) {
   const assignments = getCourseAssignments(course).length
-  return <button type="button" onClick={onOpen} className="theme-subcard theme-subcard-hover flex min-h-48 flex-col rounded-xl p-5 text-left"><span className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--accent-primary)]">{course.category || 'Learning path'}</span><h3 className="mt-3 line-clamp-2 font-bold text-[var(--text-primary)]">{course.title}</h3><p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--text-secondary)]">{course.description || 'Build practical skills with guided lessons and assessments.'}</p><span className="mt-auto flex items-center justify-between gap-3 pt-4 text-xs font-semibold text-[var(--text-muted)]"><span>{course.level || 'Beginner'}</span><span>{assignments} assignments</span></span></button>
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="theme-subcard theme-subcard-hover flex min-h-48 flex-col rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-5 text-left shadow-soft dark:bg-slate-950/80"
+    >
+      <span className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--accent-primary)] dark:text-cyan-300">
+        {course.category || 'Learning path'}
+      </span>
+      <h3 className="mt-3 line-clamp-2 font-bold text-[var(--text-primary)] dark:text-slate-100">{course.title}</h3>
+      <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--text-secondary)] dark:text-slate-300">
+        {course.description || 'Build practical skills with guided lessons and assessments.'}
+      </p>
+      <span className="mt-auto flex items-center justify-between gap-3 pt-4 text-xs font-semibold text-[var(--text-muted)] dark:text-slate-400">
+        <span>{course.level || 'Beginner'}</span>
+        <span>{assignments} assignments</span>
+      </span>
+    </button>
+  )
 }
 
 function EmptyState({ icon: Icon, title, text, action, onAction }) {
-  return <div className="rounded-xl border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] p-7 text-center"><Icon className="mx-auto text-[var(--text-muted)]" size={30} /><p className="mt-3 font-bold text-[var(--text-primary)]">{title}</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{text}</p>{action ? <Button className="mt-5" onClick={onAction}>{action}</Button> : null}</div>
+  return (
+    <div className="rounded-xl border border-dashed border-[var(--border-color)] bg-[var(--bg-subtle)] p-7 text-center">
+      <Icon className="mx-auto text-[var(--text-muted)]" size={30} />
+      <p className="mt-3 font-bold text-[var(--text-primary)]">{title}</p>
+      <p className="mt-1 text-sm text-[var(--text-secondary)]">{text}</p>
+      {action ? <Button className="mt-5" onClick={onAction}>{action}</Button> : null}
+    </div>
+  )
 }
 
 function CourseSkeleton() {
-  return <div className="theme-subcard grid gap-3 rounded-xl p-4"><span className="skeleton h-5 w-2/3 rounded" /><span className="skeleton h-2 w-full rounded-full" /><span className="skeleton h-10 w-32 rounded-lg" /></div>
+  return (
+    <div className="theme-subcard grid gap-3 rounded-xl p-4">
+      <span className="skeleton h-5 w-2/3 rounded" />
+      <span className="skeleton h-2 w-full rounded-full" />
+      <span className="skeleton h-10 w-32 rounded-lg" />
+    </div>
+  )
 }

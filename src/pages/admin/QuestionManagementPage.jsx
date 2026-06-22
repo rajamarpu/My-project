@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { BarChart3, ClipboardCheck, Edit3, Plus, Search, Tags, Trash2, Upload } from 'lucide-react'
+import { Edit3, Plus, Search, Trash2, Upload } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
-import { AdminEmptyState, AdminGuidancePanel, AdminInsightStrip, AdminLoadingState, AdminNotice, AdminPageHeader, FieldError } from '../../components/admin/AdminUI.jsx'
+import { AdminEmptyState, AdminGuidancePanel, AdminLoadingState, AdminNotice, AdminPageHeader, FieldError } from '../../components/admin/AdminUI.jsx'
 import { QuestionPreview } from '../../components/questions/QuestionRenderer.jsx'
 import { DIFFICULTY_LABELS, QUESTION_TYPE_LABELS, emptyQuestion, normalizeQuestionForForm } from '../../components/questions/questionUtils.js'
 import { bulkImportQuestions, createQuestion, deleteQuestion, fetchAdminCourses, fetchQuestions, updateQuestion } from '../../api/api.js'
@@ -68,18 +68,6 @@ export default function QuestionManagementPage() {
   }, [filters.search, filters.type, filters.difficulty, filters.courseId, filters.page, filters.pageSize])
 
   const previewQuestion = useMemo(() => normalizeQuestionForForm(form), [form])
-  const questionMetrics = useMemo(() => {
-    const descriptive = questions.filter((question) => question.type === 'DESCRIPTIVE').length
-    const mcq = questions.filter((question) => String(question.type).includes('MCQ')).length
-    const hard = questions.filter((question) => question.difficulty === 'HARD').length
-    const courseCoverage = new Set(questions.map((question) => question.course?.id || question.courseId).filter(Boolean)).size
-    return [
-      { label: 'Visible questions', value: questions.length, detail: `${pagination.total} total in filter`, icon: ClipboardCheck },
-      { label: 'MCQ coverage', value: mcq, detail: 'auto-gradable items', icon: BarChart3 },
-      { label: 'Manual review', value: descriptive, detail: 'descriptive questions', icon: Edit3 },
-      { label: 'Hard questions', value: hard, detail: `${courseCoverage} course${courseCoverage === 1 ? '' : 's'} covered`, icon: Tags },
-    ]
-  }, [pagination.total, questions])
 
   function update(key, value) {
     if (key === 'type') {
@@ -220,7 +208,6 @@ export default function QuestionManagementPage() {
       />
       <AdminNotice type={notice.type || 'info'}>{notice.message}</AdminNotice>
 
-      <AdminInsightStrip items={questionMetrics} />
       <AdminGuidancePanel
         title="Assessment bank workflow"
         items={[

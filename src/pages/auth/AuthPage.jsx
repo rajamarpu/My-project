@@ -44,6 +44,15 @@ function modeFromPath(pathname) {
   return 'login'
 }
 
+function createCaptchaChallenge() {
+  const left = Math.floor(Math.random() * 8) + 2
+  const right = Math.floor(Math.random() * 8) + 1
+  return {
+    prompt: `${left} + ${right} = ?`,
+    answer: String(left + right),
+  }
+}
+
 export default function AuthPage() {
   const location = useLocation()
   const navigate = useNavigate()
@@ -53,11 +62,14 @@ export default function AuthPage() {
   const isAdminPortal = location.pathname.includes('admin-login')
   const isRegister = mode === 'register'
   const needsPassword = ['login', 'register', 'reset'].includes(mode)
+  const requiresCaptcha = mode === 'login'
 
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
   const [loading, setLoading] = useState(false)
   const [attempted, setAttempted] = useState(false)
+  const [captcha, setCaptcha] = useState(() => createCaptchaChallenge())
+  const [captchaInput, setCaptchaInput] = useState('')
   const [toast, setToast] = useState(() => {
     const params = new URLSearchParams(location.search)
     const error = params.get('error')
@@ -74,6 +86,7 @@ export default function AuthPage() {
   })
 
   const score = passwordScore(form.password)
+  const captchaSolved = !requiresCaptcha || captchaInput.trim() === captcha.answer
   const [eyebrow, title, subtitle] = copyByMode[mode]
   const socialAction = isRegister ? 'Register' : 'Login'
 
@@ -82,6 +95,12 @@ export default function AuthPage() {
     if (!auth.user || !auth.token) return
     navigate(routeByRole[auth.role] || '/dashboard', { replace: true })
   }, [auth.role, auth.token, auth.user, isAdminPortal, navigate])
+
+  useEffect(() => {
+    setCaptcha(createCaptchaChallenge())
+    setCaptchaInput('')
+    setAttempted(false)
+  }, [isAdminPortal, mode])
 
   useEffect(() => {
     if (!isAdminPortal) return
@@ -118,8 +137,8 @@ export default function AuthPage() {
     if (loading) return false
     if (mode === 'forgot') return Boolean(form.email.trim())
     if (mode === 'otp') return Boolean(form.email.trim())
-    return Object.keys(errors).length === 0
-  }, [errors, form.email, loading, mode])
+    return Object.keys(errors).length === 0 && captchaSolved
+  }, [captchaSolved, errors, form.email, loading, mode])
 
   const fieldError = (key) => (attempted ? errors[key] : '')
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
@@ -143,6 +162,10 @@ export default function AuthPage() {
     if (Object.keys(errors).length && mode !== 'forgot' && mode !== 'otp') return
     if (mode === 'forgot' && errors.email) return
     if (mode === 'otp' && (errors.email || errors.otp)) return
+    if (requiresCaptcha && !captchaSolved) {
+      setToast({ type: 'error', message: 'Complete the CAPTCHA to continue.' })
+      return
+    }
 
     setLoading(true)
     try {
@@ -225,6 +248,49 @@ export default function AuthPage() {
           </AuthField>
         ) : null}
 
+        {requiresCaptcha ? (
+          <label className="block">
+            <span className="text-sm font-semibold text-[var(--text-secondary)]">Security check</span>
+            <div className={cn('mt-2 grid gap-3 rounded-xl border bg-white px-4 py-3 shadow-[0_12px_26px_rgba(15,23,42,0.06)] transition dark:bg-slate-950/70', captchaSolved ? 'border-emerald-400/60' : 'border-black/10 dark:border-white/10')}>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-[var(--text-primary)]">
+                  <ShieldCheck size={18} className="text-[var(--accent-primary)]" />
+                  Solve this CAPTCHA
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCaptcha(createCaptchaChallenge())
+                    setCaptchaInput('')
+                  }}
+                  className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--accent-primary)] transition hover:text-[var(--accent-bold)]"
+                >
+                  Refresh
+                </button>
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="rounded-lg bg-[var(--accent-soft)] px-3 py-2 text-sm font-black tracking-[0.2em] text-[var(--accent-primary)]">
+                  {captcha.prompt}
+                </div>
+                <input
+                  value={captchaInput}
+                  onChange={(e) => setCaptchaInput(e.target.value)}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  className="min-w-0 flex-1 bg-transparent text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]"
+                  placeholder="Enter the answer"
+                />
+              </div>
+            </div>
+            {attempted && !captchaSolved ? (
+              <span className="mt-2 flex items-start gap-1.5 text-xs font-semibold leading-5 text-red-600 dark:text-red-200">
+                <ShieldCheck size={13} />
+                CAPTCHA answer is incorrect.
+              </span>
+            ) : null}
+          </label>
+        ) : null}
+
         {isRegister ? (
           <AuthField icon={<LockKeyhole size={18} />} label="Confirm password" error={fieldError('confirmPassword')} compact>
             <input value={form.confirmPassword} onChange={(e) => update('confirmPassword', e.target.value)} type={showPassword ? 'text' : 'password'} className="w-full bg-transparent text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" placeholder="Repeat password" />
@@ -282,14 +348,14 @@ export default function AuthPage() {
 
       {!isAdminPortal && mode === 'login' ? (
         <div className="auth-info-panel">
-          <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
-            <p className="flex items-center gap-2 font-semibold text-slate-950">
-              <Rocket size={16} className="text-teal-300" />
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--border-color)] px-4 py-3">
+            <p className="flex items-center gap-2 font-semibold text-[var(--text-primary)]">
+              <Rocket size={16} className="text-[var(--accent-primary)]" />
               Personalized learning starts after sign in
             </p>
             <Zap size={16} className="text-[var(--accent-primary)]" />
           </div>
-          <p className="px-4 py-3 leading-6 text-slate-700">
+          <p className="px-4 py-3 leading-6 text-[var(--text-secondary)]">
             Your courses, certificates, mentor mode, and progress sync into one learner workspace.
           </p>
         </div>
@@ -298,8 +364,8 @@ export default function AuthPage() {
       {!isAdminPortal ? (
         <div className={cn('auth-footer-links', isRegister && 'auth-footer-links-dense')}>
           {mode !== 'login' ? <Link className="font-semibold text-[var(--accent-primary)] transition hover:text-[var(--accent-bold)]" to="/login">Back to learner login</Link> : null}
-          {mode === 'login' ? <span className="text-slate-800">New to UptoSkills? <Link className="font-semibold text-[#FF4B1F] transition hover:text-orange-700" to="/register">Create learner account</Link></span> : null}
-          {mode === 'login' ? <Link className="font-semibold text-blue-700 transition hover:text-blue-800" to="/otp-verification">Use OTP instead</Link> : null}
+          {mode === 'login' ? <span className="text-[var(--text-secondary)]">New to UptoSkills? <Link className="font-semibold text-[var(--accent-primary)] transition hover:text-[var(--accent-bold)]" to="/register">Create learner account</Link></span> : null}
+          {mode === 'login' ? <Link className="font-semibold text-[var(--accent-primary)] transition hover:text-[var(--accent-bold)]" to="/otp-verification">Use OTP instead</Link> : null}
         </div>
       ) : null}
     </AuthShell>
