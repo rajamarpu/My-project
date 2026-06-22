@@ -3,6 +3,8 @@ import { Activity, BarChart3, Download, RefreshCw, ShieldCheck, TrendingUp } fro
 import Button from '../../components/common/Button/Button.jsx'
 import { AdminEmptyState, AdminPageHeader } from '../../components/admin/AdminUI.jsx'
 import { fetchAdminActivityLogs, fetchAdminOverview } from '../../api/api.js'
+import KpiCard from '../../components/ui/Dashboard/KpiCard.jsx'
+import { compactNumber, money } from '../../utils/dashboardMetrics.js'
 
 function csvCell(value) { return `"${String(value ?? '').replace(/"/g, '""')}"` }
 
@@ -40,15 +42,15 @@ export default function AdminReportsPage() {
     const link = document.createElement('a'); link.href = url; link.download = `uptoskills-report-${new Date().toISOString().slice(0, 10)}.csv`; link.click(); URL.revokeObjectURL(url)
   }
 
-  const summary = overview?.summary || overview?.overview || {}
+  const analytics = overview?.analytics || overview?.summary || overview?.overview || {}
   return <section className="space-y-6 pb-12">
     <AdminPageHeader eyebrow="Reports" title="Operational reports" description="Filter auditable platform activity, compare core operational signals, and export a focused report." actions={<><Button variant="secondary" onClick={load} loading={state.loading}><RefreshCw size={16} /> Refresh</Button><Button onClick={exportReport} disabled={!rows.length}><Download size={16} /> Export CSV</Button></>} />
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[
-      [TrendingUp, summary.totalUsers ?? overview?.stats?.totalUsers ?? 0, 'users'],
-      [BarChart3, summary.totalCourses ?? overview?.stats?.totalCourses ?? 0, 'courses'],
-      [Activity, rows.length, 'matching events'],
-      [ShieldCheck, logs.length, 'auditable events'],
-    ].map(([Icon, value, label]) => <article key={label} className="admin-panel p-5"><Icon className="text-[var(--accent-primary)]" size={21} /><p className="mt-4 text-3xl font-black text-[var(--text-primary)]">{value}</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{label}</p></article>)}</div>
+      [TrendingUp, compactNumber(analytics.totalUsers || 0), 'users', 'blue', 'All platform accounts'],
+      [BarChart3, compactNumber(analytics.totalCourses || 0), 'courses', 'purple', 'Published catalog'],
+      [Activity, compactNumber(rows.length), 'matching events', 'orange', 'Rows that match current filters'],
+      [ShieldCheck, money(analytics.revenueCents || 0), 'revenue', 'teal', 'Paid revenue captured in admin overview'],
+    ].map(([Icon, value, label, tone, detail]) => <KpiCard key={label} icon={Icon} value={value} label={label} detail={detail} tone={tone} />)}</div>
     <div className="admin-panel grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-4"><label className="admin-label">From date<input className="admin-input" type="date" value={filters.from} onChange={(event) => setFilters((current) => ({ ...current, from: event.target.value }))} /></label><label className="admin-label">To date<input className="admin-input" type="date" value={filters.to} onChange={(event) => setFilters((current) => ({ ...current, to: event.target.value }))} /></label><label className="admin-label">Module<select className="admin-input" value={filters.module} onChange={(event) => setFilters((current) => ({ ...current, module: event.target.value }))}><option value="ALL">All modules</option>{modules.map((item) => <option key={item}>{item}</option>)}</select></label><label className="admin-label">Search report<input className="admin-input" type="search" value={filters.search} onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))} placeholder="Action or actor" /></label></div>
     {state.error ? <div className="admin-panel p-8 text-center text-red-600 dark:text-red-200">{state.error}</div> : null}
     {!state.loading && !state.error && !rows.length ? <AdminEmptyState title="No matching report rows" message="Change the date, module, or search filters and try again." /> : null}

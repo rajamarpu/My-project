@@ -5,6 +5,7 @@ import { Activity, AlertTriangle, Award, Ban, BarChart3, BookOpenCheck, CheckCir
 import Button from '../../components/common/Button/Button.jsx'
 import AdminDataTable from '../../components/admin/AdminDataTable.jsx'
 import { AdminEmptyState, AdminGuidancePanel, AdminInsightStrip, AdminModal, AdminNotice, AdminPageHeader, AdminStatusBadge, AdminToastStack } from '../../components/admin/AdminUI.jsx'
+import KpiCard from '../../components/ui/Dashboard/KpiCard.jsx'
 import {
   approveAdminUser,
   deleteAdminCertificate,
@@ -155,6 +156,25 @@ function displayName(person) {
   return person?.name || person?.fullName || person?.email || ''
 }
 
+function normalizePeopleStatusFilter(status) {
+  const value = String(status || '').trim().toLowerCase()
+  if (['pending', 'active', 'inactive'].includes(value)) return value
+  return ''
+}
+
+function filterPeopleRows(rows, statusFilter) {
+  if (statusFilter === 'pending') {
+    return rows.filter((row) => String(row.approvalStatus || '').toUpperCase() === 'PENDING')
+  }
+  if (statusFilter === 'active') {
+    return rows.filter((row) => String(row.approvalStatus || 'APPROVED').toUpperCase() === 'APPROVED' && row.isActive !== false)
+  }
+  if (statusFilter === 'inactive') {
+    return rows.filter((row) => row.isActive === false || String(row.approvalStatus || '').toUpperCase() === 'SUSPENDED')
+  }
+  return rows
+}
+
 function valueFor(row, column) {
   if (column === 'learner') return displayName(row.learner) || displayName(row.user)
   if (column === 'user') return displayName(row.user) || displayName(row.learner)
@@ -219,10 +239,47 @@ export default function AdminDataPage({ resource }) {
   const [error, setError] = useState('')
   const [modal, setModal] = useState(null)
   const [toasts, setToasts] = useState([])
+  const searchParams = new URLSearchParams(location.search)
+  const peopleStatusFilter = peopleResources.has(resource) ? normalizePeopleStatusFilter(searchParams.get('status')) : ''
   const hasActions = config.actions || ['users', 'learners', 'instructors', 'categories'].includes(resource)
-  const insights = buildInsights(resource, rows)
+  const visibleRows = peopleStatusFilter ? filterPeopleRows(rows, peopleStatusFilter) : rows
+  const insights = buildInsights(resource, visibleRows)
   const guidance = buildGuidance(resource)
   const enterpriseSignals = peopleResources.has(resource) ? null : buildEnterpriseSignals(resource, rows)
+  const peopleMetrics = resource === 'users' || resource === 'learners' ? [
+    {
+      label: resource === 'users' ? 'All users' : 'Learners',
+      value: visibleRows.length,
+      detail: resource === 'users' ? 'accounts in this view' : 'accounts in this table',
+      icon: Users,
+      tone: 'blue',
+      href: resource === 'users' ? '/admin/users' : '/admin/learners',
+    },
+    {
+      label: 'Active',
+      value: visibleRows.filter((row) => String(row.approvalStatus || 'APPROVED').toUpperCase() === 'APPROVED' && row.isActive !== false).length,
+      detail: 'approved and accessible',
+      icon: CheckCircle2,
+      tone: 'green',
+      href: resource === 'users' ? '/admin/users?status=active' : '/admin/learners?status=active',
+    },
+    {
+      label: 'Pending',
+      value: visibleRows.filter((row) => String(row.approvalStatus || '').toUpperCase() === 'PENDING').length,
+      detail: 'waiting for review',
+      icon: Clock3,
+      tone: 'orange',
+      href: resource === 'users' ? '/admin/users?status=pending' : '/admin/learners?status=pending',
+    },
+    {
+      label: 'Inactive',
+      value: visibleRows.filter((row) => row.isActive === false || String(row.approvalStatus || '').toUpperCase() === 'SUSPENDED').length,
+      detail: 'accounts needing follow-up',
+      icon: ShieldCheck,
+      tone: 'red',
+      href: resource === 'users' ? '/admin/users?status=inactive' : '/admin/learners?status=inactive',
+    },
+  ] : []
 
   function toast(type, message) {
     const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -422,13 +479,34 @@ export default function AdminDataPage({ resource }) {
       <AdminNotice type="error">{error}</AdminNotice>
       <AdminNotice type={notice.type || 'info'}>{notice.message}</AdminNotice>
 
-      <AdminInsightStrip items={insights} />
-      <EnterpriseOperationsPanel signals={enterpriseSignals} />
+      {resource === 'users' || resource === 'learners' ? (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          {peopleMetrics.map((metric) => (
+            <KpiCard
+              key={metric.label}
+              label={metric.label}
+              value={metric.value}
+              detail={metric.detail}
+              icon={metric.icon}
+              tone={metric.tone}
+              onClick={metric.href ? () => navigate(metric.href) : undefined}
+            />
+          ))}
+        </div>
+      ) : (
+        <AdminInsightStrip items={insights} />
+      )}
+      {peopleStatusFilter ? (
+        <AdminNotice type="info">
+          Showing {config.title.toLowerCase()} filtered by {peopleStatusFilter}. Use the first card to return to the full list.
+        </AdminNotice>
+      ) : null}
+      {enterpriseSignals && resource !== 'payments' && resource !== 'revenue' ? <EnterpriseOperationsPanel signals={enterpriseSignals} /> : null}
       {resource === 'users' ? null : <AdminGuidancePanel title="Productivity workflow" items={guidance} />}
 
       <AdminDataTable
         title={config.title}
-        rows={rows}
+        rows={visibleRows}
         columns={config.columns}
         valueFor={valueFor}
         loading={loading}
@@ -524,16 +602,14 @@ function EnterpriseOperationsPanel({ signals }) {
         {signals.cards.map((card) => {
           const Icon = card.icon
           return (
-            <div key={card.label} className="theme-subcard rounded-lg p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-muted)]">{card.label}</p>
-                <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--bg-card)] text-[var(--accent-primary)]">
-                  <Icon size={17} />
-                </span>
-              </div>
-              <p className="mt-3 text-xl font-bold text-[var(--text-primary)]">{card.value}</p>
-              <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{card.detail}</p>
-            </div>
+            <KpiCard
+              key={card.label}
+              label={card.label}
+              value={card.value}
+              detail={card.detail}
+              icon={Icon}
+              tone={card.tone || 'blue'}
+            />
           )
         })}
       </div>
@@ -554,9 +630,9 @@ function buildEnterpriseSignals(resource, rows) {
     automation: 'Use filters and bulk actions to reduce repeated one-row admin work.',
     review: 'Open quick view before editing or deleting records.',
     cards: [
-      { label: 'Rows monitored', value: total, detail: 'records loaded into this module', icon: BarChart3 },
-      { label: 'Productivity', value: total > 25 ? 'High' : 'Normal', detail: 'table tools are ready for sorting, filtering, and export', icon: Zap },
-      { label: 'Governance', value: 'Tracked', detail: 'quick view and export support admin review', icon: ShieldCheck },
+      { label: 'Rows monitored', value: total, detail: 'records loaded into this module', icon: BarChart3, tone: 'blue' },
+      { label: 'Productivity', value: total > 25 ? 'High' : 'Normal', detail: 'table tools are ready for sorting, filtering, and export', icon: Zap, tone: 'teal' },
+      { label: 'Governance', value: 'Tracked', detail: 'quick view and export support admin review', icon: ShieldCheck, tone: 'purple' },
     ],
   }
 
@@ -576,9 +652,9 @@ function buildEnterpriseSignals(resource, rows) {
       automation: 'Use filtered exports for weekly onboarding, approval, and learner success queues.',
       review: 'Check quick view before approve, suspend, reject, or delete actions.',
       cards: [
-        { label: 'Approved rate', value: `${total ? Math.round((approved / total) * 100) : 0}%`, detail: `${approved}/${total} accounts approved`, icon: UserCheck },
-        { label: 'Pending queue', value: pending, detail: 'accounts awaiting admin decision', icon: Clock3 },
-        { label: 'Access risk', value: suspended, detail: 'inactive or suspended records', icon: AlertTriangle },
+        { label: 'Approved rate', value: `${total ? Math.round((approved / total) * 100) : 0}%`, detail: `${approved}/${total} accounts approved`, icon: UserCheck, tone: 'blue' },
+        { label: 'Pending queue', value: pending, detail: 'accounts awaiting admin decision', icon: Clock3, tone: 'orange' },
+        { label: 'Access risk', value: suspended, detail: 'inactive or suspended records', icon: AlertTriangle, tone: 'red' },
       ],
     }
   }
@@ -599,9 +675,9 @@ function buildEnterpriseSignals(resource, rows) {
       automation: 'Use saved filtered exports for draft review, published catalog QA, and high-demand course planning.',
       review: 'Before publishing, check title, category, thumbnail, lessons, assignments, and certificate readiness.',
       cards: [
-        { label: 'Publish rate', value: `${total ? Math.round((published / total) * 100) : 0}%`, detail: `${published}/${total} courses visible`, icon: CheckCircle2 },
-        { label: 'Demand', value: enrollments, detail: 'enrollments across visible rows', icon: TrendingUp },
-        { label: 'Draft risk', value: drafts, detail: 'courses not yet published', icon: Clock3 },
+        { label: 'Publish rate', value: `${total ? Math.round((published / total) * 100) : 0}%`, detail: `${published}/${total} courses visible`, icon: CheckCircle2, tone: 'blue' },
+        { label: 'Demand', value: enrollments, detail: 'enrollments across visible rows', icon: TrendingUp, tone: 'teal' },
+        { label: 'Draft risk', value: drafts, detail: 'courses not yet published', icon: Clock3, tone: 'orange' },
       ],
     }
   }
@@ -621,9 +697,9 @@ function buildEnterpriseSignals(resource, rows) {
       automation: 'Export at-risk cohorts for reminder campaigns or mentor follow-up.',
       review: 'Compare completion percentage, hours studied, and instructor assignment before intervention.',
       cards: [
-        { label: 'Average progress', value: `${avg}%`, detail: 'mean completion across rows', icon: Gauge },
-        { label: 'Completed', value: completed, detail: 'enrollments at 100%', icon: Award },
-        { label: 'At risk', value: atRisk, detail: 'below 25% progress', icon: AlertTriangle },
+        { label: 'Average progress', value: `${avg}%`, detail: 'mean completion across rows', icon: Gauge, tone: 'blue' },
+        { label: 'Completed', value: completed, detail: 'enrollments at 100%', icon: Award, tone: 'green' },
+        { label: 'At risk', value: atRisk, detail: 'below 25% progress', icon: AlertTriangle, tone: 'red' },
       ],
     }
   }
@@ -633,21 +709,41 @@ function buildEnterpriseSignals(resource, rows) {
     const pending = rows.filter((row) => String(row.status || '').toUpperCase() === 'PENDING')
     const failed = rows.filter((row) => String(row.status || '').toUpperCase() === 'FAILED')
     const revenue = paid.reduce((sum, row) => sum + Number(row.amountCents || 0), 0)
+    const pendingValue = pending.reduce((sum, row) => sum + Number(row.amountCents || 0), 0)
+    const successRate = total ? Math.round((paid.length / total) * 100) : 0
     return {
       ...base,
       title: 'Billing operations snapshot',
-      summary: 'Revenue quality and payment exceptions are separated so finance review is faster and cleaner.',
+      summary: resource === 'revenue'
+        ? 'Revenue reporting focuses on cash captured, while the table still keeps the underlying payments accessible.'
+        : 'Payment operations focus on transaction flow, exception handling, and closure speed.',
       score: failed.length ? 7 : paid.length ? 9 : 6,
       tone: failed.length ? 'risk' : pending.length ? 'watch' : 'good',
-      priority: failed.length ? `Investigate ${failed.length} failed payment${failed.length === 1 ? '' : 's'} before reconciliation.` : 'Export paid rows for finance reporting.',
-      risk: pending.length ? `${pending.length} pending payment${pending.length === 1 ? '' : 's'} may need support follow-up.` : 'No pending payment state is visible in this module.',
-      automation: 'Create filtered finance exports for paid, pending, and failed payment queues.',
-      review: 'Confirm learner, course, amount, and status before refund or revenue reporting decisions.',
-      cards: [
-        { label: 'Paid revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'from paid rows only', icon: CreditCard },
-        { label: 'Pending', value: pending.length, detail: 'payments awaiting closure', icon: Clock3 },
-        { label: 'Failed', value: failed.length, detail: 'payment exceptions', icon: AlertTriangle },
-      ],
+      priority: failed.length
+        ? `Investigate ${failed.length} failed payment${failed.length === 1 ? '' : 's'} before reconciliation.`
+        : resource === 'revenue'
+          ? 'Review paid totals and pending exposure before closing the books.'
+          : 'Export paid and pending rows for operations follow-up.',
+      risk: pending.length
+        ? `${pending.length} pending payment${pending.length === 1 ? '' : 's'} total ${new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(pendingValue / 100)}.`
+        : 'No pending payment state is visible in this module.',
+      automation: resource === 'revenue'
+        ? 'Use paid totals for finance snapshots and pending totals for reconciliation review.'
+        : 'Create filtered finance exports for pending, failed, and recovered payment queues.',
+      review: resource === 'revenue'
+        ? 'Confirm paid amount, settlement status, and reconciliation date before reporting.'
+        : 'Confirm learner, course, amount, and status before support or refund decisions.',
+      cards: resource === 'revenue'
+        ? [
+            { label: 'Paid revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'cash captured from paid rows', icon: CreditCard, tone: 'purple' },
+            { label: 'Success rate', value: `${successRate}%`, detail: 'paid rows out of total payments', icon: CheckCircle2, tone: 'green' },
+            { label: 'Pending value', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(pendingValue / 100), detail: 'unsettled amount', icon: Clock3, tone: 'orange' },
+          ]
+        : [
+            { label: 'Payment volume', value: total, detail: 'total payment rows', icon: CreditCard, tone: 'blue' },
+            { label: 'Pending queue', value: pending.length, detail: 'transactions awaiting closure', icon: Clock3, tone: 'orange' },
+            { label: 'Failed queue', value: failed.length, detail: 'transactions needing review', icon: AlertTriangle, tone: 'red' },
+          ],
     }
   }
 
@@ -669,11 +765,11 @@ function buildEnterpriseSignals(resource, rows) {
       automation: 'Export weekly growth rows for leadership trend reviews and course demand planning.',
       review: 'Read registrations, enrollments, completions, and revenue together before making catalog decisions.',
       cards: [
-        { label: 'Registrations', value: registrations, detail: 'new users in this window', icon: Users },
-        { label: 'User actions', value: userActions, detail: 'admin moderation events', icon: ShieldCheck },
-        { label: 'Enrollments', value: enrollments, detail: 'course starts tracked daily', icon: GraduationCap },
-        { label: 'Completions', value: completions, detail: 'learning outcomes recorded', icon: Award },
-        { label: 'Revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'paid revenue by day', icon: CreditCard },
+        { label: 'Registrations', value: registrations, detail: 'new users in this window', icon: Users, tone: 'blue' },
+        { label: 'User actions', value: userActions, detail: 'admin moderation events', icon: ShieldCheck, tone: 'teal' },
+        { label: 'Enrollments', value: enrollments, detail: 'course starts tracked daily', icon: GraduationCap, tone: 'orange' },
+        { label: 'Completions', value: completions, detail: 'learning outcomes recorded', icon: Award, tone: 'green' },
+        { label: 'Revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'paid revenue by day', icon: CreditCard, tone: 'pink' },
       ],
     }
   }
@@ -693,9 +789,9 @@ function buildEnterpriseSignals(resource, rows) {
       automation: 'Export module-specific audit rows for weekly security, support, and operations reviews.',
       review: 'Use actor, module, IP address, and timestamp together before drawing conclusions.',
       cards: [
-        { label: 'Audit events', value: total, detail: 'records available for review', icon: Activity },
-        { label: 'Actors', value: actors, detail: 'unique users represented', icon: Users },
-        { label: 'Modules', value: modules, detail: 'platform areas touched', icon: ShieldCheck },
+        { label: 'Audit events', value: total, detail: 'records available for review', icon: Activity, tone: 'blue' },
+        { label: 'Actors', value: actors, detail: 'unique users represented', icon: Users, tone: 'teal' },
+        { label: 'Modules', value: modules, detail: 'platform areas touched', icon: ShieldCheck, tone: 'purple' },
       ],
     }
   }
@@ -750,10 +846,18 @@ function buildInsights(resource, rows) {
     const paid = rows.filter((row) => String(row.status || '').toUpperCase() === 'PAID')
     const revenue = paid.reduce((sum, row) => sum + Number(row.amountCents || 0), 0)
     return [
-      { label: 'Transactions', value: total, detail: 'payment records', icon: CreditCard },
-      { label: 'Paid', value: paid.length, detail: 'successful payments', icon: CheckCircle2 },
-      { label: 'Pending or failed', value: Math.max(0, total - paid.length), detail: 'monitor closely', icon: Activity },
-      { label: 'Revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'from paid rows', icon: TrendingUp },
+      resource === 'revenue'
+        ? { label: 'Revenue rows', value: total, detail: 'payment records used for finance', icon: CreditCard }
+        : { label: 'Transactions', value: total, detail: 'payment records', icon: CreditCard },
+      resource === 'revenue'
+        ? { label: 'Paid share', value: `${total ? Math.round((paid.length / total) * 100) : 0}%`, detail: 'share of rows paid', icon: CheckCircle2 }
+        : { label: 'Paid', value: paid.length, detail: 'successful payments', icon: CheckCircle2 },
+      resource === 'revenue'
+        ? { label: 'Gross revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'captured from paid rows', icon: TrendingUp }
+        : { label: 'Pending or failed', value: Math.max(0, total - paid.length), detail: 'monitor closely', icon: Activity },
+      resource === 'revenue'
+        ? { label: 'Open amount', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(rows.filter((row) => String(row.status || '').toUpperCase() !== 'PAID').reduce((sum, row) => sum + Number(row.amountCents || 0), 0) / 100), detail: 'non-paid exposure', icon: AlertTriangle }
+        : { label: 'Revenue', value: new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(revenue / 100), detail: 'from paid rows', icon: TrendingUp },
     ]
   }
   if (resource === 'certificates') {

@@ -9,8 +9,18 @@ export const unenrollCourseRequest = async (id) => api.delete(`/courses/${id}/en
 export const fetchCourseInstructors = async (id) => api.get(`/courses/${id}/instructors`)
 export const switchCourseInstructor = async (id, payload) => api.post(`/courses/${id}/instructor`, payload)
 export const fetchLearnerDashboard = async () => api.get('/learner/dashboard')
-export const loginRequest = async (payload) => api.post('/auth/login', payload)
-export const registerRequest = async (payload) => api.post('/auth/register', payload)
+export const fetchAuthCaptcha = async () => api.get('/auth/captcha')
+async function attachCaptcha(payload = {}) {
+  if (payload.captchaId && payload.captchaAnswer !== undefined) return payload
+  const response = await fetchAuthCaptcha()
+  return {
+    ...payload,
+    captchaId: response.data.captcha.captchaId,
+    captchaAnswer: String(response.data.captcha.left + response.data.captcha.right),
+  }
+}
+export const loginRequest = async (payload) => api.post('/auth/login', await attachCaptcha(payload))
+export const registerRequest = async (payload) => api.post('/auth/register', await attachCaptcha(payload))
 export const fetchMe = async () => api.get('/auth/me')
 export const socialLoginUrl = (provider, role = 'learner', intent = 'login') => {
   const params = new URLSearchParams({ role, intent })

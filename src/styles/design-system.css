@@ -324,6 +324,109 @@ body {
 .btn-primary { background: var(--gradient-cool); color: var(--color-button-primary-text); box-shadow: var(--shadow-sm); }
 .btn-primary:hover { background: linear-gradient(135deg, var(--color-action-hover), var(--color-secondary-action)); }
 
+/* Course cards need firmer separation than translucent glass surfaces in dark mode. */
+.course-card {
+  border: 1px solid var(--color-card-border);
+  background: var(--color-card-bg);
+  color: var(--color-text);
+  box-shadow: var(--elevation-card);
+}
+
+:root.dark .course-card,
+:root[data-theme="dark"] .course-card {
+  border-color: #475569;
+  background: linear-gradient(180deg, #26334d 0%, #202a44 100%);
+  box-shadow: 0 16px 36px rgba(2, 6, 23, 0.42), 0 0 0 1px rgba(71, 85, 105, 0.2);
+}
+
+:root.dark .course-card:hover,
+:root[data-theme="dark"] .course-card:hover {
+  border-color: var(--color-action);
+  background: linear-gradient(180deg, #2b3853 0%, #26334d 100%);
+}
+
+/* The full-card click target must never inherit the generic dark button fill. */
+.course-card .course-card-hit-area,
+.course-card .course-card-hit-area:hover {
+  border-color: transparent !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* Restrained admin authentication layout. */
+.auth-admin-viewport.auth-v2 .auth-frame {
+  width: min(1120px, calc(100vw - 2rem));
+  height: min(680px, calc(100dvh - 2rem));
+  grid-template-columns: minmax(0, 1fr) minmax(390px, 0.82fr);
+}
+
+.auth-admin-viewport.auth-v2 .auth-brand,
+.auth-admin-viewport.auth-v2 .auth-panel,
+.auth-admin-viewport.auth-v2 .auth-card-admin {
+  overflow: hidden;
+}
+
+.auth-admin-viewport.auth-v2 .auth-card-admin {
+  width: min(100%, 27rem);
+  padding: clamp(1.4rem, 2.5vw, 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+}
+
+.auth-admin-viewport.auth-v2 .auth-title,
+.auth-admin-viewport.auth-v2 .auth-subtitle {
+  text-align: left;
+  margin-inline: 0;
+}
+
+.auth-admin-viewport.auth-v2 .auth-eyebrow {
+  margin-inline: 0;
+}
+
+.auth-admin-brand-simple {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.auth-admin-live {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: .45rem .75rem;
+  background: var(--color-surface);
+  color: var(--color-text-muted);
+  font-size: .75rem;
+  font-weight: 700;
+}
+
+.auth-admin-live > span {
+  width: .5rem;
+  height: .5rem;
+  border-radius: 999px;
+  background: var(--color-success);
+}
+
+.auth-admin-brand-content { position: relative; max-width: 34rem; }
+.auth-admin-simple-points { display: grid; gap: .75rem; margin-top: 2rem; }
+.auth-admin-simple-points > span { display: flex; align-items: center; gap: .85rem; color: var(--color-action); }
+.auth-admin-simple-points strong,
+.auth-admin-simple-points small { display: block; }
+.auth-admin-simple-points strong { color: var(--color-text); font-size: .9rem; }
+.auth-admin-simple-points small { margin-top: .15rem; color: var(--color-text-muted); font-size: .75rem; }
+.auth-admin-brand-foot { position: relative; display: flex; align-items: center; gap: .5rem; color: var(--color-text-muted); font-size: .78rem; font-weight: 700; }
+
+@media (max-width: 1023px) {
+  .auth-admin-viewport.auth-v2 .auth-frame { width: min(100%, 34rem); height: auto; }
+  .auth-admin-viewport.auth-v2 .auth-panel { overflow: visible; }
+  .auth-admin-viewport.auth-v2 .auth-card-admin {
+    overflow-y: auto;
+    max-height: calc(100dvh - 2rem);
+  }
+}
+
 .upto-brand-text,
 .gradient-text {
   background-image: var(--gradient-brand) !important;

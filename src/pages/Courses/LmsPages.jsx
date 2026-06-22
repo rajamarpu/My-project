@@ -2844,7 +2844,7 @@ function readFileAsDataUrl(file) {
   })
 }
 
-export function AdminAddLearnerPage({ initialRole = 'intern' }) {
+export function AdminAddLearnerPage({ initialRole = 'learner' }) {
   const navigate = useNavigate()
   const [form, setForm] = useState({
     name: '',
@@ -2872,7 +2872,8 @@ export function AdminAddLearnerPage({ initialRole = 'intern' }) {
     /[^A-Za-z0-9]/.test(form.password),
   ].filter(Boolean).length
   const passwordStrength = passwordScore >= 5 ? 'Strong' : passwordScore >= 3 ? 'Good' : 'Weak'
-  const isInstructor = form.role === 'instructor'
+  const isInstructorMode = initialRole === 'instructor'
+  const isInstructor = isInstructorMode && form.role === 'instructor'
 
   useEffect(() => {
     let mounted = true
@@ -2963,10 +2964,10 @@ export function AdminAddLearnerPage({ initialRole = 'intern' }) {
   return (
     <Shell
       eyebrow="Admin"
-      title={initialRole === 'instructor' ? 'Add instructor' : 'Add intern or instructor'}
-      description={initialRole === 'instructor'
+      title={isInstructorMode ? 'Add instructor' : 'Add learner'}
+      description={isInstructorMode
         ? 'Onboard a new instructor with a profile image, expertise, bio, and automatic course assignment.'
-        : 'Create intern access, onboard instructors with a profile image, and assign instructors to a course automatically.'}
+        : 'Create learner or intern access from the admin workspace.'}
     >
       <form onSubmit={submit} className="admin-panel p-5 sm:p-8">
         <div className="grid gap-5 md:grid-cols-2">
@@ -2989,15 +2990,23 @@ export function AdminAddLearnerPage({ initialRole = 'intern' }) {
               <FieldError>{fieldErrors[key]}</FieldError>
             </label>
           ))}
-          <label className="admin-label">
-            Role
-            <select value={form.role} onChange={(event) => updateForm('role', event.target.value)} className="admin-input">
-              <option value="intern">Intern</option>
-              <option value="learner">Learner</option>
-              <option value="instructor">Instructor</option>
-              <option value="admin">Admin</option>
-            </select>
-          </label>
+          {!isInstructorMode ? (
+            <label className="admin-label">
+              Role
+              <select value={form.role} onChange={(event) => updateForm('role', event.target.value)} className="admin-input">
+                <option value="intern">Intern</option>
+                <option value="learner">Learner</option>
+              </select>
+            </label>
+          ) : (
+            <div className="admin-label">
+              Role
+              <div className="admin-input flex items-center justify-between">
+                <span className="font-semibold text-[var(--text-primary)]">Instructor</span>
+                <span className="text-xs text-[var(--text-muted)]">Dedicated instructor onboarding page</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {isInstructor ? (
@@ -3075,12 +3084,16 @@ export function AdminAddLearnerPage({ initialRole = 'intern' }) {
 
         <AdminNotice type={notice.type || 'info'}>{notice.message}</AdminNotice>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Button type="submit" disabled={uploadingAvatar} loading={saving} loadingLabel="Creating...">{form.role === 'instructor' ? 'Create Instructor' : form.role === 'intern' ? 'Create Intern' : 'Create User'}</Button>
+          <Button type="submit" disabled={uploadingAvatar} loading={saving} loadingLabel="Creating...">{isInstructorMode ? 'Create Instructor' : form.role === 'intern' ? 'Create Intern' : 'Create Learner'}</Button>
           <Button type="button" variant="secondary" onClick={() => navigate('/admin/learners')}>Cancel</Button>
         </div>
       </form>
     </Shell>
   )
+}
+
+export function AdminAddInstructorPage() {
+  return <AdminAddLearnerPage initialRole="instructor" />
 }
 
 export function AdminManageCoursesPage() {

@@ -3,6 +3,28 @@ import { BarChart3, BookOpenCheck, BrainCircuit, BriefcaseBusiness, CheckCircle2
 import Logo from '../Navbar/Logo.jsx'
 
 export default function AuthBrandPanel({ isAdminPortal = false }) {
+  if (isAdminPortal) {
+    return (
+      <aside className="auth-brand auth-admin-brand-simple">
+        <div className="auth-brand-bg" />
+        <div className="auth-brand-nav">
+          <Logo to="/" admin compact />
+          <span className="auth-admin-live"><span /> Secure workspace</span>
+        </div>
+        <div className="auth-admin-brand-content">
+          <p className="auth-brand-kicker">UptoSkills administration</p>
+          <h2 className="auth-brand-title">Manage learning with confidence.</h2>
+          <p className="auth-brand-copy">A focused workspace for courses, learners, assessments, and platform operations.</p>
+          <div className="auth-admin-simple-points">
+            <span><ShieldCheck size={19} /><span><strong>Protected access</strong><small>Role-based administrative controls</small></span></span>
+            <span><BarChart3 size={19} /><span><strong>One workspace</strong><small>Operations and reporting in one place</small></span></span>
+          </div>
+        </div>
+        <p className="auth-admin-brand-foot"><LockKeyhole size={16} /> Authorized administrators only</p>
+      </aside>
+    )
+  }
+
   const items = isAdminPortal
     ? [
         ['Approvals', 'Review courses, instructors, and platform requests.'],

@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
-import { Award, CheckCircle2, CreditCard, ShieldAlert, UserMinus, UserPlus, Users } from 'lucide-react'
+import { Award, CreditCard, ShieldAlert, UserMinus, UserPlus, Users } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
 import { fetchAdminOverview } from '../../api/api.js'
 import { AdminInsightStrip, AdminNotice, AdminPageHeader } from '../../components/admin/AdminUI.jsx'
+import KpiCard from '../../components/ui/Dashboard/KpiCard.jsx'
 
 const emptyAnalytics = {
   totalUsers: 0,
@@ -68,10 +69,10 @@ export default function AnalyticsPage() {
   })), [analytics.growth])
 
   const insights = useMemo(() => [
-    { label: 'Total users', value: compact(analytics.totalUsers), detail: 'current accounts in PostgreSQL', icon: Users },
-    { label: 'Pending approvals', value: analytics.pendingApprovals, detail: 'users awaiting admin review', icon: ShieldAlert },
-    { label: 'Suspended', value: analytics.suspendedUsers, detail: 'inactive or suspended accounts', icon: UserMinus },
-    { label: 'Revenue', value: money(analytics.revenueCents), detail: 'paid payment total', icon: CreditCard },
+    { label: 'Total users', value: compact(analytics.totalUsers), detail: 'current accounts in PostgreSQL', icon: Users, tone: 'blue' },
+    { label: 'Pending approvals', value: analytics.pendingApprovals, detail: 'users awaiting admin review', icon: ShieldAlert, tone: 'orange' },
+    { label: 'Suspended', value: analytics.suspendedUsers, detail: 'inactive or suspended accounts', icon: UserMinus, tone: 'pink' },
+    { label: 'Revenue', value: money(analytics.revenueCents), detail: 'paid payment total', icon: CreditCard, tone: 'teal' },
   ], [analytics])
 
   const hasGrowth = hasData(rows, ['registrations', 'enrollments', 'completions'])
@@ -146,10 +147,10 @@ export default function AnalyticsPage() {
         </AnalyticsPanel>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <SummaryCard icon={UserPlus} label="New users" value={rows.reduce((sum, row) => sum + Number(row.registrations || 0), 0)} detail="created in the 30-day window" />
-          <SummaryCard icon={CheckCircle2} label="Approvals" value={rows.reduce((sum, row) => sum + Number(row.userApprovals || 0), 0)} detail="admin approvals logged" />
-          <SummaryCard icon={ShieldAlert} label="Rejected or suspended" value={rows.reduce((sum, row) => sum + Number(row.userRejections || 0) + Number(row.userSuspensions || 0), 0)} detail="access changes logged" />
-          <SummaryCard icon={Award} label="Completions" value={analytics.completedCourses} detail={`${analytics.totalEnrollments} total enrollments`} />
+          <KpiCard tone="blue" icon={UserPlus} label="New users" value={rows.reduce((sum, row) => sum + Number(row.registrations || 0), 0)} detail="created in the 30-day window" />
+          <KpiCard tone="teal" icon={Users} label="Approvals" value={rows.reduce((sum, row) => sum + Number(row.userApprovals || 0), 0)} detail="admin approvals logged" />
+          <KpiCard tone="orange" icon={ShieldAlert} label="Rejected or suspended" value={rows.reduce((sum, row) => sum + Number(row.userRejections || 0) + Number(row.userSuspensions || 0), 0)} detail="access changes logged" />
+          <KpiCard tone="purple" icon={Award} label="Completions" value={analytics.completedCourses} detail={`${analytics.totalEnrollments} total enrollments`} />
         </div>
       </div>
     </section>
@@ -163,17 +164,6 @@ function AnalyticsPanel({ title, subtitle, children }) {
       <h2 className="mt-2 text-xl font-semibold text-[var(--text-primary)]">{subtitle}</h2>
       <div className="mt-6 h-72">{children}</div>
     </section>
-  )
-}
-
-function SummaryCard({ icon: Icon, label, value, detail }) {
-  return (
-    <div className="admin-panel p-5">
-      <Icon className="text-[var(--accent-primary)]" size={22} />
-      <p className="mt-4 text-sm font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">{label}</p>
-      <p className="mt-2 text-3xl font-semibold text-[var(--text-primary)]">{value}</p>
-      <p className="mt-1 text-sm text-[var(--text-secondary)]">{detail}</p>
-    </div>
   )
 }
 

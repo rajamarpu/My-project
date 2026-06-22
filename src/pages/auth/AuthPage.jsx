@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Eye, EyeOff, Github, LockKeyhole, LogIn, Mail, Phone, Rocket, ShieldCheck, UserRound, Zap } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Eye, EyeOff, Github, LockKeyhole, LogIn, Mail, Phone, RefreshCw, Rocket, ShieldCheck, UserRound, Zap } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import Button from '../../components/common/Button/Button.jsx'
@@ -7,9 +7,8 @@ import AuthShell from '../../components/ui/Auth/AuthShell.jsx'
 import AuthField from '../../components/ui/Auth/AuthField.jsx'
 import PasswordStrength from '../../components/ui/Auth/PasswordStrength.jsx'
 import SocialButton from '../../components/ui/Auth/SocialButton.jsx'
-import { login, logout } from '../../store/slices/authSlice.js'
-import { forgotPassword, loginRequest, registerRequest, resetPassword, sendOtp, socialLoginUrl, verifyOtp } from '../../api/api.js'
-import { adminLoginHint } from '../../constants/auth.js'
+import { login } from '../../store/slices/authSlice.js'
+import { fetchAuthCaptcha, forgotPassword, loginRequest, registerRequest, resetPassword, sendOtp, socialLoginUrl, verifyOtp } from '../../api/api.js'
 import { validationRules } from '../../constants/validation.js'
 import { cn } from '../../utils/classNames.js'
 
@@ -53,24 +52,31 @@ export default function AuthPage() {
   const isAdminPortal = location.pathname.includes('admin-login')
   const isRegister = mode === 'register'
   const needsPassword = ['login', 'register', 'reset'].includes(mode)
+  const needsCaptcha = mode === 'login' || isRegister
 
   const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmation, setShowConfirmation] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
   const [loading, setLoading] = useState(false)
   const [attempted, setAttempted] = useState(false)
-  const [toast, setToast] = useState(() => {
-    const params = new URLSearchParams(location.search)
-    const error = params.get('error')
-    return error ? { type: 'error', message: error } : { type: '', message: '' }
-  })
+  const [captchaLoading, setCaptchaLoading] = useState(false)
+  const [captchaError, setCaptchaError] = useState('')
+  const [captcha, setCaptcha] = useState(null)
+  const captchaRequestId = useRef(0)
   const [form, setForm] = useState({
     fullName: '',
-    email: '',
+    email: location.state?.email || '',
     phone: '',
     password: '',
     confirmPassword: '',
     otp: '',
+    captchaAnswer: '',
     role: isAdminPortal ? 'admin' : 'learner',
+  })
+  const [toast, setToast] = useState(() => {
+    const params = new URLSearchParams(location.search)
+    const error = params.get('error')
+    return error ? { type: 'error', message: error } : { type: '', message: '' }
   })
 
   const score = passwordScore(form.password)
@@ -85,8 +91,52 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (!isAdminPortal) return
-    dispatch(logout())
-  }, [dispatch, isAdminPortal])
+  }, [isAdminPortal])
+
+  const requestCaptcha = async () => {
+    const requestId = ++captchaRequestId.current
+
+    if (!needsCaptcha) {
+      setCaptcha(null)
+      setCaptchaError('')
+      setCaptchaLoading(false)
+      return
+    }
+
+    setCaptchaLoading(true)
+    setCaptchaError('')
+
+    try {
+      let lastError = null
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const response = await fetchAuthCaptcha()
+          if (captchaRequestId.current !== requestId) return
+          setCaptcha(response.data.captcha)
+          setForm((prev) => ({ ...prev, captchaAnswer: '' }))
+          setCaptchaError('')
+          return
+        } catch (error) {
+          lastError = error
+          if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)))
+        }
+      }
+
+      if (captchaRequestId.current !== requestId) return
+      setCaptcha(null)
+      setCaptchaError(lastError?.response?.data?.message || 'Unable to load the security check. Tap retry to try again.')
+    } finally {
+      if (captchaRequestId.current === requestId) setCaptchaLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    void requestCaptcha()
+
+    return () => {
+      captchaRequestId.current += 1
+    }
+  }, [needsCaptcha])
 
   const errors = useMemo(() => {
     const next = {}
@@ -105,6 +155,12 @@ export default function AuthPage() {
     if (mode === 'reset' && !form.otp.trim()) next.otp = 'Verification code is required.'
     if (mode === 'otp' && form.otp && !validationRules.otpPattern.test(form.otp.trim())) next.otp = 'Enter a valid OTP.'
 
+    if (needsCaptcha) {
+      if (captchaLoading || !captcha?.captchaId) next.captcha = captchaError || 'Loading the security check.'
+      else if (!form.captchaAnswer.trim()) next.captcha = 'Solve the security check.'
+      else if (!/^\d+$/.test(form.captchaAnswer.trim())) next.captcha = 'Enter the number only.'
+    }
+
     if (needsPassword) {
       if (!form.password) next.password = 'Password is required.'
       else if (form.password.length < validationRules.passwordMinLength) next.password = `Use at least ${validationRules.passwordMinLength} characters.`
@@ -112,17 +168,33 @@ export default function AuthPage() {
     }
 
     return next
-  }, [form, isRegister, mode, needsPassword, score])
+  }, [captcha?.captchaId, captchaError, captchaLoading, form, isRegister, mode, needsCaptcha, needsPassword, score])
 
   const canSubmit = useMemo(() => {
     if (loading) return false
     if (mode === 'forgot') return Boolean(form.email.trim())
     if (mode === 'otp') return Boolean(form.email.trim())
+    if (needsCaptcha && (captchaLoading || !captcha?.captchaId)) return false
     return Object.keys(errors).length === 0
-  }, [errors, form.email, loading, mode])
+  }, [captcha?.captchaId, captchaLoading, errors, form.email, loading, mode, needsCaptcha])
 
   const fieldError = (key) => (attempted ? errors[key] : '')
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))
+
+  const refreshCaptcha = async () => {
+    if (!needsCaptcha) return
+    await requestCaptcha()
+  }
+
+  const captchaStatus = captchaLoading
+    ? 'Loading security check...'
+    : captcha?.prompt || captchaError || 'Security check unavailable.'
+  const captchaHelpText = captchaLoading
+    ? 'Generating a fresh challenge from the server.'
+    : captchaError
+      ? 'Try again or refresh the page if the backend just restarted.'
+      : 'Enter the answer only. Example: 12'
+  const captchaChallengeText = formatCaptchaChallenge(captcha?.prompt)
 
   const authenticate = async (response, fallbackMessage) => {
     const user = response.data.user
@@ -149,7 +221,7 @@ export default function AuthPage() {
       if (mode === 'forgot') {
         await forgotPassword(form.email)
         setToast({ type: 'success', message: 'Reset code sent. Check your email.' })
-        navigate('/reset-password')
+        navigate('/reset-password', { state: { email: form.email.trim() } })
       } else if (mode === 'reset') {
         await resetPassword({ email: form.email, otp: form.otp, newPassword: form.password })
         setToast({ type: 'success', message: 'Password updated. You can log in now.' })
@@ -161,12 +233,13 @@ export default function AuthPage() {
         if (response.data?.user) await authenticate(response, 'OTP verified.')
         else setToast({ type: 'success', message: 'OTP sent.' })
       } else {
-        const payload = { ...form, role: isAdminPortal ? 'admin' : 'learner' }
+        const payload = { ...form, role: isAdminPortal ? 'admin' : 'learner', captchaId: captcha?.captchaId, captchaAnswer: form.captchaAnswer }
         const response = isRegister ? await registerRequest(payload) : await loginRequest(payload)
         await authenticate(response, isRegister ? 'Account created.' : 'Login successful.')
       }
     } catch (err) {
       setToast({ type: 'error', message: err?.response?.data?.message || err.message || 'Request failed. Please try again.' })
+      if (needsCaptcha && (!err?.response || err.response.status >= 500)) await refreshCaptcha()
     } finally {
       setLoading(false)
     }
@@ -183,8 +256,8 @@ export default function AuthPage() {
       isAdminPortal={isAdminPortal}
       mode={mode}
       eyebrow={isAdminPortal ? 'Admin portal' : eyebrow}
-      title={isAdminPortal ? 'Sign in to UptoSkills Admin' : title}
-      subtitle={isAdminPortal ? 'Access your admin dashboard and manage the learning platform with full control.' : subtitle}
+      title={isAdminPortal ? 'Administrator sign in' : title}
+      subtitle={isAdminPortal ? 'Use your approved account to continue to the admin workspace.' : subtitle}
     >
       {!isAdminPortal && (mode === 'login' || isRegister) ? (
         <div className={cn('auth-mode-tabs', isRegister && 'auth-mode-tabs-dense')}>
@@ -195,43 +268,113 @@ export default function AuthPage() {
 
       <form onSubmit={handleSubmit} className={cn('auth-form', isRegister && 'auth-form-dense')} noValidate>
         {isRegister ? (
-          <AuthField icon={<UserRound size={18} />} label="Full name" error={fieldError('fullName')} compact>
-            <input value={form.fullName} onChange={(e) => update('fullName', e.target.value)} className="w-full bg-transparent text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" placeholder="Your full name" />
+          <AuthField id="auth-full-name" icon={<UserRound size={18} />} label="Full name" error={fieldError('fullName')} compact>
+            <input id="auth-full-name" name="fullName" autoComplete="name" required aria-invalid={Boolean(fieldError('fullName'))} aria-describedby={fieldError('fullName') ? 'auth-full-name-error' : undefined} value={form.fullName} onChange={(e) => update('fullName', e.target.value)} className="w-full bg-transparent text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" placeholder="Your full name" />
           </AuthField>
         ) : null}
 
-        <AuthField icon={<Mail size={18} />} label={isAdminPortal ? 'Email address' : 'Email'} error={fieldError('email')} compact={isRegister || mode === 'reset'}>
-          <input value={form.email} onChange={(e) => update('email', e.target.value)} type="email" className="w-full bg-transparent text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" placeholder={isAdminPortal ? adminLoginHint.email : 'you@example.com'} />
+        <AuthField id="auth-email" icon={<Mail size={18} />} label="Email address" error={fieldError('email')} compact={isRegister || mode === 'reset'}>
+          <input id="auth-email" name="email" value={form.email} onChange={(e) => update('email', e.target.value)} type="email" required autoComplete="email" inputMode="email" autoCapitalize="none" spellCheck="false" aria-invalid={Boolean(fieldError('email'))} aria-describedby={fieldError('email') ? 'auth-email-error' : undefined} className="w-full bg-transparent text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" placeholder="you@example.com" />
         </AuthField>
 
         {isRegister ? (
-          <AuthField icon={<Phone size={18} />} label="Phone number" error={fieldError('phone')} compact>
-            <input value={form.phone} onChange={(e) => update('phone', e.target.value)} className="w-full bg-transparent text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" placeholder="9999999999" />
+          <AuthField id="auth-phone" icon={<Phone size={18} />} label="Phone number" error={fieldError('phone')} compact>
+            <input id="auth-phone" name="phone" value={form.phone} onChange={(e) => update('phone', e.target.value.replace(/\D/g, '').slice(0, 10))} type="tel" inputMode="numeric" autoComplete="tel" maxLength={10} required aria-invalid={Boolean(fieldError('phone'))} aria-describedby={fieldError('phone') ? 'auth-phone-error' : undefined} className="w-full bg-transparent text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" placeholder="9999999999" />
           </AuthField>
         ) : null}
 
         {mode === 'otp' || mode === 'reset' ? (
-          <AuthField icon={<ShieldCheck size={18} />} label="Verification code" error={fieldError('otp')} compact={mode === 'reset'}>
-            <input value={form.otp} onChange={(e) => update('otp', e.target.value)} className="w-full bg-transparent text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" placeholder="000000" />
+          <AuthField id="auth-otp" icon={<ShieldCheck size={18} />} label="Verification code" error={fieldError('otp')} compact={mode === 'reset'}>
+            <input id="auth-otp" name="otp" value={form.otp} onChange={(e) => update('otp', e.target.value.replace(/\D/g, '').slice(0, 8))} inputMode="numeric" autoComplete="one-time-code" maxLength={8} required aria-invalid={Boolean(fieldError('otp'))} aria-describedby={fieldError('otp') ? 'auth-otp-error' : undefined} className="w-full bg-transparent text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" placeholder="000000" />
           </AuthField>
         ) : null}
 
         {needsPassword ? (
-          <AuthField icon={<LockKeyhole size={18} />} label={mode === 'reset' ? 'New password' : 'Password'} error={fieldError('password')} compact={isRegister || mode === 'reset'}>
-            <input value={form.password} onChange={(e) => update('password', e.target.value)} type={showPassword ? 'text' : 'password'} className="w-full bg-transparent text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" placeholder={mode === 'login' ? 'Enter your password' : 'Minimum 8 characters'} />
-            <button type="button" onClick={() => setShowPassword((value) => !value)} className="text-[var(--text-muted)] transition hover:text-[var(--text-primary)]" aria-label="Toggle password visibility">
+          <AuthField id="auth-password" icon={<LockKeyhole size={18} />} label={mode === 'reset' ? 'New password' : 'Password'} error={fieldError('password')} compact={isRegister || mode === 'reset'}>
+            <input id="auth-password" name="password" value={form.password} onChange={(e) => update('password', e.target.value)} type={showPassword ? 'text' : 'password'} required autoComplete={mode === 'login' ? 'current-password' : 'new-password'} aria-invalid={Boolean(fieldError('password'))} aria-describedby={fieldError('password') ? 'auth-password-error' : undefined} className="w-full bg-transparent text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" placeholder={mode === 'login' ? 'Enter your password' : 'Minimum 8 characters'} />
+            <button type="button" onClick={() => setShowPassword((value) => !value)} className="grid min-h-11 min-w-11 place-items-center text-[var(--text-muted)] transition hover:text-[var(--text-primary)]" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword}>
               {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
             </button>
           </AuthField>
         ) : null}
 
+        {needsCaptcha ? (
+          <section
+            aria-label="Security check"
+            className={cn(
+              'rounded-2xl border p-3.5 shadow-[0_14px_30px_rgba(15,23,42,0.06)] transition',
+              'bg-white/90 dark:bg-slate-950/50',
+              captchaError ? 'border-red-400/50 ring-4 ring-red-400/10' : 'border-black/10 dark:border-white/10',
+            )}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-[0.2em] text-[var(--text-muted)]">Security check</p>
+                <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)] sm:text-sm">
+                  Solve the challenge to continue.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => { void refreshCaptcha() }}
+                className="inline-flex shrink-0 items-center gap-2 rounded-full border border-[var(--border-color)] bg-white px-3 py-2 text-xs font-semibold text-[var(--text-secondary)] shadow-sm transition hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] dark:bg-slate-950/70"
+                disabled={captchaLoading || loading}
+              >
+                <RefreshCw size={14} className={captchaLoading ? 'animate-spin' : ''} />
+                {captchaLoading ? 'Refreshing...' : 'New challenge'}
+              </button>
+            </div>
+
+            <div className="mt-3 flex flex-col gap-2">
+              <div
+                className={cn(
+                  'flex min-h-12 items-center gap-3 rounded-xl border px-3 py-2 text-sm font-semibold shadow-sm',
+                  captchaError
+                    ? 'border-red-400/30 bg-red-500/10 text-red-700 dark:text-red-100'
+                    : 'border-[var(--border-color)] bg-[var(--bg-subtle)] text-[var(--text-primary)]',
+                )}
+              >
+                <span className="inline-flex shrink-0 items-center rounded-lg bg-[var(--accent-soft)] px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--accent-primary)] whitespace-nowrap">
+                  {captchaLoading ? 'Loading' : 'Challenge'}
+                </span>
+                <span className="whitespace-nowrap font-mono text-base font-bold tracking-[0.18em] sm:text-lg">
+                  {captchaChallengeText}
+                </span>
+                <input
+                  id="auth-captcha"
+                  name="captchaAnswer"
+                  value={form.captchaAnswer}
+                  onChange={(e) => update('captchaAnswer', e.target.value.replace(/\D/g, '').slice(0, 3))}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  required
+                  aria-invalid={Boolean(fieldError('captcha') || captchaError)}
+                  aria-describedby={fieldError('captcha') || captchaError ? 'auth-captcha-error' : undefined}
+                  className={cn(
+                    'w-24 rounded-xl border bg-white px-3 py-2.5 text-center text-lg font-semibold tracking-[0.12em] text-[var(--text-primary)] outline-none transition sm:w-24',
+                    'placeholder:text-[var(--text-muted)] dark:bg-slate-950/70',
+                    fieldError('captcha') || captchaError
+                      ? 'border-red-400/70 ring-4 ring-red-400/10'
+                      : 'border-[var(--border-color)] focus:border-[var(--accent-primary)] focus:ring-4 focus:ring-[var(--focus-ring)]',
+                  )}
+                  placeholder="Answer"
+                />
+              </div>
+              <span className="text-[11px] leading-5 font-medium text-[var(--text-muted)]">
+                {captchaHelpText}
+              </span>
+            </div>
+          </section>
+        ) : null}
+
         {isRegister ? (
-          <AuthField icon={<LockKeyhole size={18} />} label="Confirm password" error={fieldError('confirmPassword')} compact>
-            <input value={form.confirmPassword} onChange={(e) => update('confirmPassword', e.target.value)} type={showPassword ? 'text' : 'password'} className="w-full bg-transparent text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" placeholder="Repeat password" />
+          <AuthField id="auth-confirm-password" icon={<LockKeyhole size={18} />} label="Confirm password" error={fieldError('confirmPassword')} compact>
+            <input id="auth-confirm-password" name="confirmPassword" value={form.confirmPassword} onChange={(e) => update('confirmPassword', e.target.value)} type={showConfirmation ? 'text' : 'password'} required autoComplete="new-password" aria-invalid={Boolean(fieldError('confirmPassword'))} aria-describedby={fieldError('confirmPassword') ? 'auth-confirm-password-error' : undefined} className="w-full bg-transparent text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)]" placeholder="Repeat password" />
+            <button type="button" onClick={() => setShowConfirmation((value) => !value)} className="grid min-h-11 min-w-11 place-items-center text-[var(--text-muted)]" aria-label={showConfirmation ? 'Hide confirmation password' : 'Show confirmation password'} aria-pressed={showConfirmation}>{showConfirmation ? <EyeOff size={18} /> : <Eye size={18} />}</button>
           </AuthField>
         ) : null}
 
-        {needsPassword ? <PasswordStrength score={score} compact={isRegister || mode === 'reset'} /> : null}
+        {(isRegister || mode === 'reset') ? <PasswordStrength score={score} compact /> : null}
 
         {mode === 'login' && !isAdminPortal ? (
           <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-[var(--text-secondary)]">
@@ -243,23 +386,24 @@ export default function AuthPage() {
           </div>
         ) : null}
 
-        {mode === 'login' && isAdminPortal ? (
-          <div className="auth-admin-login-note">
-            <ShieldCheck size={16} />
-            <span>Use your approved admin credentials. Admin sessions are validated before the dashboard opens.</span>
-          </div>
-        ) : null}
+        <div className="auth-submit-status">
+          {toast.message ? (
+            <p
+              role={toast.type === 'error' ? 'alert' : 'status'}
+              aria-live="polite"
+              className={`auth-toast animate-upto-fade-slide rounded-xl px-4 py-3 text-sm font-semibold ${toast.type === 'error' ? 'border border-red-400/25 bg-red-500/10 text-red-700 dark:text-red-100' : 'border border-emerald-400/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-100'}`}
+            >
+              {toast.message}
+            </p>
+          ) : <span className="auth-toast-placeholder" aria-hidden="true" />}
+        </div>
 
-        {toast.message ? (
-          <p className={`animate-upto-fade-slide rounded-xl px-4 py-3 text-sm font-semibold ${toast.type === 'error' ? 'border border-red-400/25 bg-red-500/10 text-red-700 dark:text-red-100' : 'border border-emerald-400/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-100'}`}>
-            {toast.message}
-          </p>
-        ) : null}
-
-        <Button type="submit" disabled={!canSubmit} loading={loading} loadingLabel="Please wait..." className={cn('auth-submit-button', isRegister && 'auth-submit-button-dense')}>
-          {mode === 'login' ? (isAdminPortal ? <LockKeyhole size={16} /> : <LogIn size={16} />) : null}
-          {buttonLabel(mode, isAdminPortal)}
-        </Button>
+        <div className={cn('auth-submit-rail', isAdminPortal && 'auth-submit-rail-admin')}>
+          <Button type="submit" disabled={!canSubmit} loading={loading} loadingLabel="Please wait..." className={cn('auth-submit-button', isRegister && 'auth-submit-button-dense')}>
+            {mode === 'login' ? (isAdminPortal ? <LockKeyhole size={16} /> : <LogIn size={16} />) : null}
+            {buttonLabel(mode, isAdminPortal)}
+          </Button>
+        </div>
       </form>
 
       {!isAdminPortal && (mode === 'login' || isRegister) ? (
@@ -311,6 +455,12 @@ function buttonLabel(mode, isAdminPortal = false) {
   if (mode === 'forgot') return 'Send Reset Code'
   if (mode === 'reset') return 'Reset Password'
   if (mode === 'otp') return 'Send or Verify OTP'
-  if (isAdminPortal) return 'Sign in to dashboard'
-  return 'Login to dashboard'
+  if (isAdminPortal) return 'Sign in'
+  return 'Sign in'
+}
+
+function formatCaptchaChallenge(prompt = '') {
+  const match = String(prompt).match(/(\d+)\s*\+\s*(\d+)/)
+  if (!match) return prompt || 'Security challenge'
+  return `${match[1]} + ${match[2]}`
 }

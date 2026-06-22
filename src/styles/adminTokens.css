@@ -91,6 +91,57 @@
   transform: scale(1.01);
 }
 
+.kpi-card {
+  position: relative;
+  isolation: isolate;
+  color: #ffffff;
+  background-size: cover;
+  background-position: center;
+  box-shadow:
+    0 20px 45px rgba(15, 23, 42, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.dark .kpi-card {
+  box-shadow:
+    0 24px 55px rgba(0, 0, 0, 0.36),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.kpi-card::before,
+.kpi-card::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: '';
+}
+
+.kpi-card::before {
+  border-radius: inherit;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 46%),
+    radial-gradient(circle at 100% 0%, rgba(255, 255, 255, 0.18), transparent 30%);
+  opacity: 0.75;
+}
+
+.kpi-card::after {
+  border-radius: inherit;
+  background:
+    linear-gradient(115deg, transparent 0 34%, rgba(255, 255, 255, 0.08) 42%, transparent 50%),
+    radial-gradient(circle, rgba(255, 255, 255, 0.24) 0 1px, transparent 1px);
+  background-size: auto, 34px 34px;
+  mix-blend-mode: screen;
+  opacity: 0.22;
+}
+
+.kpi-card :where(p, span, small, strong, svg, button) {
+  color: inherit !important;
+}
+
+.kpi-card :where(svg) {
+  flex-shrink: 0;
+}
+
 .admin-input {
   width: 100%;
   min-height: 44px;
