@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion'
-import { ShieldCheck, TrendingUp, UserRound } from 'lucide-react'
+import { Activity, Clock3, LockKeyhole, ShieldCheck, TrendingUp, UserRound } from 'lucide-react'
 import Logo from '../Navbar/Logo.jsx'
 import AuthBrandPanel from './AuthBrandPanel.jsx'
 import { fadeInUp } from '../../../utils/animationVariants.js'
@@ -28,9 +28,58 @@ export default function AuthShell({ isAdminPortal = false, mode = 'login', eyebr
               <span className="h-2 w-2 rounded-full bg-[var(--success)] shadow-[0_0_0_4px_rgba(16,185,129,0.14)]" />
               {eyebrow}
             </div>
+            {isAdminPortal ? (
+              <div className="auth-admin-shield" aria-hidden="true">
+                <span className="auth-admin-shield-glow" />
+                <span className="auth-admin-shield-core">
+                  <LockKeyhole size={28} />
+                </span>
+              </div>
+            ) : null}
             <h1 className="auth-title">{title}</h1>
             <p className="auth-subtitle">{subtitle}</p>
+            {isAdminPortal ? (
+              <div className="auth-admin-card-trust">
+                {[
+                  ['Secure', 'Protected access', ShieldCheck],
+                  ['Progress', 'Saved sessions', TrendingUp],
+                  ['Support', 'Guided recovery', UserRound],
+                ].map(([label, detail, Icon]) => (
+                  <div key={label} className="auth-admin-card-trust-item">
+                    <Icon size={15} />
+                    <span>
+                      <span>{label}</span>
+                      <small>{detail}</small>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
             {children}
+            {isAdminPortal ? (
+              <div className="auth-admin-access">
+                <div className="auth-admin-access-heading">
+                  <span />
+                  Secure Admin Access
+                  <span />
+                </div>
+                <div className="auth-admin-access-grid">
+                  {[
+                    ['Data Protection', 'Enterprise security', ShieldCheck],
+                    ['Activity Logs', 'Monitor all actions', Activity],
+                    ['24/7 Support', 'We are here to help', Clock3],
+                  ].map(([label, detail, Icon]) => (
+                    <div key={label} className="auth-admin-access-item">
+                      <span>
+                        <Icon size={16} />
+                      </span>
+                      <p>{label}</p>
+                      <small>{detail}</small>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
           {!isAdminPortal && !isDenseAuth ? (
             <div className="auth-trust-grid">

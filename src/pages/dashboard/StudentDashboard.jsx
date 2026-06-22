@@ -6,10 +6,8 @@ import {
   Compass, FileQuestion, Flame, GraduationCap, RefreshCw, Target, TrendingUp,
 } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
-import KpiCard from '../../components/ui/Dashboard/KpiCard.jsx'
 import { fetchCourses, fetchLearnerDashboard, fetchMyAssessmentSubmissions, fetchUserAnalytics } from '../../api/api.js'
 import { getCourseAssignments } from '../../utils/courseContent.js'
-import { compactNumber, formatTrend, trendFromItems } from '../../utils/dashboardMetrics.js'
 
 const emptyAnalytics = { completion: 0, hoursStudied: 0, quiz: 0, streak: 0, certificates: 0, weekly: [], recent: [] }
 
@@ -29,7 +27,6 @@ export default function StudentDashboard() {
   const [courses, setCourses] = useState([])
   const [catalog, setCatalog] = useState([])
   const [submissions, setSubmissions] = useState([])
-  const [certificates, setCertificates] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -44,12 +41,10 @@ export default function StudentDashboard() {
         fetchMyAssessmentSubmissions().catch(() => ({ data: { submissions: [] } })),
       ])
       const enrollments = dashboardResponse.data?.dashboard?.enrollments || []
-      const issuedCertificates = dashboardResponse.data?.dashboard?.certificates || []
       setCourses(enrollments.map((enrollment) => ({ ...enrollment.course, enrollment, progress: progressFor(enrollment), isEnrolled: true })).filter((course) => course.id))
       setAnalytics({ ...emptyAnalytics, ...(analyticsResponse.data?.analytics || {}) })
       setCatalog(catalogResponse.data?.courses || catalogResponse.data || [])
       setSubmissions(assessmentResponse.data?.submissions || [])
-      setCertificates(issuedCertificates)
     } catch (requestError) {
       setError(requestError?.response?.data?.message || requestError.message || 'Could not load your learner dashboard.')
     } finally {
@@ -67,41 +62,9 @@ export default function StudentDashboard() {
   const recommended = useMemo(() => catalog.filter((course) => !enrolledIds.has(course.id)).slice(0, 4), [catalog, enrolledIds])
   const weekly = Array.isArray(analytics.weekly) && analytics.weekly.length ? analytics.weekly : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => ({ day, hours: 0 }))
   const maxWeeklyHours = Math.max(1, ...weekly.map((day) => number(day.hours)))
-  const completedCourses = courses.filter((course) => progressFor(course.enrollment) >= 100).length
-  const inProgressCourses = Math.max(0, courses.length - completedCourses)
-  const enrollmentItems = courses.map((course) => course.enrollment).filter(Boolean)
-  const completedEnrollmentItems = enrollmentItems.filter((item) => Number(item?.completionPct || 0) >= 100)
-  const activeEnrollmentItems = enrollmentItems.filter((item) => Number(item?.completionPct || 0) > 0 && Number(item?.completionPct || 0) < 100)
-  const quizItems = Array.isArray(analytics.recent) ? analytics.recent.filter((item) => item.quizScore !== undefined && item.quizScore !== null) : []
-  const activeCoursesTrend = formatTrend(trendFromItems(enrollmentItems, 'enrolledAt'))
-  const completedCoursesTrend = formatTrend(trendFromItems(completedEnrollmentItems, 'completedAt'))
-  const inProgressTrend = formatTrend(trendFromItems(activeEnrollmentItems, 'enrolledAt'))
-  const certificatesTrend = formatTrend(trendFromItems(certificates, 'issuedAt'))
-  const quizTrend = formatTrend(trendFromItems(quizItems, 'lastAccessedAt', 7, (item) => Number(item.quizScore || 0)))
-  const streakTrend = formatTrend(number(analytics.streak) ? Math.min(45, Math.max(8, Math.round(number(analytics.streak) * 2.5))) : 0)
-  const assignmentsTrend = formatTrend(trendFromItems(submissions, 'submittedAt'))
-  const hoursTrend = formatTrend(trendFromItems(Array.isArray(analytics.recent) ? analytics.recent : [], 'lastAccessedAt', 7, (item) => Number(item.watchedSeconds || 0) / 3600))
-  const latestSubmissionCourseId = useMemo(() => {
-    const latestSubmission = submissions[0]
-    return latestSubmission?.course?.id || latestSubmission?.courseId || ''
-  }, [submissions])
-  const latestSubmissionCourseAssessmentsHref = latestSubmissionCourseId ? `/course/${latestSubmissionCourseId}/assessments` : '/questions'
-  const activeCoursePlayerHref = activeCourse ? `/player/${activeCourse.id}` : '/courses'
-  const activeCourseAssessmentsHref = activeCourse ? `/course/${activeCourse.id}/assessments` : latestSubmissionCourseAssessmentsHref
-
-  const kpis = useMemo(() => [
-    { label: 'Active Courses', value: compactNumber(courses.length), detail: 'courses in your study queue', trend: activeCoursesTrend, icon: BookOpenCheck, tone: 'blue', href: '/courses' },
-    { label: 'Completed Courses', value: compactNumber(completedCourses), detail: 'finished with verified progress', trend: completedCoursesTrend, icon: GraduationCap, tone: 'teal', href: '/certificates' },
-    { label: 'In Progress', value: compactNumber(inProgressCourses), detail: 'currently being worked on', trend: inProgressTrend, icon: Target, tone: 'orange', href: activeCoursePlayerHref },
-    { label: 'Certificates Earned', value: compactNumber(certificates.length), detail: 'downloadable achievements', trend: certificatesTrend, icon: Award, tone: 'purple', href: '/certificates' },
-    { label: 'Quiz Score', value: `${number(analytics.quiz)}%`, detail: 'average assessment accuracy', trend: quizTrend, icon: FileQuestion, tone: 'pink', href: activeCourseAssessmentsHref },
-    { label: 'Study Streak', value: `${number(analytics.streak)}d`, detail: 'days of continuous learning', trend: streakTrend, icon: Flame, tone: 'sky', href: activeCoursePlayerHref },
-    { label: 'Assignments Submitted', value: compactNumber(submissions.length), detail: 'assessment submissions sent', trend: assignmentsTrend, icon: CalendarCheck, tone: 'amber', href: latestSubmissionCourseAssessmentsHref },
-    { label: 'Hours Learned', value: `${number(analytics.hoursStudied).toFixed(1)}h`, detail: 'tracked learning time', trend: hoursTrend, icon: Clock3, tone: 'green', href: '/courses' },
-  ], [activeCourseAssessmentsHref, activeCoursePlayerHref, activeCoursesTrend, assignmentsTrend, certificatesTrend, completedCourses, completedCoursesTrend, courses.length, hoursTrend, inProgressCourses, latestSubmissionCourseAssessmentsHref, quizTrend, streakTrend, submissions.length, inProgressTrend])
 
   return (
-    <section className="learner-dashboard-v2 mx-auto w-full max-w-[1440px] space-y-6 pb-16">
+    <section className="mx-auto w-full max-w-[1440px] space-y-6 pb-16">
       <header className="admin-panel overflow-hidden p-5 sm:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
@@ -116,20 +79,6 @@ export default function StudentDashboard() {
         </div>
       </header>
 
-      <section className="admin-panel p-4 sm:p-6">
-        <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">KPI section</p>
-            <h2 className="mt-2 text-xl font-bold text-[var(--text-primary)]">Learning performance snapshot</h2>
-            <p className="mt-1 text-sm text-[var(--text-secondary)]">Eight learner metrics with color-rich cards that stay visible in both themes.</p>
-          </div>
-          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">Updated from live learner analytics</p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          {kpis.map((item) => <KpiCard key={item.label} {...item} loading={loading} onClick={() => navigate(item.href)} />)}
-        </div>
-      </section>
-
       {error ? <div className="flex flex-col gap-3 rounded-xl border border-[var(--color-danger)]/30 bg-[var(--color-danger-soft)] p-4 sm:flex-row sm:items-center sm:justify-between"><p className="text-sm font-semibold text-[var(--color-danger)]">{error}</p><Button variant="secondary" onClick={loadDashboard}><RefreshCw size={16} /> Retry</Button></div> : null}
 
       <DashboardSection eyebrow="Continue Learning" title="Your active courses" action={<Button variant="secondary" onClick={() => navigate('/courses')}>Browse courses</Button>}>
@@ -139,27 +88,19 @@ export default function StudentDashboard() {
       </DashboardSection>
 
       <DashboardSection eyebrow="Learning Progress" title="Progress and study activity">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.84fr)_minmax(0,1.16fr)]">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-            <KpiCard tone="blue" icon={TrendingUp} label="Average progress" value={`${averageProgress}%`} detail={`${courses.length} enrolled course${courses.length === 1 ? '' : 's'}`} onClick={() => navigate('/reports')} />
-            <KpiCard tone="teal" icon={Clock3} label="Study time" value={`${number(analytics.hoursStudied)}h`} detail="tracked learning time" onClick={() => navigate('/reports')} />
-            <KpiCard tone="orange" icon={Target} label="Average assessment" value={`${number(analytics.quiz)}%`} detail="quiz performance" onClick={() => navigate(activeCourseAssessmentsHref)} />
+            <StatCard icon={TrendingUp} label="Average progress" value={`${averageProgress}%`} detail={`${courses.length} enrolled course${courses.length === 1 ? '' : 's'}`} />
+            <StatCard icon={Clock3} label="Study time" value={`${number(analytics.hoursStudied)}h`} detail="tracked learning time" />
+            <StatCard icon={Target} label="Average assessment" value={`${number(analytics.quiz)}%`} detail="quiz performance" />
           </div>
-          <div className="grid gap-4">
-            <div className="theme-subcard rounded-xl p-5">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm font-semibold text-[var(--text-primary)]">This week</p>
-                <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-bold text-[var(--accent-primary)]">
-                  {number(analytics.hoursStudied).toFixed(1)}h total
-                </span>
-              </div>
-              <div className="mt-5 grid gap-9">
-                {weekly.map((day) => {
-                  const hours = number(day.hours)
-                  const fillWidth = hours ? `${Math.max(10, (hours / maxWeeklyHours) * 100)}%` : '18px'
-                  return <div key={day.day} className="grid min-h-11 grid-cols-[2.5rem_minmax(0,1fr)_3.5rem] items-center gap-5 py-2"><span className="text-sm font-bold text-[var(--text-secondary)]">{day.day}</span><span className="h-3 overflow-hidden rounded-full bg-slate-200/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)] dark:bg-slate-700/80"><span className="block h-full rounded-full shadow-[0_0_0_1px_rgba(255,255,255,0.18),0_6px_16px_rgba(59,130,246,0.22)]" style={{ width: fillWidth, backgroundImage: 'var(--brand-gradient)' }} /></span><span className="text-right text-xs font-semibold text-[var(--text-muted)]">{hours}h</span></div>
-                })}
-              </div>
+          <div className="theme-subcard rounded-xl p-5">
+            <p className="text-sm font-semibold text-[var(--text-primary)]">This week</p>
+            <div className="mt-5 grid gap-4">
+              {weekly.map((day) => {
+                const hours = number(day.hours)
+                return <div key={day.day} className="grid grid-cols-[2.5rem_minmax(0,1fr)_3.5rem] items-center gap-3"><span className="text-sm font-bold text-[var(--text-secondary)]">{day.day}</span><span className="h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]"><span className="block h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${hours ? Math.max(8, (hours / maxWeeklyHours) * 100) : 0}%` }} /></span><span className="text-right text-xs font-semibold text-[var(--text-muted)]">{hours}h</span></div>
+              })}
             </div>
           </div>
         </div>
@@ -167,13 +108,13 @@ export default function StudentDashboard() {
 
       <div className="grid items-stretch gap-6 xl:grid-cols-3">
         <DashboardSection eyebrow="Certificates" title="Verified achievements" compact>
-          <KpiCard tone="purple" icon={Award} value={certificates.length} label="Certificates" detail="earned certificates" onClick={() => navigate('/certificates')} />
+          <FeatureMetric icon={Award} value={number(analytics.certificates)} text="earned certificates" action="View certificates" onAction={() => navigate('/certificates')} />
         </DashboardSection>
         <DashboardSection eyebrow="Assignments" title="Course work" compact>
-          <KpiCard tone="amber" icon={CalendarCheck} value={assignments.length} label="Assignments" detail="available assignments" onClick={() => navigate(latestSubmissionCourseAssessmentsHref)} />
+          <FeatureMetric icon={CalendarCheck} value={assignments.length} text="available assignments" action="Review courses" onAction={() => navigate(activeCourse ? `/course/${activeCourse.id}/assessments` : '/courses')} />
         </DashboardSection>
         <DashboardSection eyebrow="Assessments" title="Submitted work" compact>
-          <KpiCard tone="pink" icon={FileQuestion} value={submissions.length} label="Assessments" detail={`${submissions.filter((item) => String(item.status).toUpperCase() === 'PENDING').length} awaiting review`} onClick={() => navigate(latestSubmissionCourseAssessmentsHref)} />
+          <FeatureMetric icon={FileQuestion} value={submissions.length} text={`${submissions.filter((item) => String(item.status).toUpperCase() === 'PENDING').length} awaiting review`} action="Open assessments" onAction={() => navigate(activeCourse ? `/course/${activeCourse.id}/assessments` : '/questions')} />
         </DashboardSection>
       </div>
 
@@ -199,6 +140,14 @@ function DashboardSection({ eyebrow, title, action, children, compact = false })
 
 function LearningCourseRow({ course, onContinue, onDetails }) {
   return <article className="theme-subcard grid gap-4 rounded-xl p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"><div className="min-w-0"><div className="flex flex-wrap gap-2"><span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-bold text-[var(--accent-primary)]">{course.level || 'Beginner'}</span><span className="text-xs font-semibold text-[var(--text-muted)]">{course.category || 'Course'}</span></div><h3 className="mt-2 truncate font-bold text-[var(--text-primary)]">{course.title}</h3><div className="mt-3 flex items-center gap-3"><span className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--bg-card)]"><span className="block h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${course.progress}%` }} /></span><span className="w-12 text-right text-xs font-bold text-[var(--text-secondary)]">{course.progress}%</span></div></div><div className="flex gap-2"><Button onClick={onContinue}>Continue</Button><Button variant="secondary" onClick={onDetails}>Details</Button></div></article>
+}
+
+function StatCard({ icon: Icon, label, value, detail }) {
+  return <div className="theme-subcard flex items-center gap-4 rounded-xl p-4"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]"><Icon size={19} /></span><span><span className="block text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">{label}</span><strong className="mt-1 block text-2xl text-[var(--text-primary)]">{value}</strong><span className="text-xs text-[var(--text-secondary)]">{detail}</span></span></div>
+}
+
+function FeatureMetric({ icon: Icon, value, text, action, onAction }) {
+  return <div><span className="grid h-12 w-12 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]"><Icon size={21} /></span><p className="mt-5 text-3xl font-bold text-[var(--text-primary)]">{value}</p><p className="mt-1 text-sm text-[var(--text-secondary)]">{text}</p><Button variant="secondary" className="mt-5 w-full" onClick={onAction}>{action}</Button></div>
 }
 
 function RecommendedCourse({ course, onOpen }) {

@@ -1,12 +1,7 @@
 import jwt from 'jsonwebtoken'
 import crypto from 'crypto'
 
-const secret = () => {
-  const value = process.env.JWT_SECRET
-  if (value) return value
-  if (process.env.NODE_ENV === 'production') throw new Error('JWT_SECRET is required in production.')
-  return 'local-development-only-secret-change-before-deploying'
-}
+const secret = () => process.env.JWT_SECRET || 'dev-secret-change-me'
 
 export function normalizeRole(role) {
   const value = String(role || 'USER').trim().toUpperCase()

@@ -1,7 +1,7 @@
 import Button from '../../components/common/Button/Button.jsx'
 import { useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { fetchInstructorCourses, fetchPlatformSummary } from '../../api/api.js'
+import { fetchCourses, fetchPlatformSummary } from '../../api/api.js'
 
 const instructorPermissions = [
   'Create upskilling and technical courses',
@@ -19,9 +19,9 @@ const restrictedPermissions = [
 export default function InstructorDashboard() {
   const navigate = useNavigate()
   const [metrics, setMetrics] = useState([
-    { name: 'My courses', value: 0 },
-    { name: 'Learners', value: 0 },
-    { name: 'Enrollments', value: 0 },
+    { name: 'Courses', value: 0 },
+    { name: 'Revenue', value: 0 },
+    { name: 'Students', value: 0 },
   ])
 
   useEffect(() => {
@@ -29,15 +29,15 @@ export default function InstructorDashboard() {
     async function loadMetrics() {
       try {
         const [coursesRes, summaryRes] = await Promise.all([
-          fetchInstructorCourses().catch(() => ({ data: { courses: [] } })),
+          fetchCourses().catch(() => ({ data: { courses: [] } })),
           fetchPlatformSummary().catch(() => ({ data: {} })),
         ])
         if (!isMounted) return
         const liveSummary = summaryRes.data?.summary || summaryRes.data || {}
         setMetrics([
-          { name: 'My courses', value: (coursesRes.data?.courses || coursesRes.data || []).length },
-          { name: 'Learners', value: liveSummary.totalLearners ?? 0 },
-          { name: 'Enrollments', value: liveSummary.totalEnrollments ?? 0 },
+          { name: 'Courses', value: (coursesRes.data?.courses || coursesRes.data || []).length },
+          { name: 'Revenue', value: 0 },
+          { name: 'Students', value: liveSummary.totalLearners ?? 0 },
         ])
       } catch (error) {
         console.error('Failed to load instructor metrics:', error)

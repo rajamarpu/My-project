@@ -28,17 +28,6 @@ export default function AdminReviewPage() {
   const [selected, setSelected] = useState(null)
 
   const pendingCourses = useMemo(() => pendingCoursesSeed, [])
-  const reviewMetrics = useMemo(() => {
-    const instructors = new Set(pendingCourses.map((course) => course.instructor).filter(Boolean)).size
-    const categories = new Set(pendingCourses.map((course) => course.category).filter(Boolean)).size
-    const advancedCourses = pendingCourses.filter((course) => String(course.level || '').toLowerCase() === 'advanced').length
-    return {
-      pending: pendingCourses.length,
-      instructors,
-      categories,
-      advancedCourses,
-    }
-  }, [pendingCourses])
 
   function openCourse(course) {
     setSelected(course)
@@ -50,9 +39,9 @@ export default function AdminReviewPage() {
       <AdminPageHeader eyebrow="Admin review" title="Review pending courses" description="Approve, request changes, or publish courses with confidence." />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <AdminMetricCard label="Pending reviews" value={reviewMetrics.pending} detail="courses awaiting action" icon={Eye} tone="orange" />
-        <AdminMetricCard label="Instructors" value={reviewMetrics.instructors} detail="distinct instructors in queue" icon={CheckCircle2} tone="green" />
-        <AdminMetricCard label="Categories" value={reviewMetrics.categories} detail="topics represented in review" icon={MessageSquareWarning} tone="red" />
+        <AdminMetricCard label="Pending reviews" value={pendingCourses.length} detail="courses awaiting action" icon={Eye} tone="orange" />
+        <AdminMetricCard label="Ready checks" value="3" detail="content, category, media" icon={CheckCircle2} tone="green" />
+        <AdminMetricCard label="Change requests" value="0" detail="open feedback loops" icon={MessageSquareWarning} tone="red" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">

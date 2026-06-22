@@ -11,17 +11,10 @@ const password = 'ProfileSmoke@2026'
 await rm(profileDir, { recursive: true, force: true })
 await mkdir(profileDir, { recursive: true })
 
-async function withCaptcha(payload = {}) {
-  const response = await fetch(`${api}/auth/captcha`)
-  const captcha = await response.json()
-  if (!response.ok) throw new Error(`Could not load captcha: ${JSON.stringify(captcha)}`)
-  return { ...payload, captchaId: captcha.captcha.captchaId, captchaAnswer: String(captcha.captcha.left + captcha.captcha.right) }
-}
-
 const registerResponse = await fetch(`${api}/auth/register`, {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify(await withCaptcha({ name: 'Profile Button Test', email, phone: '9876543210', password, confirmPassword: password, role: 'learner' })),
+  body: JSON.stringify({ name: 'Profile Button Test', email, phone: '9876543210', password, confirmPassword: password, role: 'learner' }),
 })
 const registration = await registerResponse.json()
 if (!registerResponse.ok || !registration.token || !registration.user) {

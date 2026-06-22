@@ -11,7 +11,6 @@ const router = Router()
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const otpStore = new Map()
 const oauthStateStore = new Map()
-const captchaStore = new Map()
 
 const appBaseUrl = () => (process.env.APP_BASE_URL || 'http://localhost:5173').replace(/\/$/, '')
 const apiBaseUrl = () => (process.env.API_BASE_URL || `http://localhost:${process.env.API_PORT || process.env.PORT || 5000}`).replace(/\/$/, '')
@@ -112,39 +111,6 @@ function consumeOtp(email, otp, purpose = 'login') {
   if (!record || record.expiresAt < Date.now() || record.otp !== String(otp || '').trim()) return false
   otpStore.delete(key)
   return true
-}
-
-function pruneCaptchaStore() {
-  const now = Date.now()
-  for (const [captchaId, record] of captchaStore.entries()) {
-    if (record.expiresAt < now) captchaStore.delete(captchaId)
-  }
-}
-
-function createCaptchaChallenge() {
-  pruneCaptchaStore()
-  const left = crypto.randomInt(1, 10)
-  const right = crypto.randomInt(1, 10)
-  const captchaId = crypto.randomBytes(16).toString('hex')
-  captchaStore.set(captchaId, {
-    answer: left + right,
-    expiresAt: Date.now() + 5 * 60 * 1000,
-  })
-  return {
-    captchaId,
-    left,
-    right,
-    prompt: `Enter the sum: ${left} + ${right}`,
-  }
-}
-
-function consumeCaptchaChallenge(captchaId, captchaAnswer) {
-  pruneCaptchaStore()
-  const record = captchaStore.get(String(captchaId || ''))
-  if (!record || record.expiresAt < Date.now()) return false
-  const isValid = String(captchaAnswer || '').trim() === String(record.answer)
-  if (isValid) captchaStore.delete(String(captchaId || ''))
-  return isValid
 }
 
 async function revokeUserSessions(userId, exceptToken = '') {
@@ -275,13 +241,10 @@ async function recordAnalytics(data) {
 
 router.post('/register', async (req, res, next) => {
   try {
-    const { name, fullName, email, phone, password, confirmPassword, role = 'USER', captchaId, captchaAnswer } = req.body
+    const { name, fullName, email, phone, password, confirmPassword, role = 'USER' } = req.body
     const cleanEmail = String(email || '').trim().toLowerCase()
     const displayName = String(name || fullName || '').trim()
 
-    if (!consumeCaptchaChallenge(captchaId, captchaAnswer)) {
-      return res.status(400).json({ success: false, message: 'Complete the security check.' })
-    }
     if (!displayName || !cleanEmail || !password) {
       return res.status(400).json({ success: false, message: 'Name, email, and password are required.' })
     }
@@ -326,11 +289,8 @@ router.post('/login', async (req, res, next) => {
     // Support more common field names from different frontend forms
     const loginId = String(req.body.email || req.body.username || req.body.loginId || '').trim()
     const cleanEmail = loginId.toLowerCase()
-    const { password, role, captchaId, captchaAnswer } = req.body
+    const { password, role } = req.body
 
-    if (!consumeCaptchaChallenge(captchaId, captchaAnswer)) {
-      return res.status(400).json({ success: false, message: 'Complete the security check.' })
-    }
     if (!loginId || !password) {
       return res.status(400).json({ success: false, message: 'Credentials and password are required.' })
     }
@@ -371,10 +331,6 @@ router.post('/login', async (req, res, next) => {
   } catch (error) {
     next(error)
   }
-})
-
-router.get('/captcha', (_req, res) => {
-  res.json({ success: true, captcha: createCaptchaChallenge() })
 })
 
 router.get('/google/start', (req, res, next) => {
@@ -450,7 +406,7 @@ router.post('/otp/send', async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Enter a valid email address.' })
     }
     const user = await prisma.user.findUnique({ where: { email: cleanEmail } })
-    if (!user) return res.json({ success: true, message: 'If the account is eligible, a verification code will be sent.' })
+    if (!user) return res.status(404).json({ success: false, message: 'No account found for this email.' })
     const otp = createOtp(cleanEmail, 'login')
     await sendOtpEmail({ to: cleanEmail, otp, purpose: 'login' })
     res.json({ success: true, message: 'OTP sent to your registered email.' })
@@ -466,7 +422,7 @@ router.post('/otp/verify', async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Invalid or expired OTP.' })
     }
     const user = await prisma.user.findUnique({ where: { email: cleanEmail } })
-    if (!user) return res.status(400).json({ success: false, message: 'The verification request is invalid or expired.' })
+    if (!user) return res.status(404).json({ success: false, message: 'No account found for this email.' })
     if (req.body.role && roleToDatabase(req.body.role) !== user.role) {
       return res.status(403).json({ success: false, message: `This account is registered as ${user.role.toLowerCase()}.` })
     }
@@ -486,7 +442,7 @@ router.post('/password/forgot', async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Enter a valid email address.' })
     }
     const user = await prisma.user.findUnique({ where: { email: cleanEmail } })
-    if (!user) return res.json({ success: true, message: 'If the account is eligible, reset instructions will be sent.' })
+    if (!user) return res.status(404).json({ success: false, message: 'No account found for this email.' })
     const otp = createOtp(cleanEmail, 'reset')
     await sendOtpEmail({ to: cleanEmail, otp, purpose: 'password reset' })
     res.json({ success: true, message: 'Reset code sent to your registered email.' })

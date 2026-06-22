@@ -11,7 +11,6 @@ import {
   AdminEmptyState, AdminLoadingState, AdminMetricCard, AdminNotice,
   AdminPageHeader, AdminQuickAction,
 } from '../../components/admin/AdminUI.jsx'
-import { compactNumber, formatTrend, money, trendFromItems, trendFromSeries } from '../../utils/dashboardMetrics.js'
 
 const zeroMetrics = {
   totalUsers: 0, totalLearners: 0, totalInstructors: 0, totalCourses: 0,
@@ -33,10 +32,16 @@ const managementActions = [
   { label: 'Reports', description: 'Open detailed platform reporting', icon: FileBarChart2, href: '/admin/reports', keywords: 'analytics activity progress' },
 ]
 
-const managementTones = ['blue', 'teal', 'orange', 'purple', 'pink', 'sky', 'amber', 'green']
-
 function normalizeOverview(payload) {
   return { ...zeroMetrics, ...(payload?.analytics || {}) }
+}
+
+function money(cents) {
+  return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format((cents || 0) / 100)
+}
+
+function compact(value) {
+  return new Intl.NumberFormat('en-IN', { notation: 'compact', maximumFractionDigits: 1 }).format(value || 0)
 }
 
 function formatDate(value) {
@@ -101,25 +106,16 @@ export default function AdminDashboard() {
   }, [])
 
   const assignmentCount = useMemo(() => new Set(submissions.map((item) => item.assignmentId).filter(Boolean)).size, [submissions])
-  const usersTrend = useMemo(() => formatTrend(trendFromSeries(metrics.growth, 'registrations')), [metrics.growth])
-  const studentsTrend = useMemo(() => formatTrend(trendFromSeries(metrics.growth, 'enrollments')), [metrics.growth])
-  const instructorsTrend = useMemo(() => formatTrend(trendFromSeries(metrics.growth, 'userCreations')), [metrics.growth])
-  const coursesTrend = useMemo(() => formatTrend(trendFromSeries(metrics.growth, 'completions')), [metrics.growth])
-  const revenueTrend = useMemo(() => formatTrend(trendFromSeries(metrics.growth, 'revenueCents')), [metrics.growth])
-  const certificatesTrend = useMemo(() => formatTrend(trendFromSeries(metrics.growth, 'completions')), [metrics.growth])
-  const assignmentsTrend = useMemo(() => formatTrend(trendFromItems(submissions, 'submittedAt', 7, (item) => item.assignmentId ? 1 : 0)), [submissions])
-  const assessmentsTrend = useMemo(() => formatTrend(trendFromItems(submissions, 'submittedAt', 7)), [submissions])
-
   const kpis = useMemo(() => [
-    { label: 'Users', value: compactNumber(metrics.totalUsers), detail: 'all platform accounts', trend: usersTrend, icon: Users, href: '/admin/users', tone: 'blue' },
-    { label: 'Students', value: compactNumber(metrics.totalLearners), detail: 'registered learners', trend: studentsTrend, icon: GraduationCap, href: '/admin/learners', tone: 'teal' },
-    { label: 'Instructors', value: compactNumber(metrics.totalInstructors), detail: 'teaching accounts', trend: instructorsTrend, icon: Users, href: '/admin/instructors', tone: 'orange' },
-    { label: 'Courses', value: compactNumber(metrics.totalCourses), detail: `${metrics.publishRate}% published`, trend: coursesTrend, icon: BookOpenCheck, href: '/admin/courses', tone: 'purple' },
-    { label: 'Revenue', value: money(metrics.revenueCents), detail: 'confirmed payments', trend: revenueTrend, icon: BadgeIndianRupee, href: '/admin/revenue', tone: 'pink' },
-    { label: 'Certificates', value: compactNumber(metrics.totalCertificates), detail: 'issued credentials', trend: certificatesTrend, icon: Award, href: '/admin/certificates', tone: 'sky' },
-    { label: 'Assignments', value: compactNumber(assignmentCount), detail: 'unique assigned assessments', trend: assignmentsTrend, icon: ClipboardCheck, href: '/admin/evaluations', tone: 'amber' },
-    { label: 'Assessments', value: compactNumber(submissions.length), detail: 'learner submissions', trend: assessmentsTrend, icon: FileBarChart2, href: '/admin/evaluations', tone: 'green' },
-  ], [assignmentCount, assessmentsTrend, certificatesTrend, coursesTrend, instructorsTrend, metrics.publishRate, metrics.revenueCents, metrics.totalCertificates, metrics.totalCourses, metrics.totalInstructors, metrics.totalLearners, metrics.totalUsers, revenueTrend, studentsTrend, submissions.length, usersTrend, assignmentsTrend])
+    { label: 'Users', value: compact(metrics.totalUsers), detail: 'all platform accounts', icon: Users, href: '/admin/users', tone: 'blue' },
+    { label: 'Students', value: compact(metrics.totalLearners), detail: 'registered learners', icon: GraduationCap, href: '/admin/learners', tone: 'cyan' },
+    { label: 'Instructors', value: compact(metrics.totalInstructors), detail: 'teaching accounts', icon: Users, href: '/admin/instructors', tone: 'orange' },
+    { label: 'Courses', value: compact(metrics.totalCourses), detail: `${metrics.publishRate}% published`, icon: BookOpenCheck, href: '/admin/courses', tone: 'blue' },
+    { label: 'Revenue', value: money(metrics.revenueCents), detail: 'confirmed payments', icon: BadgeIndianRupee, href: '/admin/revenue', tone: 'orange' },
+    { label: 'Certificates', value: compact(metrics.totalCertificates), detail: 'issued credentials', icon: Award, href: '/admin/certificates', tone: 'green' },
+    { label: 'Assignments', value: compact(assignmentCount), detail: 'unique assigned assessments', icon: ClipboardCheck, href: '/admin/evaluations', tone: 'cyan' },
+    { label: 'Assessments', value: compact(submissions.length), detail: 'learner submissions', icon: FileBarChart2, href: '/admin/evaluations', tone: 'green' },
+  ], [assignmentCount, metrics, submissions.length])
 
   const chartData = useMemo(() => metrics.growth.slice(-Number(range)), [metrics.growth, range])
   const courseResults = useMemo(() => {
@@ -153,7 +149,7 @@ export default function AdminDashboard() {
     : hasData(chartData, ['registrations', 'enrollments', 'completions'])
 
   return (
-      <section className="admin-dashboard-v2 space-y-6 pb-16">
+    <section className="space-y-6 pb-16">
       <AdminPageHeader
         eyebrow="Admin workspace"
         title="Learning operations overview"
@@ -224,7 +220,7 @@ export default function AdminDashboard() {
               ) : <AdminEmptyState title="No analytics for this period" message="Activity will appear as learners register, enroll, complete courses, or make payments." />}
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <Ratio label="Enrollments" value={compactNumber(metrics.totalEnrollments)} />
+              <Ratio label="Enrollments" value={compact(metrics.totalEnrollments)} />
               <Ratio label="Completion rate" value={`${metrics.completionRate}%`} />
               <Ratio label="Published catalog" value={`${metrics.publishRate}%`} />
             </div>
@@ -280,16 +276,7 @@ export default function AdminDashboard() {
       <DashboardSection eyebrow="Management section" title="Administration tools" description="All management actions, organized in one searchable workspace.">
         {actionResults.length ? (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {actionResults.map((item, index) => (
-              <AdminQuickAction
-                key={item.href}
-                icon={item.icon}
-                label={item.label}
-                description={item.description}
-                tone={managementTones[index % managementTones.length]}
-                onClick={() => navigate(item.href)}
-              />
-            ))}
+            {actionResults.map((item, index) => <AdminQuickAction key={item.href} icon={item.icon} label={item.label} description={item.description} tone={index === 0 && !searchQuery ? 'primary' : 'secondary'} onClick={() => navigate(item.href)} />)}
           </div>
         ) : <AdminEmptyState title="No management tools found" message="Try a broader search term such as users, courses, or reports." actionLabel="Clear search" onAction={() => setSearchQuery('')} />}
       </DashboardSection>

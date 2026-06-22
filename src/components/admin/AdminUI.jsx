@@ -1,6 +1,5 @@
 import { AlertCircle, ArrowRight, CheckCircle2, ClipboardCheck, Loader2, SearchX, X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
-import KpiCard from '../ui/Dashboard/KpiCard.jsx'
 
 export function AdminPageHeader({ eyebrow, title, description, actions }) {
   return (
@@ -17,59 +16,51 @@ export function AdminPageHeader({ eyebrow, title, description, actions }) {
   )
 }
 
-export function AdminMetricCard({
-  label,
-  value,
-  detail,
-  icon: Icon,
-  tone = 'blue',
-  onClick,
-  loading,
-  trend,
-  trendLabel,
-}) {
+export function AdminMetricCard({ label, value, detail, icon: Icon, tone = 'cyan', onClick, loading }) {
+  const toneClass = {
+    cyan: 'from-cyan-400/18 to-teal-400/10 text-cyan-700 dark:text-cyan-100',
+    orange: 'from-orange-400/18 to-amber-400/10 text-orange-700 dark:text-orange-100',
+    green: 'from-emerald-400/18 to-teal-400/10 text-emerald-700 dark:text-emerald-100',
+    blue: 'from-blue-400/18 to-cyan-400/10 text-blue-700 dark:text-blue-100',
+    red: 'from-red-400/18 to-orange-400/10 text-red-700 dark:text-red-100',
+  }[tone]
+
+  const Wrapper = onClick ? 'button' : 'div'
   return (
-    <KpiCard
-      label={label}
-      value={value}
-      detail={detail}
-      icon={Icon}
-      tone={tone}
+    <Wrapper
+      type={onClick ? 'button' : undefined}
       onClick={onClick}
-      loading={loading}
-      trend={trend}
-      trendLabel={trendLabel}
-    />
+      className="admin-panel admin-panel-hover min-h-[144px] w-full p-5 text-left"
+    >
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--text-muted)]">{label}</p>
+        <span className={`grid h-11 w-11 place-items-center rounded-xl bg-gradient-to-br ${toneClass}`}>
+          {Icon ? <Icon size={19} /> : null}
+        </span>
+      </div>
+      <p className="mt-5 text-2xl font-semibold text-[var(--text-primary)]">{loading ? <span className="skeleton inline-block h-8 w-20" /> : value}</p>
+      <p className="mt-1 text-sm text-[var(--text-muted)]">{detail}</p>
+    </Wrapper>
   )
 }
 
 export function AdminQuickAction({ icon: Icon, label, description, onClick, tone = 'primary' }) {
-  const toneStyles = {
-    blue: { border: 'border-blue-200/70 dark:border-blue-400/20', icon: 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-200', accent: 'text-blue-600 dark:text-blue-300', bg: 'bg-blue-50/60 dark:bg-blue-500/8' },
-    teal: { border: 'border-teal-200/70 dark:border-teal-400/20', icon: 'bg-teal-50 text-teal-700 dark:bg-teal-500/15 dark:text-teal-200', accent: 'text-teal-600 dark:text-teal-300', bg: 'bg-teal-50/60 dark:bg-teal-500/8' },
-    orange: { border: 'border-orange-200/70 dark:border-orange-400/20', icon: 'bg-orange-50 text-orange-700 dark:bg-orange-500/15 dark:text-orange-200', accent: 'text-orange-600 dark:text-orange-300', bg: 'bg-orange-50/60 dark:bg-orange-500/8' },
-    purple: { border: 'border-purple-200/70 dark:border-purple-400/20', icon: 'bg-purple-50 text-purple-700 dark:bg-purple-500/15 dark:text-purple-200', accent: 'text-purple-600 dark:text-purple-300', bg: 'bg-purple-50/60 dark:bg-purple-500/8' },
-    pink: { border: 'border-pink-200/70 dark:border-pink-400/20', icon: 'bg-pink-50 text-pink-700 dark:bg-pink-500/15 dark:text-pink-200', accent: 'text-pink-600 dark:text-pink-300', bg: 'bg-pink-50/60 dark:bg-pink-500/8' },
-    sky: { border: 'border-sky-200/70 dark:border-sky-400/20', icon: 'bg-sky-50 text-sky-700 dark:bg-sky-500/15 dark:text-sky-200', accent: 'text-sky-600 dark:text-sky-300', bg: 'bg-sky-50/60 dark:bg-sky-500/8' },
-    amber: { border: 'border-amber-200/70 dark:border-amber-400/20', icon: 'bg-amber-50 text-amber-700 dark:bg-amber-500/15 dark:text-amber-200', accent: 'text-amber-600 dark:text-amber-300', bg: 'bg-amber-50/60 dark:bg-amber-500/8' },
-    green: { border: 'border-emerald-200/70 dark:border-emerald-400/20', icon: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-200', accent: 'text-emerald-600 dark:text-emerald-300', bg: 'bg-emerald-50/60 dark:bg-emerald-500/8' },
-  }
-  const toneConfig = toneStyles[tone] || toneStyles.blue
+  const toneClass = tone === 'primary'
+    ? 'border-transparent bg-[var(--brand-gradient)] text-white'
+    : 'border-[var(--border-color)] bg-[var(--bg-subtle)] text-[var(--text-primary)] hover:border-[var(--accent-primary)]/50'
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`group flex w-full items-center gap-4 rounded-[18px] border p-4 text-left transition duration-200 hover:-translate-y-0.5 hover:shadow-[0_20px_40px_rgba(15,23,42,0.08)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/40 ${toneConfig.border} ${toneConfig.bg} bg-white/90 dark:bg-white/5`}
+      className={`flex w-full items-center gap-3 rounded-xl border p-4 text-left transition-colors hover:shadow-soft ${toneClass}`}
     >
-      <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${toneConfig.icon}`}>
-        {Icon ? <Icon size={18} strokeWidth={2} /> : null}
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-white/16">
+        {Icon ? <Icon size={18} /> : null}
       </span>
-      <span className="min-w-0 flex-1">
-        <span className={`block text-xs font-bold uppercase tracking-[0.18em] ${toneConfig.accent}`}>Management</span>
-        <span className="mt-1 block text-base font-semibold text-[var(--text-primary)] dark:text-white">{label}</span>
-        <span className="mt-1 block text-sm leading-5 text-[var(--text-secondary)] dark:text-slate-300">{description}</span>
+      <span className="min-w-0">
+        <span className="block font-semibold">{label}</span>
+        <span className={`mt-0.5 block text-xs ${tone === 'primary' ? 'text-white/80' : 'text-[var(--text-muted)]'}`}>{description}</span>
       </span>
-      <span className={`hidden shrink-0 rounded-full px-3 py-1 text-xs font-semibold sm:inline-flex ${toneConfig.icon}`}>Open</span>
     </button>
   )
 }
@@ -216,22 +207,21 @@ export function AdminStatusBadge({ value }) {
 
 export function AdminInsightStrip({ items = [] }) {
   if (!items.length) return null
-  const tones = ['blue', 'teal', 'orange', 'purple', 'pink', 'sky', 'amber', 'green']
   return (
     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-      {items.map((item, index) => {
+      {items.map((item) => {
         const Icon = item.icon || ClipboardCheck
         return (
-          <KpiCard
-            key={item.label}
-            label={item.label}
-            value={item.value}
-            detail={item.detail}
-            icon={Icon}
-            tone={item.tone || tones[index % tones.length]}
-            trend={item.trend}
-            trendLabel={item.trendLabel}
-          />
+          <div key={item.label} className="admin-panel p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text-muted)]">{item.label}</p>
+              <span className="grid h-9 w-9 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)]">
+                <Icon size={17} />
+              </span>
+            </div>
+            <p className="mt-3 text-xl font-semibold text-[var(--text-primary)]">{item.value}</p>
+            {item.detail ? <p className="mt-1 text-xs leading-5 text-[var(--text-secondary)]">{item.detail}</p> : null}
+          </div>
         )
       })}
     </div>

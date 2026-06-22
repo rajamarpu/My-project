@@ -1,9 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Award, CheckCircle2, ClipboardCheck, Download, Eye, RotateCcw, Save, Search, ShieldAlert, Sparkles } from 'lucide-react'
+import { ClipboardCheck, Download, Eye, RotateCcw, Save, Search, Sparkles } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
 import { AdminEmptyState, AdminGuidancePanel, AdminLoadingState, AdminNotice, AdminPageHeader } from '../../components/admin/AdminUI.jsx'
 import { downloadAssessmentSubmissionUrl, evaluateAssessmentSubmission, fetchAdminAssessmentSubmissions, grantAssessmentRetake } from '../../api/api.js'
-import KpiCard from '../../components/ui/Dashboard/KpiCard.jsx'
 
 const statusOptions = [
   { value: 'ALL', label: 'All statuses' },
@@ -142,11 +141,11 @@ export default function AssessmentEvaluationsPage() {
       ) : null}
 
       <div className="grid gap-3 md:grid-cols-5">
-        <KpiCard tone="blue" icon={ClipboardCheck} label="Total submissions" value={metrics.total} detail="all reviewable attempts" />
-        <KpiCard tone="orange" icon={Sparkles} label="Pending" value={metrics.pending} detail="awaiting evaluation" />
-        <KpiCard tone="green" icon={CheckCircle2} label="Passed" value={metrics.passed} detail="successful submissions" />
-        <KpiCard tone="red" icon={ShieldAlert} label="Failed" value={metrics.failed} detail="submissions needing support" />
-        <KpiCard tone="purple" icon={Award} label="Avg score" value={`${metrics.averageScore}%`} detail="mean submission score" />
+        <Metric label="Total submissions" value={metrics.total} />
+        <Metric label="Pending" value={metrics.pending} />
+        <Metric label="Passed" value={metrics.passed} />
+        <Metric label="Failed" value={metrics.failed} />
+        <Metric label="Avg score" value={`${metrics.averageScore}%`} />
       </div>
 
       <div className="admin-panel grid gap-3 p-4 lg:grid-cols-[1fr_190px_160px_150px_150px_150px]">
@@ -231,6 +230,18 @@ export default function AssessmentEvaluationsPage() {
         </div>
       </div>
     </section>
+  )
+}
+
+function Metric({ label, value, compact }) {
+  return (
+    <div className={`admin-panel ${compact ? 'p-3' : 'p-4'}`}>
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">{label}</p>
+      <div className="mt-2 flex items-center gap-2">
+        {label === 'Pending' ? <ClipboardCheck className="text-amber-500" size={17} /> : null}
+        <p className={`${compact ? 'text-lg' : 'text-2xl'} font-semibold text-[var(--text-primary)]`}>{value}</p>
+      </div>
+    </div>
   )
 }
 

@@ -15,17 +15,12 @@ async function request(path, { token, ...options } = {}) {
   return payload
 }
 
-async function withCaptcha(payload = {}) {
-  const captcha = await request('/auth/captcha')
-  return { ...payload, captchaId: captcha.captcha.captchaId, captchaAnswer: String(captcha.captcha.left + captcha.captcha.right) }
-}
-
 const checks = []
 let learner
 let adminToken
 
 try {
-  learner = await request('/auth/register', { method: 'POST', body: JSON.stringify(await withCaptcha({ name: 'Production Smoke Learner', email, password, confirmPassword: password, role: 'learner' })) })
+  learner = await request('/auth/register', { method: 'POST', body: JSON.stringify({ name: 'Production Smoke Learner', email, password, confirmPassword: password, role: 'learner' }) })
   checks.push('learner registration')
 
   const token = learner.token
@@ -48,7 +43,7 @@ try {
   await request('/portal/live-sessions', { token })
   checks.push('learner report, notifications, and live sessions')
 
-  const admin = await request('/auth/login', { method: 'POST', body: JSON.stringify(await withCaptcha({ email: adminEmail, password: adminPassword, role: 'admin' })) })
+  const admin = await request('/auth/login', { method: 'POST', body: JSON.stringify({ email: adminEmail, password: adminPassword, role: 'admin' }) })
   adminToken = admin.token
   await request('/portal/admin/settings', { token: adminToken })
   await request('/admin/overview', { token: adminToken })
@@ -57,7 +52,7 @@ try {
 
   const instructorEmail = process.env.INSTRUCTOR_EMAIL || 'rohitsharma@gmail.com'
   const instructorPassword = process.env.INSTRUCTOR_PASSWORD || `${instructorEmail}:UptoSkills2026!`
-  const instructor = await request('/auth/login', { method: 'POST', body: JSON.stringify(await withCaptcha({ email: instructorEmail, password: instructorPassword, role: 'instructor' })) })
+  const instructor = await request('/auth/login', { method: 'POST', body: JSON.stringify({ email: instructorEmail, password: instructorPassword, role: 'instructor' }) })
   await request('/portal/instructor/courses', { token: instructor.token })
   await request('/portal/live-sessions', { token: instructor.token })
   await request('/portal/notifications', { token: instructor.token })
