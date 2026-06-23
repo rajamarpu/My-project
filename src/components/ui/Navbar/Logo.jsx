@@ -2,42 +2,23 @@ import { Link } from 'react-router-dom'
 import { GraduationCap, TrendingUp } from 'lucide-react'
 import { cn } from '../../../utils/classNames.js'
 
-export default function Logo({ to = '/', admin = false, compact = false, className = '' }) {
-  if (admin) {
-    return (
-      <Link
-        to={to}
-        className={cn('group flex min-w-0 items-center gap-3 text-[var(--text-primary)]', className)}
-        aria-label="UptoSkills admin home"
-      >
-        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] text-[var(--accent-primary)] shadow-soft">
-          <GraduationCap size={23} />
-        </span>
-        <span className="min-w-0">
-          <span
-            className="relative block whitespace-nowrap text-[1.55rem] font-black leading-none tracking-[-0.07em] sm:text-[1.8rem]"
-            style={{ fontFamily: '"Arial Rounded MT Bold", "Aptos Display", "Nunito Sans", Poppins, Inter, Arial, Helvetica, sans-serif', WebkitTextStroke: '0.25px currentColor' }}
-          >
-            <span className="text-[#F97316]">Upto</span><span className="text-[#14B8A6]">Skills</span>
-            <TrendingUp className="absolute -right-4 -top-2 h-5 w-5 rotate-12 text-[#FF6B35] transition group-hover:-translate-y-0.5 dark:text-[#F97316]" strokeWidth={3} />
-          </span>
-          {!compact ? (
-            <span className="mt-1 inline-flex max-w-full items-center rounded-full border border-[var(--border-color)] bg-[var(--accent-soft)] px-2 py-0.5 text-[0.62rem] font-black uppercase tracking-[0.2em] text-[var(--accent-primary)]">
-              Admin Panel
-            </span>
-          ) : null}
-        </span>
-      </Link>
-    )
-  }
-
+export default function Logo({ to = '/', className = '' }) {
   return (
-    <Link to={to} className={cn('flex items-center gap-3 text-[var(--text-primary)]', className)} aria-label="UptoSkills home">
-      <span
-        className="shrink-0 text-[1.7rem] font-black leading-none tracking-[-0.06em] drop-shadow-[0_8px_18px_rgba(20,184,166,0.14)] sm:text-[2.15rem]"
-        style={{ fontFamily: '"Arial Rounded MT Bold", "Aptos Display", "Nunito Sans", Poppins, Inter, Arial, Helvetica, sans-serif', WebkitTextStroke: '0.25px currentColor' }}
-      >
-        <span className="text-[#F97316]">Upto</span><span className="text-[#14B8A6]">Skills</span>
+    <Link to={to} className={cn('group flex min-w-0 items-start gap-1.5 text-[var(--text-primary)]', className)} aria-label="UptoSkills home">
+      <span className="relative mt-0.5 h-8 w-8 shrink-0">
+        <GraduationCap size={18} strokeWidth={2.15} className="absolute left-0 top-0 text-[#4A90E2] drop-shadow-[0_2px_4px_rgba(74,144,226,0.14)]" />
+      </span>
+      <span className="min-w-0">
+        <span
+          className="relative inline-flex h-[1.25em] items-end whitespace-nowrap text-[1.55rem] font-black leading-none tracking-[-0.03em] sm:text-[1.9rem]"
+          style={{ fontFamily: '"Arial Rounded MT Bold", "Trebuchet MS", "Nunito Sans", "Aptos Display", Poppins, Inter, Arial, Helvetica, sans-serif' }}
+        >
+          <span className="inline-flex items-end text-[#2CC7BA]">Upto</span>
+          <span className="relative inline-flex items-end text-[#FF7A45]">
+            Skills
+            <TrendingUp className="absolute -right-4 -top-2 h-3.5 w-3.5 rotate-12 text-[#FF7A45] transition group-hover:-translate-y-0.5 dark:text-[#FF9A6B]" strokeWidth={3} />
+          </span>
+        </span>
       </span>
     </Link>
   )

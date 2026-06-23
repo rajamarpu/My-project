@@ -12,6 +12,7 @@ import { adminNavigationSections } from '../constants/navigation.jsx'
 export default function AdminLayout({ children }) {
   const dispatch = useDispatch()
   const user = useSelector((state) => state.auth.user)
+  const notifications = useSelector((state) => state.auth.notifications)
   const navigate = useNavigate()
   const [navOpen, setNavOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem('uptoskills-admin-sidebar') === 'collapsed')
@@ -19,6 +20,7 @@ export default function AdminLayout({ children }) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [activeResult, setActiveResult] = useState(-1)
   const [profileOpen, setProfileOpen] = useState(false)
+  const unreadNotifications = Array.isArray(notifications) ? notifications.filter((notification) => !notification.read).length : 0
   const searchableRoutes = useMemo(() => adminNavigationSections.flatMap((section) => section.items.map((item) => ({ ...item, section: section.label }))), [])
   const searchResults = useMemo(() => {
     const needle = searchQuery.trim().toLowerCase()
@@ -90,7 +92,7 @@ export default function AdminLayout({ children }) {
       <div className="min-h-screen lg:block">
         <div className="sticky top-0 z-30 border-b border-[var(--border-color)] bg-[var(--bg-elevated)]/95 p-4 backdrop-blur lg:hidden">
           <div className="flex items-center justify-between gap-3">
-            <Logo to="/admin" admin />
+            <Logo to="/admin" />
             <div className="flex items-center gap-2">
               <ThemeToggleButton />
               <button
@@ -109,8 +111,7 @@ export default function AdminLayout({ children }) {
 
         <aside className={`${navOpen ? 'flex animate-upto-fade-slide' : 'hidden'} fixed inset-x-3 top-20 z-40 max-h-[calc(100dvh-6rem)] flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-3 shadow-soft backdrop-blur-xl transition-[width] duration-200 sm:inset-x-4 sm:p-4 lg:inset-y-0 lg:left-0 lg:top-0 lg:flex lg:h-screen ${collapsed ? 'lg:w-[112px] lg:p-3' : 'lg:w-[276px] lg:p-5'} lg:max-h-none lg:rounded-none lg:border-x-0 lg:border-y-0 lg:border-r lg:shadow-none`}>
           <div className="shrink-0 flex items-center justify-between gap-3">
-            <Logo to="/admin" admin compact={collapsed} className={collapsed ? 'lg:[&>span:nth-child(2)]:hidden' : ''} />
-            {!collapsed ? <div className="hidden lg:block"><ThemeToggleButton /></div> : null}
+            <Logo to="/admin" />
           </div>
           <button type="button" onClick={toggleCollapsed} className="mt-4 hidden min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] text-xs font-bold text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] lg:flex" aria-label={collapsed ? 'Expand admin sidebar' : 'Collapse admin sidebar'} aria-expanded={!collapsed}>
             {collapsed ? <PanelLeftOpen size={18} /> : <><PanelLeftClose size={18} /><span>Collapse sidebar</span></>}
@@ -187,7 +188,10 @@ export default function AdminLayout({ children }) {
 
             <div className="flex shrink-0 items-center gap-2">
               <p className="hidden text-right 2xl:block"><span className="block text-xs font-bold text-[var(--text-primary)]">{new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date())}</span><span className="block text-[0.68rem] text-[var(--text-muted)]">Admin workspace</span></p>
-              <button type="button" onClick={() => navigate('/admin/notifications')} className="relative grid h-11 w-11 place-items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] text-[var(--text-primary)]" aria-label="Open admin notifications"><Bell size={18} /><span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[var(--accent-primary)]" aria-hidden="true" /></button>
+              <button type="button" onClick={() => navigate('/admin/notifications')} className="relative grid h-11 w-11 place-items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] text-[var(--text-primary)]" aria-label={`Open admin notifications${unreadNotifications ? `, ${unreadNotifications} unread` : ''}`}>
+                <Bell size={18} />
+                {unreadNotifications ? <span className="absolute -right-1 -top-1 rounded-full bg-[var(--accent-primary)] px-1.5 py-0.5 text-[10px] font-bold text-white">{unreadNotifications}</span> : <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[var(--accent-primary)]" aria-hidden="true" />}
+              </button>
               <ThemeToggleButton />
               <div className="relative">
                 <button type="button" onClick={() => setProfileOpen((current) => !current)} className="flex min-h-11 max-w-[15rem] items-center gap-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] px-3 text-left" aria-haspopup="menu" aria-expanded={profileOpen}>

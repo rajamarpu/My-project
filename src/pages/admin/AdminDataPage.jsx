@@ -100,7 +100,7 @@ const resources = {
   notifications: {
     eyebrow: 'Messaging',
     title: 'Notifications',
-    description: 'Notifications saved for platform users.',
+    description: 'Notification records saved for platform users, with read state and recipient context.',
     load: fetchAdminNotifications,
     rows: (data) => data.notifications || [],
     columns: ['title', 'body', 'user', 'isRead', 'createdAt'],
@@ -422,6 +422,7 @@ export default function AdminDataPage({ resource }) {
       <AdminNotice type="error">{error}</AdminNotice>
       <AdminNotice type={notice.type || 'info'}>{notice.message}</AdminNotice>
 
+      {resource === 'notifications' ? <NotificationsOverview rows={rows} /> : null}
       <AdminInsightStrip items={insights} />
       <EnterpriseOperationsPanel signals={enterpriseSignals} />
       {resource === 'users' ? null : <AdminGuidancePanel title="Productivity workflow" items={guidance} />}
@@ -545,6 +546,82 @@ function EnterpriseOperationsPanel({ signals }) {
         <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">Review note</p>
           <p className="mt-2 text-sm leading-6 text-[var(--text-primary)]">{signals.review}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function NotificationsOverview({ rows }) {
+  const total = rows.length
+  const unread = rows.filter((row) => !row.isRead).length
+  const read = total - unread
+  const recipients = new Set(rows.map((row) => row.user?.id || row.user?.email).filter(Boolean)).size
+  const latest = [...rows]
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+    .slice(0, 3)
+
+  return (
+    <div className="admin-panel p-4 sm:p-5">
+      <div className="flex flex-col gap-2 border-b border-[var(--border-color)] pb-4">
+        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent-primary)]">Notification center</p>
+        <h2 className="text-lg font-semibold text-[var(--text-primary)]">Admin inbox snapshot</h2>
+        <p className="max-w-4xl text-sm leading-6 text-[var(--text-secondary)]">
+          Review unread items, keep targeted messages organized, and make sure urgent updates are not buried in the general feed.
+        </p>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: 'Total notifications', value: total, detail: 'messages in this view', tone: 'blue' },
+          { label: 'Unread', value: unread, detail: 'need action', tone: 'amber' },
+          { label: 'Read rate', value: `${total ? Math.round((read / Math.max(total, 1)) * 100) : 0}%`, detail: 'messages acknowledged', tone: 'emerald' },
+          { label: 'Recipients', value: recipients, detail: 'distinct user targets', tone: 'violet' },
+        ].map((item) => (
+          <div key={item.label} className={`rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4 ${item.tone === 'amber' ? 'ring-1 ring-amber-400/10' : ''}`}>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">{item.label}</p>
+            <p className="mt-2 text-2xl font-bold text-[var(--text-primary)]">{item.value}</p>
+            <p className="mt-1 text-sm text-[var(--text-secondary)]">{item.detail}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[1fr_0.9fr]">
+        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">Latest notifications</p>
+          <div className="mt-3 space-y-3">
+            {latest.length ? latest.map((item, index) => (
+              <div key={item.id || `${item.title || 'notification'}-${index}`} className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-elevated)] p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <AdminStatusBadge value={item.isRead ? 'Read' : 'Unread'} />
+                  <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">{item.user?.name || item.user?.email || 'All users'}</span>
+                </div>
+                <p className="mt-2 font-semibold text-[var(--text-primary)]">{item.title || 'Notification'}</p>
+                <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">{item.body || 'No message body provided.'}</p>
+                <p className="mt-2 text-xs font-medium text-[var(--text-muted)]">{item.createdAt ? new Date(item.createdAt).toLocaleString() : 'Recently'}</p>
+              </div>
+            )) : (
+              <div className="rounded-lg border border-dashed border-[var(--border-color)] bg-[var(--bg-elevated)] p-5 text-sm text-[var(--text-secondary)]">
+                No notifications available yet. Messages sent from the platform will appear here.
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text-muted)]">Action guide</p>
+          <div className="mt-3 grid gap-3">
+            {[
+              ['Prioritize unread items', 'Clear the unread queue first so important messages do not get buried.'],
+              ['Target by audience', 'Use recipient context to keep platform-wide and user-specific updates separate.'],
+              ['Keep a clean feed', 'Archive stale notices so current alerts are easier to scan.'],
+            ].map(([title, text]) => (
+              <div key={title} className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-elevated)] p-4">
+                <p className="font-semibold text-[var(--text-primary)]">{title}</p>
+                <p className="mt-1 text-sm leading-6 text-[var(--text-secondary)]">{text}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>
@@ -783,12 +860,24 @@ function buildInsights(resource, rows) {
   }
   if (resource === 'payments') {
     const paid = rows.filter((row) => String(row.status || '').toUpperCase() === 'PAID')
-      return [
-        { label: 'Transactions', value: total, detail: 'payment records', icon: CreditCard, tone: 'blue', href: '/admin/payments' },
-        { label: 'Paid', value: paid.length, detail: 'successful payments', icon: CheckCircle2, tone: 'emerald', href: '/admin/payments' },
-        { label: 'Pending', value: rows.filter((row) => String(row.status || '').toUpperCase() === 'PENDING').length, detail: 'awaiting closure', icon: Clock3, tone: 'orange', href: '/admin/payments' },
-        { label: 'Failed', value: rows.filter((row) => String(row.status || '').toUpperCase() === 'FAILED').length, detail: 'payment exceptions', icon: Activity, tone: 'rose', href: '/admin/payments' },
-      ]
+    return [
+      { label: 'Transactions', value: total, detail: 'payment records', icon: CreditCard, tone: 'blue', href: '/admin/payments' },
+      { label: 'Paid', value: paid.length, detail: 'successful payments', icon: CheckCircle2, tone: 'emerald', href: '/admin/payments' },
+      { label: 'Pending', value: rows.filter((row) => String(row.status || '').toUpperCase() === 'PENDING').length, detail: 'awaiting closure', icon: Clock3, tone: 'orange', href: '/admin/payments' },
+      { label: 'Failed', value: rows.filter((row) => String(row.status || '').toUpperCase() === 'FAILED').length, detail: 'payment exceptions', icon: Activity, tone: 'rose', href: '/admin/payments' },
+    ]
+  }
+  if (resource === 'notifications') {
+    const unread = rows.filter((row) => !row.isRead).length
+    const read = total - unread
+    const recipients = new Set(rows.map((row) => row.user?.id || row.user?.email).filter(Boolean)).size
+    const urgent = rows.filter((row) => /urgent|deadline|reminder|payment|security|approval/i.test(`${row.title || ''} ${row.body || ''}`)).length
+    return [
+      { label: 'Unread queue', value: unread, detail: 'messages needing attention', icon: Clock3, tone: 'amber', href: '/admin/notifications' },
+      { label: 'Read rate', value: `${total ? Math.round((read / Math.max(total, 1)) * 100) : 0}%`, detail: 'messages acknowledged', icon: CheckCircle2, tone: 'emerald', href: '/admin/notifications' },
+      { label: 'Recipients', value: recipients, detail: 'distinct users reached', icon: Users, tone: 'blue', href: '/admin/notifications' },
+      { label: 'Urgent items', value: urgent, detail: 'high-priority messages', icon: AlertTriangle, tone: 'rose', href: '/admin/notifications' },
+    ]
   }
   if (resource === 'revenue') {
     const paid = rows.filter((row) => String(row.status || '').toUpperCase() === 'PAID')
@@ -940,6 +1029,7 @@ function quickViewRecommendation(resource, row) {
   if (peopleResources.has(resource)) return `Review ${row.email || 'this account'} status, role, and activity before moderation.`
   if (resource === 'enrollments') return 'Use progress and hours studied to decide whether this learner needs outreach.'
   if (resource === 'payments' || resource === 'revenue') return 'Confirm payment status and course context before finance export or support follow-up.'
+  if (resource === 'notifications') return 'Check read status, recipient, and body context before resending this notification.'
   if (resource === 'certificates') return 'Verify certificate ID, learner, and course before sharing or reissuing.'
   if (resource === 'analytics') return 'Compare this day with nearby days before treating it as a trend.'
   if (resource === 'reports') return 'Correlate actor, module, IP address, and timestamp before using this report row.'

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Eye, EyeOff, Github, LockKeyhole, LogIn, Mail, Phone, Rocket, ShieldCheck, UserRound, Zap } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
@@ -97,17 +97,11 @@ export default function AuthPage() {
   }, [auth.role, auth.token, auth.user, isAdminPortal, navigate])
 
   useEffect(() => {
-    setCaptcha(createCaptchaChallenge())
-    setCaptchaInput('')
-    setAttempted(false)
-  }, [isAdminPortal, mode])
-
-  useEffect(() => {
     if (!isAdminPortal) return
     dispatch(logout())
   }, [dispatch, isAdminPortal])
 
-  const errors = useMemo(() => {
+  const errors = (() => {
     const next = {}
     const loginId = form.email.trim()
     const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(loginId)
@@ -131,14 +125,14 @@ export default function AuthPage() {
     }
 
     return next
-  }, [form, isRegister, mode, needsPassword, score])
+  })()
 
-  const canSubmit = useMemo(() => {
+  const canSubmit = (() => {
     if (loading) return false
     if (mode === 'forgot') return Boolean(form.email.trim())
     if (mode === 'otp') return Boolean(form.email.trim())
     return Object.keys(errors).length === 0 && captchaSolved
-  }, [captchaSolved, errors, form.email, loading, mode])
+  })()
 
   const fieldError = (key) => (attempted ? errors[key] : '')
   const update = (key, value) => setForm((prev) => ({ ...prev, [key]: value }))

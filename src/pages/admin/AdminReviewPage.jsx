@@ -1,13 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { CheckCircle2, Eye, MessageSquareWarning } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import Button from '../../components/common/Button/Button.jsx'
 import Modal from '../../components/common/Modal/Modal.jsx'
 import { AdminMetricCard, AdminPageHeader } from '../../components/admin/AdminUI.jsx'
 import { fetchAdminCourses } from '../../api/api.js'
 
 export default function AdminReviewPage() {
-  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState(null)
   const [courses, setCourses] = useState([])

@@ -106,12 +106,12 @@ export default function CourseCard({ course, onViewDetails, onEnrollToggle, onCo
       </div>
 
       {isEnrolled ? <div className="relative mt-3">
-        <div className="flex items-center justify-between text-xs font-medium text-[var(--text-muted)]">
+        <div className="flex items-center justify-between text-xs font-medium text-[var(--text-muted)] dark:text-slate-400">
           <span>Learning progress</span>
-          <span>{progress}%</span>
+          <span className="rounded-full bg-[var(--accent-soft)] px-2 py-1 text-[var(--accent-primary)] dark:bg-cyan-500/15 dark:text-cyan-300">{progress}%</span>
         </div>
-        <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
-          <div className="h-full rounded-full" style={{ width: `${progress}%`, background: 'var(--brand-gradient)' }} />
+        <div className="mt-2 h-3 overflow-hidden rounded-full border border-[var(--border-color)] bg-[var(--bg-subtle)] shadow-[inset_0_1px_2px_rgba(15,23,42,0.08)] dark:bg-slate-800/90 dark:shadow-[inset_0_1px_2px_rgba(255,255,255,0.06)]">
+          <div className="h-full rounded-full bg-[linear-gradient(90deg,#2563eb_0%,#3b82f6_35%,#22d3ee_100%)] shadow-[0_0_0_1px_rgba(255,255,255,0.16),0_0_18px_rgba(59,130,246,0.35)]" style={{ width: `${progress}%` }} />
         </div>
       </div> : null}
 

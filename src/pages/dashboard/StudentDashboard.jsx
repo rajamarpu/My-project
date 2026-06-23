@@ -8,7 +8,6 @@ import {
   CalendarCheck,
   Clock3,
   Compass,
-  FileQuestion,
   Flame,
   GraduationCap,
   LifeBuoy,
@@ -215,41 +214,6 @@ export default function StudentDashboard() {
         </div>
       ) : null}
 
-      <section className="admin-panel p-5 sm:p-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-2xl">
-            <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.2em]">Need help?</p>
-            <h2 className="mt-2 text-xl font-bold text-[var(--text-primary)]">Quick learner support links</h2>
-            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-              Jump straight to the FAQ, open the support center, or send the team a message from one place.
-            </p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-3 lg:w-auto">
-            <HelpActionCard
-              title="FAQ"
-              text="Browse quick answers for common learning questions."
-              icon={FileQuestion}
-              tone="blue"
-              onClick={() => navigate('/faq')}
-            />
-            <HelpActionCard
-              title="Support"
-              text="Open the support center for guided troubleshooting."
-              icon={LifeBuoy}
-              tone="teal"
-              onClick={() => navigate('/support')}
-            />
-            <HelpActionCard
-              title="Contact Us"
-              text="Send the team a direct message for personal help."
-              icon={Mail}
-              tone="orange"
-              onClick={() => navigate('/contact')}
-            />
-          </div>
-        </div>
-      </section>
-
       <DashboardSection eyebrow="Overview" title="Your learning metrics">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {kpis.map((metric) => (
@@ -332,14 +296,15 @@ export default function StudentDashboard() {
                 const width = hours ? Math.max(18, (hours / maxWeeklyHours) * 100) : 0
                 return (
                   <div key={day.day} className="grid flex-1 grid-cols-[2.8rem_minmax(0,1fr)_3.5rem] items-center gap-4">
-                    <span className="text-sm font-bold text-[var(--text-secondary)]">{day.day}</span>
-                    <span className="h-2 overflow-hidden rounded-full bg-[var(--bg-subtle)]">
+                    <span className="text-sm font-bold text-[var(--text-secondary)] dark:text-slate-300">{day.day}</span>
+                    <span className="relative h-3 overflow-hidden rounded-full border border-[var(--border-color)] bg-[var(--bg-subtle)] shadow-[inset_0_1px_2px_rgba(15,23,42,0.08)] dark:bg-slate-800/90 dark:shadow-[inset_0_1px_2px_rgba(255,255,255,0.06)]">
+                      <span className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.18),transparent_35%,transparent_65%,rgba(255,255,255,0.12))] opacity-80" aria-hidden="true" />
                       <span
-                        className="block h-full rounded-full bg-[var(--brand-gradient)]"
+                        className="relative block h-full rounded-full bg-[linear-gradient(90deg,#2563eb_0%,#3b82f6_35%,#22d3ee_100%)] shadow-[0_0_0_1px_rgba(255,255,255,0.16),0_0_18px_rgba(59,130,246,0.35)]"
                         style={{ width: `${width}%` }}
                       />
                     </span>
-                    <span className="text-right text-xs font-semibold text-[var(--text-muted)]">{hours}h</span>
+                    <span className="text-right text-xs font-semibold text-[var(--text-muted)] dark:text-slate-400">{hours}h</span>
                   </div>
                 )
               })}
@@ -396,32 +361,6 @@ export default function StudentDashboard() {
   )
 }
 
-function HelpActionCard({ title, text, icon: Icon, tone = 'blue', onClick }) {
-  const toneStyles = {
-    blue: 'from-blue-500 via-sky-500 to-cyan-400',
-    teal: 'from-cyan-500 via-teal-500 to-emerald-400',
-    orange: 'from-orange-500 via-amber-400 to-yellow-300',
-  }[tone] || 'from-blue-500 via-sky-500 to-cyan-400'
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`group min-h-28 min-w-0 rounded-[18px] bg-gradient-to-br ${toneStyles} p-4 text-left text-white shadow-[0_16px_36px_rgba(15,23,42,0.16)] transition hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--color-canvas)]`}
-    >
-      <div className="flex h-full flex-col justify-between gap-4">
-        <span className="grid h-11 w-11 place-items-center rounded-2xl border border-white/20 bg-white/15 text-white backdrop-blur">
-          <Icon size={20} />
-        </span>
-        <div>
-          <p className="text-sm font-bold uppercase tracking-[0.14em] text-white/90">{title}</p>
-          <p className="mt-1 text-sm leading-5 text-white/85">{text}</p>
-        </div>
-      </div>
-    </button>
-  )
-}
-
 function DashboardSection({ eyebrow, title, action, children, compact = false }) {
   return (
     <section className={`admin-panel h-full ${compact ? 'p-5' : 'p-5 sm:p-6'}`}>
@@ -449,10 +388,11 @@ function LearningCourseRow({ course, onContinue, onDetails }) {
         </div>
         <h3 className="mt-2 truncate font-bold text-[var(--text-primary)] dark:text-slate-100">{course.title}</h3>
         <div className="mt-3 flex items-center gap-3">
-          <span className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200/90 dark:bg-slate-700/80">
-            <span className="block h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${course.progress}%` }} />
+          <span className="relative h-3 flex-1 overflow-hidden rounded-full border border-[var(--border-color)] bg-[var(--bg-subtle)] shadow-[inset_0_1px_2px_rgba(15,23,42,0.08)] dark:bg-slate-800/90 dark:shadow-[inset_0_1px_2px_rgba(255,255,255,0.06)]">
+            <span className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.18),transparent_35%,transparent_65%,rgba(255,255,255,0.1))] opacity-80" aria-hidden="true" />
+            <span className="relative block h-full rounded-full bg-[linear-gradient(90deg,#2563eb_0%,#3b82f6_35%,#22d3ee_100%)] shadow-[0_0_0_1px_rgba(255,255,255,0.16),0_0_18px_rgba(59,130,246,0.35)]" style={{ width: `${course.progress}%` }} />
           </span>
-          <span className="w-12 text-right text-xs font-bold text-[var(--text-secondary)] dark:text-slate-300">{course.progress}%</span>
+          <span className="w-12 rounded-full bg-[var(--accent-soft)] px-2 py-1 text-right text-xs font-bold text-[var(--accent-primary)] dark:bg-cyan-500/15 dark:text-cyan-300">{course.progress}%</span>
         </div>
       </div>
       <div className="flex gap-2">

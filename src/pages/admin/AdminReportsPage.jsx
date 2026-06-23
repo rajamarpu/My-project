@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Activity, BarChart3, Download, RefreshCw, ShieldCheck, TrendingUp } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
 import Button from '../../components/common/Button/Button.jsx'
 import { AdminEmptyState, AdminMetricCard, AdminPageHeader } from '../../components/admin/AdminUI.jsx'
 import { fetchAdminActivityLogs, fetchAdminOverview } from '../../api/api.js'
@@ -8,7 +7,6 @@ import { fetchAdminActivityLogs, fetchAdminOverview } from '../../api/api.js'
 function csvCell(value) { return `"${String(value ?? '').replace(/"/g, '""')}"` }
 
 export default function AdminReportsPage() {
-  const navigate = useNavigate()
   const [logs, setLogs] = useState([])
   const [overview, setOverview] = useState(null)
   const [filters, setFilters] = useState({ from: '', to: '', module: 'ALL', search: '' })

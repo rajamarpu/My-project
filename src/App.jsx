@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, useLocation, Navigate, Outlet } from 'react-router-dom'
-import { useEffect, useState } from 'react'
+import { Component, useEffect, useState } from 'react'
 import { Provider, useDispatch, useSelector } from 'react-redux'
 import store from './store/store.js'
 import ThemeProvider from './store/ThemeProvider.jsx'
@@ -60,6 +60,47 @@ import {
   InstructorCoursesPage,
 } from './pages/Courses/LmsPages.jsx'
 import PersonalityShowcasePage from './pages/Courses/PersonalityShowcasePage.jsx'
+
+class RouteErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+
+  render() {
+    if (!this.state.hasError) return this.props.children
+
+    return (
+      <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-6 text-[var(--text-primary)] shadow-soft">
+        <p className="text-sm font-bold uppercase tracking-[0.22em] text-[var(--accent-primary)]">Profile unavailable</p>
+        <h1 className="text-2xl font-semibold">We could not load the user panel</h1>
+        <p className="text-sm leading-6 text-[var(--text-secondary)]">
+          A render error was caught before the page could open. Please refresh the page, or continue to the dashboard and try again.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <button type="button" onClick={() => window.location.reload()} className="btn-primary min-h-11 rounded-full px-5 text-sm font-semibold text-white">
+            Refresh page
+          </button>
+          <button type="button" onClick={() => (window.location.href = '/dashboard')} className="btn-secondary min-h-11 rounded-full px-5 text-sm font-semibold">
+            Go to dashboard
+          </button>
+        </div>
+      </div>
+    )
+  }
+}
+
+function UserPageRoute() {
+  return (
+    <RouteErrorBoundary>
+      <UserPage />
+    </RouteErrorBoundary>
+  )
+}
 
 function ProtectedRoute({ allowedRoles, redirectTo = '/login' }) {
   const auth = useSelector((state) => state.auth)
@@ -180,7 +221,7 @@ function AnimatedRoutes() {
   const isAdminHost = import.meta.env.MODE === 'admin'
 
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: 'instant' })
+    window.scrollTo(0, 0)
   }, [location.pathname])
 
   if (isAdminHost) {
@@ -210,7 +251,7 @@ function AnimatedRoutes() {
             <Route path="/admin/instructor-changes" element={<AdminLayout><AdminDataPage resource="instructor-changes" /></AdminLayout>} />
             <Route path="/admin/activity-logs" element={<AdminLayout><AdminDataPage resource="activity-logs" /></AdminLayout>} />
             <Route path="/admin/payments" element={<AdminLayout><AdminDataPage resource="payments" /></AdminLayout>} />
-            <Route path="/admin/profile" element={<AdminLayout><UserPage /></AdminLayout>} />
+            <Route path="/admin/profile" element={<AdminLayout><UserPageRoute /></AdminLayout>} />
             <Route path="/admin/settings" element={<AdminLayout><AdminSettingsPage /></AdminLayout>} />
             <Route path="/admin/reports" element={<AdminLayout><AdminReportsPage /></AdminLayout>} />
             <Route path="/admin/create-course" element={<AdminLayout><AdminCourseFormPage /></AdminLayout>} />
@@ -268,8 +309,11 @@ function AnimatedRoutes() {
         <Route element={<ProtectedRoute allowedRoles={['learner']} />}>
           <Route path="/dashboard" element={<MainLayout><StudentDashboard /></MainLayout>} />
           <Route path="/questions" element={<MainLayout><QuestionPracticePage /></MainLayout>} />
-          <Route path="/user" element={<MainLayout><UserPage /></MainLayout>} />
-          <Route path="/profile" element={<MainLayout><UserPage /></MainLayout>} />
+          <Route path="/user" element={<MainLayout><UserPageRoute /></MainLayout>} />
+          <Route path="/profile" element={<MainLayout><UserPageRoute /></MainLayout>} />
+          <Route path="/dashboard/profile" element={<MainLayout><UserPageRoute /></MainLayout>} />
+          <Route path="/dashboard/user" element={<MainLayout><UserPageRoute /></MainLayout>} />
+          <Route path="/account" element={<MainLayout><UserPageRoute /></MainLayout>} />
           <Route path="/settings" element={<MainLayout><SettingsPage /></MainLayout>} />
           <Route path="/notifications" element={<MainLayout><NotificationsPage /></MainLayout>} />
           <Route path="/certificates" element={<MainLayout><CertificatesPage /></MainLayout>} />
@@ -284,7 +328,7 @@ function AnimatedRoutes() {
           <Route path="/instructor" element={<MainLayout><InstructorDashboard /></MainLayout>} />
           <Route path="/instructor/courses" element={<MainLayout><InstructorCoursesPage /></MainLayout>} />
           <Route path="/instructor/live-sessions" element={<MainLayout><LiveSessionsPage /></MainLayout>} />
-          <Route path="/instructor/profile" element={<MainLayout><UserPage /></MainLayout>} />
+          <Route path="/instructor/profile" element={<MainLayout><UserPageRoute /></MainLayout>} />
           <Route path="/instructor/settings" element={<MainLayout><SettingsPage /></MainLayout>} />
           <Route path="/instructor/notifications" element={<MainLayout><NotificationsPage /></MainLayout>} />
         </Route>

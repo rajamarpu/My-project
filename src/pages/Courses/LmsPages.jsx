@@ -1,4 +1,4 @@
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 /* eslint-disable no-unreachable -- Legacy page versions remain below the active returns temporarily to preserve user-authored work. */
 import { useEffect, useMemo, useState } from 'react'
 import { useSelector } from 'react-redux'
@@ -6,6 +6,7 @@ import { AlertCircle, ArrowRight, Award, BadgeCheck, BarChart3, Bell, BookOpenCh
 import Button from '../../components/common/Button/Button.jsx'
 import { createAdminUser, createCertificate, createCheckout, createCommunityPost, createLiveSession, fetchAdminCourses, fetchAdminLearners, fetchCommunityPosts, fetchCourses, fetchInstructors, fetchInstructorCourses, fetchLearnerReport, fetchLiveSessions, fetchPaymentHistory, fetchPlatformSettings, fetchPortalNotifications, fetchPreferences, fetchSavedCourses, markPortalNotificationRead, removeSavedCourseRequest, reportCommunityPost, savePlatformSettings, savePreferences as savePreferencesRequest, submitContactRequest, uploadAdminCourseAsset } from '../../api/api.js'
 import { AdminNotice, AdminPageHeader, FieldError } from '../../components/admin/AdminUI.jsx'
+import MetricCard from '../../components/ui/Dashboard/MetricCard.jsx'
 import { useTheme } from '../../hooks/useTheme.js'
 
 const SUPPORT_EMAIL = 'rajamarpu05@gmail.com'
@@ -54,6 +55,14 @@ function useLiveCourses() {
   return { courses, loading }
 }
 
+function getLevelRank(level) {
+  const normalized = String(level || '').trim().toUpperCase()
+  if (normalized.includes('BEGINNER')) return 1
+  if (normalized.includes('INTERMEDIATE')) return 2
+  if (normalized.includes('ADVANCED')) return 3
+  return 2
+}
+
 function CardGrid({ items }) {
   return (
     <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -81,13 +90,19 @@ function FeatureTile({ icon: Icon, title, text, tone = 'from-cyan-500 to-teal-60
 }
 
 function MetricStrip({ metrics }) {
+  const tones = ['blue', 'teal', 'orange', 'rose', 'emerald', 'sky']
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {metrics.map((metric) => (
-        <div key={metric.label} className="rounded-lg border border-[var(--border-color)] bg-white/70 p-5 shadow-sm dark:bg-slate-950/40">
-          <p className="text-3xl font-semibold text-slate-950 dark:text-white">{metric.value}</p>
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-300">{metric.label}</p>
-        </div>
+      {metrics.map((metric, index) => (
+        <MetricCard
+          key={metric.label}
+          title={metric.label}
+          value={metric.value}
+          detail={metric.detail || ''}
+          tone={tones[index % tones.length]}
+          variant="learner"
+          className="min-h-[150px]"
+        />
       ))}
     </div>
   )
@@ -1264,9 +1279,9 @@ export function NotificationsPage() {
 
 function NotificationMetric({ label, value }) {
   return (
-    <div className="glass-card rounded-xl p-5 shadow-soft">
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--text-muted)]">{label}</p>
-      <p className="mt-2 text-2xl font-black text-[var(--text-primary)]">{value}</p>
+    <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-5 text-[var(--text-primary)] shadow-soft dark:bg-[linear-gradient(135deg,rgba(37,99,235,0.18),rgba(20,184,166,0.18),rgba(255,107,53,0.2))]">
+      <p className="text-[0.72rem] font-black uppercase tracking-[0.18em] text-[var(--text-muted)] dark:text-white/90">{label}</p>
+      <p className="mt-2 text-2xl font-black text-[var(--text-primary)] dark:text-white">{value}</p>
     </div>
   )
 }
@@ -2463,29 +2478,73 @@ export function CommunityTopicPage() {
 export function LearningPathPage() {
   const navigate = useNavigate()
   const { courses, loading } = useLiveCourses()
-  const [selectedPath, setSelectedPath] = useState('Career Starter')
+  const [searchParams] = useSearchParams()
+  const [selectedPath, setSelectedPath] = useState(searchParams.get('path') || 'Web Development')
   const paths = [
     {
-      name: 'Career Starter',
+      name: 'Web Development',
       icon: Rocket,
-      description: 'Build practical foundations, complete guided projects, and prepare for your first role.',
-      stages: ['Choose a foundation', 'Complete core lessons', 'Build a guided project', 'Earn your certificate'],
+      description: 'Learn HTML, CSS, JavaScript, React, and the tools used to build modern websites.',
+      stages: ['Basics: HTML and CSS', 'Intermediate: JavaScript and responsive design', 'Advanced: React and modern frontend patterns', 'Project: Build and deploy a website'],
+      keywords: ['web development', 'frontend', 'frontend development', 'html', 'css', 'javascript', 'react', 'next', 'ui', 'ux'],
+      priorityKeywords: ['html', 'css', 'javascript', 'react'],
     },
     {
-      name: 'Skill Upgrade',
+      name: 'Technical',
       icon: BarChart3,
-      description: 'Strengthen an existing skill with focused lessons, assessments, and applied practice.',
-      stages: ['Review your baseline', 'Study advanced concepts', 'Practice with assessments', 'Apply the skill at work'],
+      description: 'Strengthen programming, cloud, database, and problem-solving skills for technical roles.',
+      stages: ['Basics: Programming fundamentals', 'Intermediate: Data structures and databases', 'Advanced: Cloud, backend, and deployment', 'Project: Solve a technical case study'],
+      keywords: ['technical', 'programming', 'software', 'engineering', 'database', 'cloud', 'devops', 'security', 'api', 'backend'],
+      priorityKeywords: ['programming', 'database', 'cloud', 'backend'],
     },
     {
-      name: 'Leadership Track',
+      name: 'Python to AI/ML',
+      icon: Sparkles,
+      description: 'Start with Python, then move into AI/ML, automation, data science, and real applied projects.',
+      stages: ['Basics: Python fundamentals', 'Intermediate: Python for data handling', 'Advanced: AI/ML concepts and model training', 'Project: Build a practical AI solution'],
+      keywords: ['python', 'python programming', 'programming', 'ai', 'artificial intelligence', 'machine learning', 'ml', 'data science', 'automation'],
+      priorityKeywords: ['python', 'python programming', 'ai', 'artificial intelligence', 'machine learning', 'ml'],
+    },
+    {
+      name: 'Career Growth',
       icon: BriefcaseBusiness,
-      description: 'Develop communication, planning, and team leadership skills for your next career step.',
-      stages: ['Set a leadership goal', 'Learn people skills', 'Practice decision-making', 'Create an action plan'],
+      description: 'Develop communication, planning, and workplace skills for your next career step.',
+      stages: ['Basics: Career goal setting', 'Intermediate: Communication and teamwork', 'Advanced: Leadership and planning', 'Project: Build a career action plan'],
+      keywords: ['career', 'leadership', 'communication', 'professional', 'business', 'management', 'productivity'],
+      priorityKeywords: ['career', 'communication', 'leadership', 'planning'],
     },
   ]
   const activePath = paths.find((path) => path.name === selectedPath) || paths[0]
-  const recommendedCourses = courses.slice(0, 3)
+  const recommendedCourses = useMemo(() => {
+    if (!courses.length) return []
+    const keywords = (activePath.keywords || []).map((keyword) => keyword.toLowerCase())
+    const priorityKeywords = (activePath.priorityKeywords || []).map((keyword) => keyword.toLowerCase())
+    const scored = courses.map((course) => {
+      const haystack = [
+        course.title,
+        course.description,
+        course.category,
+        course.level,
+        ...(course.tags || []),
+      ].filter(Boolean).join(' ').toLowerCase()
+      const exactMatches = keywords.reduce((count, keyword) => count + (haystack.includes(keyword) ? 1 : 0), 0)
+      const priorityScore = priorityKeywords.reduce((count, keyword, index) => (
+        count + (haystack.includes(keyword) ? (priorityKeywords.length - index) : 0)
+      ), 0)
+      const levelScore = 4 - getLevelRank(course.level)
+      return { course, score: exactMatches + priorityScore + levelScore }
+    })
+    const matching = scored.filter(({ score }) => score > 0).sort((a, b) => b.score - a.score).map(({ course }) => course)
+    return matching.length ? matching.slice(0, 6) : courses.slice(0, 3)
+  }, [activePath.keywords, activePath.priorityKeywords, courses])
+
+  useEffect(() => {
+    const path = searchParams.get('path')
+    if (!path) return
+    const normalized = path.replace(/[-_]+/g, ' ').trim().toLowerCase()
+    const matched = paths.find((item) => item.name.toLowerCase() === normalized || item.name.replace(/\s+/g, ' ').toLowerCase() === normalized)
+    if (matched) setSelectedPath(matched.name)
+  }, [searchParams])
 
   return (
     <section className="space-y-6 pb-16">
@@ -2504,14 +2563,20 @@ export function LearningPathPage() {
       <div>
         <div className="mb-4">
           <h2 className="text-2xl font-bold text-[var(--text-primary)]">Choose your direction</h2>
-          <p className="mt-1 text-sm text-[var(--text-secondary)]">Select the path that best matches what you want to accomplish next.</p>
+          <p className="mt-1 text-sm text-[var(--text-secondary)]">Select the path that best matches what you want to accomplish next. Each path opens courses related to that theme.</p>
         </div>
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
           {paths.map((path) => {
             const Icon = path.icon
             const active = selectedPath === path.name
             return (
-              <button key={path.name} type="button" onClick={() => setSelectedPath(path.name)} aria-pressed={active} className={`rounded-2xl border p-5 text-left transition ${active ? 'border-[var(--accent-primary)] bg-[var(--accent-soft)] shadow-glow' : 'border-[var(--border-color)] bg-[var(--bg-elevated)] hover:-translate-y-0.5 hover:border-[var(--accent-primary)]/50 hover:shadow-soft'}`}>
+              <button
+                key={path.name}
+                type="button"
+                onClick={() => setSelectedPath(path.name)}
+                aria-pressed={active}
+                className={`rounded-2xl border p-5 text-left transition ${active ? 'border-[var(--accent-primary)] bg-[var(--accent-soft)] shadow-glow' : 'border-[var(--border-color)] bg-[var(--bg-elevated)] hover:-translate-y-0.5 hover:border-[var(--accent-primary)]/50 hover:shadow-soft'}`}
+              >
                 <span className="grid h-12 w-12 place-items-center rounded-xl bg-[var(--bg-elevated)] text-[var(--accent-primary)] shadow-sm"><Icon size={22} /></span>
                 <span className="mt-4 block text-lg font-bold text-[var(--text-primary)]">{path.name}</span>
                 <span className="mt-2 block text-sm leading-6 text-[var(--text-secondary)]">{path.description}</span>
@@ -2529,14 +2594,24 @@ export function LearningPathPage() {
             <h2 className="mt-2 text-2xl font-bold text-[var(--text-primary)]">{activePath.name}</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">Complete each milestone in order. Your course progress and certificates will provide evidence as you advance.</p>
           </div>
-          <span className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-600 dark:text-emerald-300"><Target size={17} /> 4 milestones</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-600 dark:text-emerald-300"><Target size={17} /> {activePath.stages.length} milestones</span>
+            <Button variant="secondary" onClick={() => navigate(`/courses?search=${encodeURIComponent(activePath.name)}`)}>View matching courses</Button>
+          </div>
         </div>
         <ol className="mt-7 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {activePath.stages.map((stage, index) => (
             <li key={stage} className="relative rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
               <span className="grid h-9 w-9 place-items-center rounded-full bg-[var(--accent-primary)] text-sm font-black text-white">{index + 1}</span>
               <p className="mt-4 font-bold text-[var(--text-primary)]">{stage}</p>
-              <p className="mt-2 text-xs leading-5 text-[var(--text-secondary)]">{index === 0 ? 'Start here and define your learning goal.' : index === 3 ? 'Finish the path and record your achievement.' : 'Complete this step before moving forward.'}</p>
+              <p className="mt-2 text-xs leading-5 text-[var(--text-secondary)]">
+                {[
+                  'Begin with the core concepts and simple examples.',
+                  'Build confidence with guided practice and applied exercises.',
+                  'Tackle more complex ideas and real-world patterns.',
+                  'Use everything you learned to complete a portfolio-ready project.',
+                ][index]}
+              </p>
             </li>
           ))}
         </ol>
@@ -2844,22 +2919,14 @@ function readFileAsDataUrl(file) {
   })
 }
 
-export function AdminAddLearnerPage({ initialRole = 'intern' }) {
+export function AdminAddLearnerPage() {
   const navigate = useNavigate()
   const [form, setForm] = useState({
     name: '',
     email: '',
     password: 'Password123!',
     role: 'intern',
-    avatarUrl: '',
-    bio: '',
-    expertise: '',
-    assignCourseId: '',
-    autoAssignCourse: true,
   })
-  const [courses, setCourses] = useState([])
-  const [coursesLoading, setCoursesLoading] = useState(true)
-  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState({ type: '', message: '' })
   const [fieldErrors, setFieldErrors] = useState({})
@@ -2873,49 +2940,8 @@ export function AdminAddLearnerPage({ initialRole = 'intern' }) {
   ].filter(Boolean).length
   const passwordStrength = passwordScore >= 5 ? 'Strong' : passwordScore >= 3 ? 'Good' : 'Weak'
 
-  useEffect(() => {
-    let mounted = true
-    async function loadCourses() {
-      try {
-        const response = await fetchAdminCourses()
-        if (mounted) setCourses(response.data?.courses || [])
-      } catch {
-        if (mounted) setCourses([])
-      } finally {
-        if (mounted) setCoursesLoading(false)
-      }
-    }
-    void loadCourses()
-    return () => {
-      mounted = false
-    }
-  }, [])
-
   function updateForm(key, value) {
     setForm((prev) => ({ ...prev, [key]: value }))
-  }
-
-  async function uploadInstructorImage(file) {
-    if (!file) return
-    if (!file.type.startsWith('image/')) {
-      setNotice({ type: 'error', message: 'Upload an image file for the intern profile.' })
-      return
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setNotice({ type: 'error', message: 'Intern image must be 2 MB or smaller.' })
-      return
-    }
-    try {
-      setUploadingAvatar(true)
-      const dataUrl = await readFileAsDataUrl(file)
-      const response = await uploadAdminCourseAsset({ fileName: file.name, mimeType: file.type, dataUrl })
-      updateForm('avatarUrl', response.data.asset.url)
-      setNotice({ type: 'success', message: 'Intern image uploaded.' })
-    } catch (error) {
-      setNotice({ type: 'error', message: error?.response?.data?.message || error.message || 'Could not upload intern image.' })
-    } finally {
-      setUploadingAvatar(false)
-    }
   }
 
   async function submit(event) {
@@ -2932,7 +2958,7 @@ export function AdminAddLearnerPage({ initialRole = 'intern' }) {
     }
     try {
       setSaving(true)
-      const response = await createAdminUser({
+      await createAdminUser({
         ...form,
         role: 'intern',
         autoAssignCourse: false,

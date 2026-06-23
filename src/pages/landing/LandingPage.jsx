@@ -12,10 +12,10 @@ import Button from '../../components/common/Button/Button.jsx'
 import { pageTransition } from '../../utils/animationVariants.js'
 
 const learningPaths = [
-  { title: 'Campus to Career', text: 'Build foundational workplace and interview-ready skills.', icon: BriefcaseBusiness },
-  { title: 'AI and Technology', text: 'Learn practical tools, development, and emerging AI workflows.', icon: Sparkles },
-  { title: 'Professional Growth', text: 'Strengthen communication, leadership, and business capability.', icon: Target },
-  { title: 'Certificate Sprint', text: 'Follow a focused route from lessons to verified achievement.', icon: Award },
+  { title: 'Web Development', text: 'Learn HTML, CSS, JavaScript, React, and modern frontend workflows.', icon: Sparkles },
+  { title: 'Technical', text: 'Strengthen programming, backend, cloud, database, and problem-solving skills.', icon: BriefcaseBusiness },
+  { title: 'Python to AI/ML', text: 'Start with Python foundations, then move into AI, machine learning, and applied projects.', icon: Target },
+  { title: 'Career Growth', text: 'Build communication, leadership, and workplace readiness skills.', icon: Award },
 ]
 
 const benefits = [
@@ -128,7 +128,7 @@ export default function LandingPage() {
       </HomeSection>
 
       <HomeSection eyebrow="Learning Paths" title="Structured routes to meaningful outcomes">
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{learningPaths.map((path) => <button key={path.title} type="button" onClick={() => navigate('/learning-path')} className="theme-card theme-subcard-hover rounded-xl p-5 text-left"><span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]"><path.icon size={20} /></span><h3 className="mt-4 font-bold text-[var(--text-primary)]">{path.title}</h3><p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{path.text}</p><span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent-primary)]">Explore path <ArrowRight size={15} /></span></button>)}</div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{learningPaths.map((path) => <button key={path.title} type="button" onClick={() => navigate(`/learning-path?path=${encodeURIComponent(path.title)}`)} className="theme-card theme-subcard-hover rounded-xl p-5 text-left"><span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]"><path.icon size={20} /></span><h3 className="mt-4 font-bold text-[var(--text-primary)]">{path.title}</h3><p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{path.text}</p><span className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-[var(--accent-primary)]">Explore path <ArrowRight size={15} /></span></button>)}</div>
       </HomeSection>
 
       <HomeSection eyebrow="Categories" title="Explore learning by skill area" action={<Button variant="secondary" onClick={() => navigate('/categories')}>All categories</Button>}>

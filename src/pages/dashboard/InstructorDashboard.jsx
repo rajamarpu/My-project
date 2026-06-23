@@ -2,6 +2,7 @@ import Button from '../../components/common/Button/Button.jsx'
 import { useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { fetchCourses, fetchPlatformSummary } from '../../api/api.js'
+import MetricCard from '../../components/ui/Dashboard/MetricCard.jsx'
 
 const instructorPermissions = [
   'Create upskilling and technical courses',
@@ -62,15 +63,15 @@ export default function InstructorDashboard() {
 
         <div className="mt-10 grid gap-5 sm:grid-cols-3">
           {metrics.map((metric) => (
-            <div
+            <MetricCard
               key={metric.name}
-              className="theme-subcard rounded-3xl p-6 shadow-soft"
-            >
-              <p className="text-sm uppercase tracking-[0.2em] text-[var(--text-muted)]">
-                {metric.name}
-              </p>
-              <p className="mt-4 text-3xl font-semibold">{metric.value}</p>
-            </div>
+              title={metric.name}
+              value={metric.value}
+              detail={metric.name === 'Courses' ? 'published and draft courses' : metric.name === 'Revenue' ? 'live earnings snapshot' : 'enrolled learners'}
+              tone={metric.name === 'Courses' ? 'blue' : metric.name === 'Revenue' ? 'violet' : 'teal'}
+              variant="admin"
+              className="min-h-[170px]"
+            />
           ))}
         </div>
       </div>
