@@ -7,6 +7,7 @@ import Button from '../../components/common/Button/Button.jsx'
 import { createAdminUser, createCertificate, createCheckout, createCommunityPost, createLiveSession, fetchAdminCourses, fetchAdminLearners, fetchCommunityPosts, fetchCourses, fetchInstructors, fetchInstructorCourses, fetchLearnerReport, fetchLiveSessions, fetchPaymentHistory, fetchPlatformSettings, fetchPortalNotifications, fetchPreferences, fetchSavedCourses, markPortalNotificationRead, removeSavedCourseRequest, reportCommunityPost, savePlatformSettings, savePreferences as savePreferencesRequest, submitContactRequest, uploadAdminCourseAsset } from '../../api/api.js'
 import { AdminNotice, AdminPageHeader, FieldError } from '../../components/admin/AdminUI.jsx'
 import MetricCard from '../../components/ui/Dashboard/MetricCard.jsx'
+import { UptoSkillsMark } from '../../components/ui/Navbar/Logo.jsx'
 import { useTheme } from '../../hooks/useTheme.js'
 
 const SUPPORT_EMAIL = 'rajamarpu05@gmail.com'
@@ -102,6 +103,7 @@ function MetricStrip({ metrics }) {
           tone={tones[index % tones.length]}
           variant="learner"
           className="min-h-[150px]"
+          href={metric.href}
         />
       ))}
     </div>
@@ -2684,7 +2686,7 @@ export function LiveSessionsPage() {
   return <Shell eyebrow={isInstructor ? 'Instructor workspace' : 'Live learning'} title="Live Sessions" description={isInstructor ? 'Schedule classes for assigned courses and manage upcoming or recorded teaching sessions.' : 'Join scheduled classes, review completed sessions, and continue learning from available recordings.'} action={isInstructor ? <Button onClick={() => setShowCreate((value) => !value)}>Schedule session</Button> : null}>
     <div className="space-y-8">
       {isInstructor && showCreate ? <form onSubmit={scheduleSession} className="glass-card grid gap-4 rounded-xl p-6 shadow-soft sm:grid-cols-2"><h2 className="text-2xl font-bold text-[var(--text-primary)] sm:col-span-2">Schedule a live session</h2><label className="admin-label">Title<input className="admin-input" required value={sessionForm.title} onChange={(event) => setSessionForm((current) => ({ ...current, title: event.target.value }))} /></label><label className="admin-label">Course<select className="admin-input" value={sessionForm.courseId} onChange={(event) => setSessionForm((current) => ({ ...current, courseId: event.target.value }))}><option value="">Open session</option>{assignedCourses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</select></label><label className="admin-label">Starts at<input className="admin-input" type="datetime-local" required value={sessionForm.startsAt} onChange={(event) => setSessionForm((current) => ({ ...current, startsAt: event.target.value }))} /></label><label className="admin-label">Ends at<input className="admin-input" type="datetime-local" required value={sessionForm.endsAt} onChange={(event) => setSessionForm((current) => ({ ...current, endsAt: event.target.value }))} /></label><label className="admin-label sm:col-span-2">Meeting URL<input className="admin-input" type="url" required value={sessionForm.meetingUrl} onChange={(event) => setSessionForm((current) => ({ ...current, meetingUrl: event.target.value }))} placeholder="https://" /></label><label className="admin-label sm:col-span-2">Description<textarea className="admin-input min-h-24 resize-y" value={sessionForm.description} onChange={(event) => setSessionForm((current) => ({ ...current, description: event.target.value }))} /></label><div className="flex gap-3 sm:col-span-2"><Button type="submit">Create session</Button><Button type="button" variant="secondary" onClick={() => setShowCreate(false)}>Cancel</Button></div></form> : null}
-      <MetricStrip metrics={[{ value: grouped.ongoing.length, label: 'live now' }, { value: grouped.upcoming.length, label: 'upcoming' }, { value: grouped.recorded.length, label: 'recordings' }, { value: sessions.length, label: 'total sessions' }]} />
+      <MetricStrip metrics={[{ value: grouped.ongoing.length, label: 'live now', href: '/live-sessions' }, { value: grouped.upcoming.length, label: 'upcoming', href: '/live-sessions' }, { value: grouped.recorded.length, label: 'recordings', href: '/live-sessions' }, { value: sessions.length, label: 'total sessions', href: '/live-sessions' }]} />
       {state.loading ? <div className="grid gap-4 md:grid-cols-2">{[0, 1, 2, 3].map((item) => <span key={item} className="skeleton h-52 rounded-xl" />)}</div> : null}
       {state.error ? <div className="glass-card p-8 text-center"><AlertCircle className="mx-auto text-red-500" /><p className="mt-3 text-[var(--text-secondary)]">{state.error}</p><Button className="mt-4" onClick={load}><RefreshCw size={16} /> Retry</Button></div> : null}
       {!state.loading && !state.error && ['ongoing', 'upcoming', 'recorded', 'completed'].map((group) => grouped[group].length ? <section key={group}>
@@ -2732,7 +2734,7 @@ export function LearnerReportsPage() {
   return <Shell eyebrow="Learning analytics" title="Your Learning Report" description="Track course completion, study time, assessment performance, and earned credentials.">
     {state.loading ? <div className="space-y-5"><span className="skeleton block h-28 rounded-xl" /><span className="skeleton block h-72 rounded-xl" /></div> : null}
     {state.error ? <div className="glass-card p-8 text-center"><p className="text-[var(--text-secondary)]">{state.error}</p><Button className="mt-4" onClick={load}>Retry</Button></div> : null}
-    {!state.loading && !state.error && report ? <div className="space-y-8"><MetricStrip metrics={[{ value: summary.enrolled || 0, label: 'courses enrolled' }, { value: summary.completed || 0, label: 'courses completed' }, { value: `${Math.round((summary.watchedSeconds || 0) / 3600)}h`, label: 'time studied' }, { value: `${summary.assessmentAverage || 0}%`, label: 'assessment average' }]} /><section className="glass-card rounded-xl p-6"><h2 className="text-2xl font-bold text-[var(--text-primary)]">Course progress</h2><div className="mt-5 space-y-4">{report.courses?.map((item) => <div key={item.id} className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4"><div className="flex justify-between gap-4"><p className="font-bold text-[var(--text-primary)]">{item.course.title}</p><span className="font-bold text-[var(--accent-primary)]">{item.completionPct}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--border-color)]"><span className="block h-full rounded-full bg-[var(--accent-primary)]" style={{ width: `${Math.min(100, item.completionPct)}%` }} /></div></div>)}{!report.courses?.length ? <p className="text-sm text-[var(--text-secondary)]">Enroll in a course to begin building your report.</p> : null}</div></section></div> : null}
+    {!state.loading && !state.error && report ? <div className="space-y-8"><MetricStrip metrics={[{ value: summary.enrolled || 0, label: 'courses enrolled', href: '/dashboard' }, { value: summary.completed || 0, label: 'courses completed', href: '/certificates' }, { value: `${Math.round((summary.watchedSeconds || 0) / 3600)}h`, label: 'time studied', href: '/dashboard' }, { value: `${summary.assessmentAverage || 0}%`, label: 'assessment average', href: '/assignments' }]} /><section className="glass-card rounded-xl p-6"><h2 className="text-2xl font-bold text-[var(--text-primary)]">Course progress</h2><div className="mt-5 space-y-4">{report.courses?.map((item) => <div key={item.id} className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4"><div className="flex justify-between gap-4"><p className="font-bold text-[var(--text-primary)]">{item.course.title}</p><span className="font-bold text-[var(--accent-primary)]">{item.completionPct}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--border-color)]"><span className="block h-full rounded-full bg-[var(--accent-primary)]" style={{ width: `${Math.min(100, item.completionPct)}%` }} /></div></div>)}{!report.courses?.length ? <p className="text-sm text-[var(--text-secondary)]">Enroll in a course to begin building your report.</p> : null}</div></section></div> : null}
   </Shell>
 }
 
@@ -3387,6 +3389,10 @@ export function AdminGenerateCertificatePage() {
         userId: certificate.userId,
         courseId: certificate.courseId,
         certificateNo: certificate.certificateNo,
+        studentName: certificate.studentName,
+        courseName: certificate.courseName,
+        completionDate: certificate.completionDate,
+        instructorName: certificate.instructorName,
         issuedAt: isoToday,
       })
       const issued = response.data?.certificate
@@ -3396,7 +3402,9 @@ export function AdminGenerateCertificatePage() {
         courseName: issued?.course?.title || current.courseName,
         instructorName: issued?.course?.createdBy?.name || current.instructorName,
         certificateNo: issued?.certificateNo || current.certificateNo,
-        completionDate: issued?.issuedAt ? new Date(issued.issuedAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' }) : current.completionDate,
+        completionDate: issued?.completionDate
+          ? new Date(issued.completionDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
+          : current.completionDate,
       }))
       setStatus({ type: 'success', message: 'Certificate generated and saved to PostgreSQL.' })
     } catch (error) {
@@ -3545,16 +3553,7 @@ function CertificatePreview({ certificate }) {
 }
 
 function UptoSkillsWordmark({ compact = false }) {
-  return (
-    <div className={`relative inline-flex items-end font-black uppercase tracking-tight ${compact ? 'text-2xl' : 'text-4xl'}`}>
-      <span className="text-[#f15f3b]">Upto</span>
-      <span className="text-[#18b6a6]">Skills</span>
-      <span className="absolute -right-5 -top-3 h-8 w-8 rotate-45 border-r-4 border-t-4 border-[#18b6a6]" />
-      <span className="absolute -right-7 -top-4 h-0 w-0 border-b-[9px] border-l-[9px] border-t-[9px] border-b-transparent border-l-[#18b6a6] border-t-transparent" />
-      <span className="absolute -left-3 -top-3 h-2 w-9 -rotate-12 bg-[#3b82c4]" />
-      <span className="absolute -left-1 -top-1 h-5 w-1 -rotate-12 bg-[#f9b233]" />
-    </div>
-  )
+  return <UptoSkillsMark compact={compact} />
 }
 
 export function AdminReportsPage() {

@@ -1,25 +1,38 @@
-import { Link } from 'react-router-dom'
 import { GraduationCap, TrendingUp } from 'lucide-react'
+import { Link } from 'react-router-dom'
 import { cn } from '../../../utils/classNames.js'
 
-export default function Logo({ to = '/', className = '' }) {
+export function UptoSkillsMark({ compact = false, iconOnly = false }) {
+  const textSize = compact ? 'text-[1.45rem] sm:text-[1.6rem]' : 'text-[1.7rem] sm:text-[2.05rem]'
+  const iconSize = compact ? 18 : 20
+
   return (
-    <Link to={to} className={cn('group flex min-w-0 items-start gap-1.5 text-[var(--text-primary)]', className)} aria-label="UptoSkills home">
-      <span className="relative mt-0.5 h-8 w-8 shrink-0">
-        <GraduationCap size={18} strokeWidth={2.15} className="absolute left-0 top-0 text-[#4A90E2] drop-shadow-[0_2px_4px_rgba(74,144,226,0.14)]" />
+    <span className="inline-flex items-center gap-2 whitespace-nowrap">
+      <span className="relative grid h-9 w-9 shrink-0 place-items-center">
+        <GraduationCap size={iconSize} strokeWidth={2.2} className="text-[#2D6CDF] drop-shadow-[0_2px_4px_rgba(45,108,223,0.16)]" />
+        <TrendingUp size={iconSize - 2} strokeWidth={2.8} className="absolute -right-1 -top-0.5 text-[#FF7A45]" />
       </span>
-      <span className="min-w-0">
+      {iconOnly ? null : (
         <span
-          className="relative inline-flex h-[1.25em] items-end whitespace-nowrap text-[1.55rem] font-black leading-none tracking-[-0.03em] sm:text-[1.9rem]"
-          style={{ fontFamily: '"Arial Rounded MT Bold", "Trebuchet MS", "Nunito Sans", "Aptos Display", Poppins, Inter, Arial, Helvetica, sans-serif' }}
+          className={`inline-flex items-baseline font-black leading-none tracking-[-0.04em] ${textSize}`}
+          style={{ fontFamily: '"Arial Rounded MT Bold", "Trebuchet MS", "Nunito Sans", "Aptos Display", Poppins, Inter, Arial, sans-serif' }}
         >
-          <span className="inline-flex items-end text-[#2CC7BA]">Upto</span>
-          <span className="relative inline-flex items-end text-[#FF7A45]">
-            Skills
-            <TrendingUp className="absolute -right-4 -top-2 h-3.5 w-3.5 rotate-12 text-[#FF7A45] transition group-hover:-translate-y-0.5 dark:text-[#FF9A6B]" strokeWidth={3} />
-          </span>
+          <span className="text-[#27BFB3]">Upto</span>
+          <span className="text-[#FF7A45]">Skills</span>
         </span>
-      </span>
+      )}
+    </span>
+  )
+}
+
+export default function Logo({ to = '/', className = '', compact = false, iconOnly = false }) {
+  return (
+    <Link
+      to={to}
+      className={cn('group inline-flex min-w-0 items-center text-[var(--text-primary)]', className)}
+      aria-label="UptoSkills home"
+    >
+      <UptoSkillsMark compact={compact} iconOnly={iconOnly} />
     </Link>
   )
 }

@@ -7,6 +7,7 @@ import Button from '../../components/common/Button/Button.jsx'
 import ChatInterface from '../../components/ui/Dashboard/ChatInterface.jsx'
 import { fetchCourseById, fetchCourseInstructors, fetchUserProgress, switchCourseInstructor, updateUserProgress } from '../../api/api.js'
 import { getCourseAssignments, getCourseLessons, getCourseModules, getLessonKind, getLessonOutcomes, getLessonResources, lessonMeta } from '../../utils/courseContent.js'
+import { notifyDashboardRefresh } from '../../utils/dashboardRefresh.js'
 import { ChevronLeft, ChevronRight, Download, FileText } from 'lucide-react'
 
 export default function LearningPlayerPage() {
@@ -115,6 +116,7 @@ export default function LearningPlayerPage() {
         next.push(response.data.progress)
         return next
       })
+      notifyDashboardRefresh({ source: 'lesson-complete', courseId: course.id, lessonId: activeLesson.id })
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Could not save progress.')
     }
@@ -140,6 +142,7 @@ export default function LearningPlayerPage() {
       setSelectedInstructorId(String(nextInstructor.id))
       setNotice(`Instructor changed to ${nextInstructor.name}. Continue from the same lesson whenever you are ready.`)
       setSwitchPanelOpen(false)
+      notifyDashboardRefresh({ source: 'instructor-change', courseId: course.id, instructorId: nextInstructor.id })
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Could not change instructor.')
     } finally {

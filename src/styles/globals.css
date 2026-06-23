@@ -101,6 +101,13 @@
   --secondary: #fb923c;
   --text-color: #f8fafc;
   --muted-text: #94a3b8;
+  --text-primary: #f8fbff;
+  --text-secondary: #d8ecff;
+  --text-muted: #a7c6f8;
+  --description-text: #d6e9ff;
+  --label-text: #eef6ff;
+  --button-text: #ffffff;
+  --text-link: #7dd3fc;
   --sidebar-bg: #0b1220;
   --hover-bg: rgba(255, 107, 53, 0.12);
   --button-bg: #ff6b35;
@@ -720,6 +727,45 @@ button:disabled {
 
 .theme-eyebrow {
   color: var(--accent-primary);
+  font-weight: 800;
+  letter-spacing: 0.18em;
+}
+
+.dark .theme-eyebrow {
+  color: #7dd3fc;
+  text-shadow: 0 0 16px rgba(34, 211, 238, 0.18);
+}
+
+.dark :where(.app-shell, .admin-shell, .theme-card, .theme-surface, .theme-subcard, .admin-panel, .admin-table-card, .glass-card, .enterprise-glass-panel, .enterprise-mesh-panel) :where(
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6
+) {
+  color: #f8fbff;
+  text-shadow: 0 0 18px rgba(125, 211, 252, 0.08);
+}
+
+.learner-dashboard-v2 :where(.theme-eyebrow, [data-text-role="eyebrow"]) {
+  color: #60a5fa;
+}
+
+.learner-dashboard-v2 :where(h1, h2, h3, h4) {
+  color: var(--heading-text);
+}
+
+.learner-dashboard-v2 :where(p, li, label, small):not([class*="text-"]) {
+  color: var(--body-text);
+}
+
+.learner-dashboard-v2 :where(.text-slate-600, .text-slate-500, .text-gray-600, .text-gray-500) {
+  color: var(--body-text) !important;
+}
+
+.learner-dashboard-v2 :where(.text-slate-400, .text-gray-400) {
+  color: var(--text-muted) !important;
 }
 
 .theme-icon-badge {

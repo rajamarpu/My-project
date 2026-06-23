@@ -71,6 +71,13 @@ export default function LandingPage() {
   const popular = useMemo(() => [...courses].sort((a, b) => enrollmentCount(b) - enrollmentCount(a)).slice(0, 3), [courses])
   const popularIds = useMemo(() => new Set(popular.map((course) => course.id)), [popular])
   const recommended = useMemo(() => courses.filter((course) => !popularIds.has(course.id)).slice(0, 4), [courses, popularIds])
+  const heroStats = useMemo(() => [
+    { label: 'Learners', value: summary.totalLearners.toLocaleString('en-IN') },
+    { label: 'Courses', value: summary.totalCourses.toLocaleString('en-IN') },
+    { label: 'Mentors', value: summary.totalInstructors.toLocaleString('en-IN') },
+    { label: 'Categories', value: summary.totalCategories.toLocaleString('en-IN') },
+  ], [summary])
+  const featuredCourse = popular[0] || courses[0]
 
   function startLearning() {
     navigate(auth.user && auth.token ? '/dashboard' : '/register')
@@ -78,23 +85,65 @@ export default function LandingPage() {
 
   return (
     <motion.section className="w-full space-y-10 pb-16 xl:space-y-14" variants={pageTransition} initial="hidden" animate="enter" exit="exit">
-      <section className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1.12fr)_minmax(23rem,0.88fr)]">
-        <div className="enterprise-mesh-panel relative overflow-hidden rounded-2xl border border-[var(--border-color)] px-[clamp(20px,4vw,56px)] py-[clamp(36px,5vw,68px)] shadow-soft">
-          <div className="relative max-w-4xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--bg-elevated)] px-4 py-2 text-sm font-semibold text-[var(--accent-primary)] shadow-soft"><Sparkles size={16} /> Practical learning for real careers</span>
-            <h1 className="mt-6 text-[clamp(2.5rem,5vw,4.75rem)] font-bold leading-[1.03] text-[var(--text-primary)]">Build skills. Prove progress. <span className="upto-brand-text">Move your career forward.</span></h1>
-            <p className="mt-6 max-w-3xl text-base leading-8 text-[var(--text-secondary)] sm:text-lg">Learn through structured courses, practical assignments, assessments, expert guidance, and certificates designed for employability.</p>
-            <div className="mt-8 flex flex-wrap gap-3"><Button onClick={startLearning} className="min-h-12">{auth.user ? 'Open dashboard' : 'Start learning'} <ArrowRight size={17} /></Button><Button variant="secondary" onClick={() => navigate('/courses')} className="min-h-12"><Compass size={17} /> Explore courses</Button></div>
+      <section className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(23rem,0.92fr)]">
+        <div className="enterprise-mesh-panel relative overflow-hidden rounded-3xl border border-[var(--border-color)] px-[clamp(20px,4vw,52px)] py-[clamp(28px,4vw,52px)] shadow-soft">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.16),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.12),transparent_26%),linear-gradient(135deg,rgba(255,255,255,0.6),rgba(255,255,255,0))] dark:bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.18),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(244,114,182,0.12),transparent_26%),linear-gradient(135deg,rgba(15,23,42,0.18),rgba(15,23,42,0))]" />
+          <div className="relative max-w-3xl">
+            <span className="inline-flex items-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--bg-elevated)] px-4 py-2 text-sm font-semibold text-[var(--accent-primary)] shadow-soft">
+              <Sparkles size={16} />
+              Practical learning for real careers
+            </span>
+            <h1 className="mt-5 max-w-2xl text-[clamp(2.2rem,4vw,4rem)] font-black leading-[0.98] tracking-[-0.06em] text-[var(--text-primary)]">
+              Build skills.
+              {' '}
+              <span className="upto-brand-text">Track progress.</span>
+              {' '}
+              <span className="block">Move your career forward.</span>
+            </h1>
+            <p className="mt-5 max-w-2xl text-[0.98rem] leading-7 text-[var(--text-secondary)] sm:text-[1.03rem]">
+              Learn through structured courses, practical assignments, assessments, expert guidance, and certificates designed for employability.
+            </p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Button onClick={startLearning} className="min-h-12">
+                {auth.user ? 'Open dashboard' : 'Start learning'}
+                <ArrowRight size={17} />
+              </Button>
+              <Button variant="secondary" onClick={() => navigate('/courses')} className="min-h-12">
+                <Compass size={17} />
+                Explore courses
+              </Button>
+            </div>
+            <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {heroStats.map((item) => (
+                <div key={item.label} className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-elevated)]/85 p-3.5 shadow-soft backdrop-blur">
+                  <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">{item.label}</p>
+                  <p className="mt-1.5 text-[1.55rem] font-black leading-none text-[var(--text-primary)]">{item.value}</p>
+                  <p className="mt-1 text-xs text-[var(--text-muted)]">Live platform snapshot</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-7 flex flex-wrap gap-2">
+              {['Learner-first', 'AI mentor support', 'Career-focused', 'Mobile friendly'].map((chip) => (
+                <span key={chip} className="inline-flex items-center rounded-full border border-[var(--border-color)] bg-[var(--bg-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] shadow-sm">
+                  {chip}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
-        <aside className="platform-card flex flex-col overflow-hidden rounded-2xl p-5 shadow-[var(--shadow-lg)] sm:p-6">
+        <aside className="platform-card flex flex-col overflow-hidden rounded-3xl p-5 shadow-[var(--shadow-lg)] sm:p-6">
           <div className="flex items-start justify-between gap-4">
-            <div><p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">Your learning journey</p><h2 className="mt-2 text-2xl font-bold text-[var(--text-primary)]">From first lesson to career proof</h2></div>
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]"><GraduationCap size={23} /></span>
+            <div>
+              <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">Your learning journey</p>
+              <h2 className="mt-2 text-[1.4rem] font-black leading-tight text-[var(--text-primary)] sm:text-[1.6rem]">From first lesson to career proof</h2>
+            </div>
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[var(--accent-soft)] text-[var(--accent-primary)]">
+              <GraduationCap size={23} />
+            </span>
           </div>
 
-          <div className="mt-6 grid gap-3">
+          <div className="mt-5 grid gap-3">
             {[
               ['Discover', 'Choose the right course and learning path.', Compass],
               ['Learn', 'Follow structured lessons with expert guidance.', BookOpen],
@@ -109,9 +158,33 @@ export default function LandingPage() {
             ))}
           </div>
 
-          {popular[0] ? <button type="button" onClick={() => navigate(`/course/${popular[0].id}`)} className="mt-5 rounded-xl border border-[var(--accent-primary)]/25 bg-[var(--accent-soft)] p-4 text-left transition hover:border-[var(--accent-primary)]"><span className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--accent-primary)]">Popular now</span><span className="mt-2 flex items-center justify-between gap-3"><strong className="truncate text-sm text-[var(--text-primary)]">{popular[0].title}</strong><ArrowRight size={16} className="shrink-0 text-[var(--accent-primary)]" /></span></button> : null}
+          {featuredCourse ? (
+            <button
+              type="button"
+              onClick={() => navigate(`/course/${featuredCourse.id}`)}
+              className="mt-5 rounded-2xl border border-[var(--accent-primary)]/20 bg-[var(--accent-soft)] p-4 text-left transition hover:border-[var(--accent-primary)]"
+            >
+              <span className="text-xs font-black uppercase tracking-[0.14em] text-[var(--accent-primary)]">Featured course</span>
+              <span className="mt-2 flex items-center justify-between gap-3">
+                <strong className="truncate text-sm text-[var(--text-primary)]">{featuredCourse.title}</strong>
+                <ArrowRight size={16} className="shrink-0 text-[var(--accent-primary)]" />
+              </span>
+              <p className="mt-2 text-xs text-[var(--text-secondary)]">
+                {featuredCourse.category || 'Uncategorized'}
+                {' '}
+                {enrollmentCount(featuredCourse) ? `· ${enrollmentCount(featuredCourse)} learners` : ''}
+              </p>
+            </button>
+          ) : null}
 
-          <div className="mt-auto grid grid-cols-3 gap-2 pt-5">{[[summary.totalLearners, 'Learners'], [summary.totalCourses, 'Courses'], [summary.totalInstructors, 'Mentors']].map(([value, label]) => <div key={label} className="rounded-xl bg-[var(--bg-subtle)] p-3 text-center"><strong className="block text-xl text-[var(--accent-primary)]">{value}</strong><span className="mt-1 block text-[0.68rem] font-semibold text-[var(--text-muted)]">{label}</span></div>)}</div>
+          <div className="mt-auto grid grid-cols-3 gap-2 pt-5">
+            {[[summary.totalLearners, 'Learners'], [summary.totalCourses, 'Courses'], [summary.totalInstructors, 'Mentors']].map(([value, label]) => (
+              <div key={label} className="rounded-2xl bg-[var(--bg-subtle)] p-3 text-center">
+                <strong className="block text-lg text-[var(--accent-primary)]">{value}</strong>
+                <span className="mt-1 block text-[0.68rem] font-semibold text-[var(--text-muted)]">{label}</span>
+              </div>
+            ))}
+          </div>
         </aside>
       </section>
 
@@ -136,7 +209,25 @@ export default function LandingPage() {
       </HomeSection>
 
       <HomeSection eyebrow="Platform Benefits" title="Everything learners need in one LMS">
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{benefits.map((benefit) => <div key={benefit.title} className="theme-card rounded-xl p-5"><span className="grid h-11 w-11 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]"><benefit.icon size={20} /></span><h3 className="mt-4 font-bold text-[var(--text-primary)]">{benefit.title}</h3><p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{benefit.text}</p></div>)}</div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {benefits.map((benefit, index) => (
+            <motion.div
+              key={benefit.title}
+              className="theme-card rounded-2xl p-5 shadow-soft"
+              whileHover={{ y: -4 }}
+              transition={{ type: 'spring', stiffness: 220, damping: 18 }}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[var(--accent-soft)] text-[var(--accent-primary)]">
+                  <benefit.icon size={20} />
+                </span>
+                <span className="text-xs font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">0{index + 1}</span>
+              </div>
+              <h3 className="mt-4 text-lg font-black text-[var(--text-primary)]">{benefit.title}</h3>
+              <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{benefit.text}</p>
+            </motion.div>
+          ))}
+        </div>
       </HomeSection>
     </motion.section>
   )

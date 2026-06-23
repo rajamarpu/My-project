@@ -17,7 +17,7 @@ export function AdminPageHeader({ eyebrow, title, description, actions }) {
   )
 }
 
-export function AdminMetricCard({ label, value, detail, icon: Icon, tone = 'cyan', onClick, href, loading, className, trendLabel, trendValue }) {
+export function AdminMetricCard({ label, value, detail, icon: Icon, tone = 'cyan', onClick, href, loading, className, trendLabel, trendValue, compact = false }) {
   return (
     <MetricCard
       title={label}
@@ -31,6 +31,7 @@ export function AdminMetricCard({ label, value, detail, icon: Icon, tone = 'cyan
       className={className}
       trendLabel={trendLabel}
       trendValue={trendValue}
+      compact={compact}
     />
   )
 }

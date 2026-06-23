@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { CheckCircle2, Eye, MessageSquareWarning } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
 import Modal from '../../components/common/Modal/Modal.jsx'
@@ -6,6 +7,7 @@ import { AdminMetricCard, AdminPageHeader } from '../../components/admin/AdminUI
 import { fetchAdminCourses } from '../../api/api.js'
 
 export default function AdminReviewPage() {
+  const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const [selected, setSelected] = useState(null)
   const [courses, setCourses] = useState([])
@@ -53,9 +55,9 @@ export default function AdminReviewPage() {
       <AdminPageHeader eyebrow="Admin review" title="Review pending courses" description="Approve, request changes, or publish courses with confidence." />
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <AdminMetricCard label="Pending reviews" value={loading ? '...' : pendingCourses.length} detail="courses awaiting action" icon={Eye} tone="blue" loading={loading} href="/admin/courses" />
-        <AdminMetricCard label="Ready checks" value={loading ? '...' : readyChecks} detail="complete course records" icon={CheckCircle2} tone="teal" loading={loading} href="/admin/courses" />
-        <AdminMetricCard label="Change requests" value={loading ? '...' : changeRequests} detail="open feedback loops" icon={MessageSquareWarning} tone="rose" loading={loading} href="/admin/courses" />
+        <AdminMetricCard label="Pending reviews" value={loading ? '...' : pendingCourses.length} detail="courses awaiting action" icon={Eye} tone="blue" loading={loading} href="/admin/review" />
+        <AdminMetricCard label="Ready checks" value={loading ? '...' : readyChecks} detail="complete course records" icon={CheckCircle2} tone="teal" loading={loading} href="/admin/review" />
+        <AdminMetricCard label="Change requests" value={loading ? '...' : changeRequests} detail="open feedback loops" icon={MessageSquareWarning} tone="rose" loading={loading} href="/admin/review" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-2">
@@ -85,8 +87,8 @@ export default function AdminReviewPage() {
               <Button variant="secondary" onClick={() => openCourse(course)}>
                 View details
               </Button>
-              <Button onClick={() => setOpen(false)}>Request changes</Button>
-              <Button onClick={() => setOpen(false)}>Approve</Button>
+              <Button onClick={() => navigate(`/admin/edit-course/${course.id}`)}>Request changes</Button>
+              <Button onClick={() => navigate('/admin/courses')}>Approve</Button>
             </div>
           </div>
         ))}

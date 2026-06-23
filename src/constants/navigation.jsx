@@ -66,12 +66,11 @@ export const adminNavigationSections = [
     { label: 'Instructor Changes', href: '/admin/instructor-changes', icon: Activity },
   ] },
   { label: 'Operations', items: [
-    { label: 'Revenue', href: '/admin/revenue', icon: CreditCard },
-    { label: 'Payments', href: '/admin/payments', icon: CreditCard },
-    { label: 'Certificates', href: '/admin/certificates', icon: Award },
-    { label: 'Generate Certificate', href: '/admin/generate-certificate', icon: Award },
-    { label: 'Notifications', href: '/admin/notifications', icon: Bell },
-    { label: 'Activity Logs', href: '/admin/activity-logs', icon: Activity },
+  { label: 'Revenue', href: '/admin/revenue', icon: CreditCard },
+  { label: 'Payments', href: '/admin/payments', icon: CreditCard },
+  { label: 'Certificates', href: '/admin/certificates', icon: Award },
+  { label: 'Generate Certificate', href: '/admin/generate-certificate', icon: Award },
+  { label: 'Activity Logs', href: '/admin/activity-logs', icon: Activity },
   ] },
   { label: 'Account', items: [
     { label: 'Profile', href: '/admin/profile', icon: UserCircle },

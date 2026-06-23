@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { CheckCircle2, ClipboardList, Eye, FileText, LockKeyhole, RotateCcw, Timer, XCircle } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
-import { fetchCourseById, fetchMyAssessmentSubmissions, fetchQuestions, submitStructuredAssessment } from '../../api/api.js'
+import { fetchCourseById, fetchLearnerDashboard, fetchMyAssessmentSubmissions, fetchQuestions, submitStructuredAssessment } from '../../api/api.js'
 import { getCourseAssignments } from '../../utils/courseContent.js'
+import { notifyDashboardRefresh } from '../../utils/dashboardRefresh.js'
 
 export default function AssessmentsPage() {
   const { courseId } = useParams()
@@ -12,6 +13,7 @@ export default function AssessmentsPage() {
   const role = useSelector((state) => state.auth.role)
   const isInstructor = role === 'instructor' || role === 'admin'
   const [course, setCourse] = useState(null)
+  const [enrolledCourses, setEnrolledCourses] = useState([])
   const [submissions, setSubmissions] = useState([])
   const [retakeGrants, setRetakeGrants] = useState([])
   const [localItems, setLocalItems] = useState([])
@@ -25,43 +27,100 @@ export default function AssessmentsPage() {
   const [submittingId, setSubmittingId] = useState('')
   const [error, setError] = useState('')
 
-  async function loadData() {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true)
       setError('')
-      const courseResponse = await fetchCourseById(courseId)
-      setCourse(courseResponse.data.course)
-      if (!courseResponse.data.course?.isEnrolled && !isInstructor) {
-        setSubmissions([])
-        setRetakeGrants([])
-        setBankQuestions([])
+      if (courseId) {
+        const courseResponse = await fetchCourseById(courseId)
+        const nextCourse = courseResponse.data.course
+        setCourse(nextCourse)
+        setEnrolledCourses([])
+        if (!nextCourse?.isEnrolled && !isInstructor) {
+          setSubmissions([])
+          setRetakeGrants([])
+          setBankQuestions([])
+          return
+        }
+        const [submissionsResponse, bankResponse] = await Promise.all([
+          fetchMyAssessmentSubmissions({ courseId }),
+          fetchQuestions({ courseId, page: 1, pageSize: 50 }).catch(() => ({ data: { questions: [] } })),
+        ])
+        setSubmissions(submissionsResponse.data.submissions || [])
+        setRetakeGrants(submissionsResponse.data.retakeGrants || [])
+        setBankQuestions(bankResponse.data.questions || [])
         return
       }
-      const [submissionsResponse, bankResponse] = await Promise.all([
-        fetchMyAssessmentSubmissions({ courseId }),
-        fetchQuestions({ courseId, page: 1, pageSize: 50 }).catch(() => ({ data: { questions: [] } })),
+
+      const dashboardResponse = await fetchLearnerDashboard()
+      const enrollments = dashboardResponse.data?.dashboard?.enrollments || []
+      const nextCourses = enrollments
+        .map((enrollment) => ({
+          ...enrollment.course,
+          enrollment,
+          progress: Number(enrollment?.completionPct ?? enrollment?.progress ?? 0),
+          isEnrolled: true,
+        }))
+        .filter((item) => item?.id)
+      setCourse(null)
+      setEnrolledCourses(nextCourses)
+
+      const [submissionsResponse] = await Promise.all([
+        fetchMyAssessmentSubmissions().catch(() => ({ data: { submissions: [], retakeGrants: [] } })),
       ])
       setSubmissions(submissionsResponse.data.submissions || [])
       setRetakeGrants(submissionsResponse.data.retakeGrants || [])
-      setBankQuestions(bankResponse.data.questions || [])
+      setBankQuestions([])
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Could not load assignments.')
     } finally {
       setLoading(false)
     }
-  }
+  }, [courseId, isInstructor])
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
       void loadData()
     }, 0)
-    return () => window.clearTimeout(timer)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId])
+    const refreshInterval = window.setInterval(() => {
+      void loadData()
+    }, 30000)
+    const handleFocus = () => { void loadData() }
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') void loadData()
+    }
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      window.clearTimeout(timer)
+      window.clearInterval(refreshInterval)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [loadData])
 
-  const persistedAssignments = useMemo(() => getCourseAssignments(course), [course])
+  const scopedCourses = useMemo(() => {
+    if (courseId) return course ? [course] : []
+    return enrolledCourses
+  }, [course, courseId, enrolledCourses])
+  const persistedAssignments = useMemo(
+    () => scopedCourses.flatMap((scopedCourse) => getCourseAssignments(scopedCourse).map((assignment) => ({
+      id: assignment.id,
+      title: assignment.title,
+      prompt: assignment.quizJson?.prompt || assignment.description || '',
+      questionsText: assignment.quizJson?.questionsText || '',
+      questions: assignment.quizJson?.questions || [],
+      resources: assignment.quizJson?.resources || [],
+      durationMin: assignment.durationMin,
+      status: 'Open',
+      persisted: true,
+      course: scopedCourse,
+      courseId: scopedCourse.id,
+    }))),
+    [scopedCourses],
+  )
   const questionBankItem = useMemo(() => {
-    if (!bankQuestions.length) return null
+    if (!bankQuestions.length || !courseId) return null
     return {
       id: `question-bank-${courseId}`,
       title: 'Question bank practice',
@@ -77,17 +136,7 @@ export default function AssessmentsPage() {
   const items = useMemo(() => [
     ...localItems,
     ...(questionBankItem ? [questionBankItem] : []),
-    ...persistedAssignments.map((assignment) => ({
-      id: assignment.id,
-      title: assignment.title,
-      prompt: assignment.quizJson?.prompt || assignment.description || '',
-      questionsText: assignment.quizJson?.questionsText || '',
-      questions: assignment.quizJson?.questions || [],
-      resources: assignment.quizJson?.resources || [],
-      durationMin: assignment.durationMin,
-      status: 'Open',
-      persisted: true,
-    })),
+    ...persistedAssignments,
   ], [localItems, persistedAssignments, questionBankItem])
 
   const submissionsByAssignment = useMemo(() => {
@@ -140,13 +189,14 @@ export default function AssessmentsPage() {
       setMessage('')
       const payload = buildSubmissionPayload(item, answers)
       const response = await submitStructuredAssessment({
-        courseId,
+        courseId: item.courseId || courseId,
         assignmentId: item.id,
         answers: payload,
       })
       setSelectedReview(response.data.submission)
       setAnswers((current) => clearItemAnswers(current, item))
       setMessage('Assignment submitted successfully. Review is ready.')
+      notifyDashboardRefresh({ source: 'assessment-submit', courseId: item.courseId || courseId, assignmentId: item.id })
       await loadData()
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Could not submit assignment.')
@@ -159,7 +209,25 @@ export default function AssessmentsPage() {
     return <div className="glass-card p-8 text-[var(--text-secondary)]">Loading assignments...</div>
   }
 
-  if (!course?.isEnrolled && !isInstructor) {
+  if (!courseId && !scopedCourses.length && !isInstructor) {
+    return (
+      <section className="space-y-6 pb-16">
+        <div className="glass-card p-8 shadow-glow">
+          <p className="text-sm uppercase tracking-[0.28em] text-cyan-700 dark:text-cyan-300">Assignments</p>
+          <h1 className="mt-3 text-3xl font-semibold text-slate-950 dark:text-white">All assignments</h1>
+          <p className="mt-3 max-w-2xl text-[var(--text-secondary)]">
+            Enroll in a course to see its assignments here. Once you join multiple courses, this page will list every assignment across all of them.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button type="button" onClick={() => navigate('/courses')}>Browse Courses</Button>
+            <Button type="button" variant="secondary" onClick={() => navigate('/dashboard')}>Back to Dashboard</Button>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  if (courseId && !course?.isEnrolled && !isInstructor) {
     return (
       <section className="space-y-6 pb-16">
         <div className="glass-card p-8 shadow-glow">
@@ -178,10 +246,17 @@ export default function AssessmentsPage() {
   }
 
   return (
-    <section className="space-y-8 pb-16">
+    <section className="learner-dashboard-v2 space-y-8 pb-16">
       <div className="glass-card p-8 shadow-glow">
         <p className="text-sm uppercase tracking-[0.28em] text-cyan-700 dark:text-cyan-300">Assignments</p>
-        <h1 className="mt-3 text-4xl font-semibold text-slate-950 dark:text-white">{course?.title || 'Course'} assignments</h1>
+        <h1 className="mt-3 text-4xl font-semibold text-slate-950 dark:text-white">
+          {courseId ? `${course?.title || 'Course'} assignments` : 'All course assignments'}
+        </h1>
+        {!courseId ? (
+          <p className="mt-3 max-w-3xl text-[var(--text-secondary)]">
+            Browse every assignment from every course you are enrolled in, including reopened retakes and open submissions.
+          </p>
+        ) : null}
       </div>
 
       {error ? <p className="rounded-lg border border-red-400/30 bg-red-500/10 p-4 text-red-700 dark:text-red-100">{error}</p> : null}
@@ -216,6 +291,7 @@ export default function AssessmentsPage() {
                   <div className="flex flex-wrap gap-2">
                     <StatusBadge icon={canAttempt ? ClipboardList : LockKeyhole} label={canAttempt ? 'Open assignment' : 'Closed'} tone={canAttempt ? 'open' : 'closed'} />
                     {reopened ? <StatusBadge icon={RotateCcw} label="Retake opened" tone="reopened" /> : null}
+                    {item.course?.title ? <StatusBadge icon={ClipboardList} label={item.course.title} tone="open" /> : null}
                   </div>
                   <h2 className="mt-3 text-xl font-semibold text-slate-950 dark:text-white">{item.title}</h2>
                   <p className="mt-2 whitespace-pre-line text-slate-600 dark:text-slate-300">{item.prompt}</p>

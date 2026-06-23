@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import {
   ArrowRight,
@@ -13,13 +13,13 @@ import {
   LifeBuoy,
   Mail,
   RefreshCw,
-  Target,
   TrendingUp,
 } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
 import KpiCard from '../../components/ui/Dashboard/KpiCard.jsx'
-import { fetchCourses, fetchLearnerDashboard, fetchMyAssessmentSubmissions, fetchUserAnalytics } from '../../api/api.js'
+import { fetchCertificates, fetchCourses, fetchLearnerDashboard, fetchMyAssessmentSubmissions, fetchUserAnalytics } from '../../api/api.js'
 import { getCourseAssignments } from '../../utils/courseContent.js'
+import { DASHBOARD_REFRESH_EVENT } from '../../utils/dashboardRefresh.js'
 
 const emptyAnalytics = {
   completion: 0,
@@ -42,11 +42,14 @@ function progressFor(enrollment) {
 
 export default function StudentDashboard() {
   const navigate = useNavigate()
+  const location = useLocation()
   const user = useSelector((state) => state.auth.user)
   const [analytics, setAnalytics] = useState(emptyAnalytics)
   const [courses, setCourses] = useState([])
   const [catalog, setCatalog] = useState([])
   const [submissions, setSubmissions] = useState([])
+  const [certificates, setCertificates] = useState([])
+  const [retakeGrants, setRetakeGrants] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -54,11 +57,12 @@ export default function StudentDashboard() {
     try {
       setLoading(true)
       setError('')
-      const [analyticsResponse, dashboardResponse, catalogResponse, assessmentResponse] = await Promise.all([
+      const [analyticsResponse, dashboardResponse, catalogResponse, assessmentResponse, certificatesResponse] = await Promise.all([
         fetchUserAnalytics().catch(() => ({ data: { analytics: emptyAnalytics } })),
         fetchLearnerDashboard().catch(() => ({ data: { dashboard: { enrollments: [] } } })),
         fetchCourses().catch(() => ({ data: { courses: [] } })),
         fetchMyAssessmentSubmissions().catch(() => ({ data: { submissions: [] } })),
+        fetchCertificates().catch(() => ({ data: { certificates: [] } })),
       ])
       const enrollments = dashboardResponse.data?.dashboard?.enrollments || []
       const nextCourses = enrollments
@@ -73,6 +77,8 @@ export default function StudentDashboard() {
       setAnalytics({ ...emptyAnalytics, ...(analyticsResponse.data?.analytics || {}) })
       setCatalog(catalogResponse.data?.courses || catalogResponse.data || [])
       setSubmissions(assessmentResponse.data?.submissions || [])
+      setCertificates(certificatesResponse.data?.certificates || [])
+      setRetakeGrants(assessmentResponse.data?.retakeGrants || [])
     } catch (requestError) {
       setError(requestError?.response?.data?.message || requestError.message || 'Could not load your learner dashboard.')
     } finally {
@@ -83,6 +89,33 @@ export default function StudentDashboard() {
   useEffect(() => {
     void Promise.resolve().then(loadDashboard)
   }, [])
+
+  useEffect(() => {
+    const handleRefresh = () => {
+      void loadDashboard()
+    }
+    const handleFocus = () => {
+      void loadDashboard()
+    }
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') void loadDashboard()
+    }
+    window.addEventListener(DASHBOARD_REFRESH_EVENT, handleRefresh)
+    window.addEventListener('focus', handleFocus)
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      window.removeEventListener(DASHBOARD_REFRESH_EVENT, handleRefresh)
+      window.removeEventListener('focus', handleFocus)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (location.hash !== '#active-courses') return
+    const element = document.getElementById('active-courses')
+    if (!element) return
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [location.hash])
 
   const sortedCourses = useMemo(
     () => [...courses].sort((a, b) => new Date(b.enrollment?.enrolledAt || 0) - new Date(a.enrollment?.enrolledAt || 0)),
@@ -98,17 +131,30 @@ export default function StudentDashboard() {
     () => courses.flatMap((course) => getCourseAssignments(course).map((assignment) => ({ ...assignment, course }))),
     [courses],
   )
+  const retakeGrantsByAssignment = useMemo(
+    () => new Map(retakeGrants.map((grant) => [grant.assignmentId, grant])),
+    [retakeGrants],
+  )
+  const availableAssignments = useMemo(
+    () =>
+      assignments.filter((assignment) => {
+        const history = submissions.filter((submission) => submission.assignmentId === assignment.id)
+        const attemptsUsed = history.length
+        const retakeGrant = retakeGrantsByAssignment.get(assignment.id)
+        const maxAttempts = 1 + Math.max(0, Number(retakeGrant?.extraAttempts || 0))
+        return attemptsUsed < maxAttempts
+      }),
+    [assignments, retakeGrantsByAssignment, submissions],
+  )
   const enrolledIds = useMemo(() => new Set(courses.map((course) => course.id)), [courses])
   const recommended = useMemo(() => catalog.filter((course) => !enrolledIds.has(course.id)).slice(0, 4), [catalog, enrolledIds])
   const weekly = Array.isArray(analytics.weekly) && analytics.weekly.length
     ? analytics.weekly
     : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => ({ day, hours: 0 }))
   const maxWeeklyHours = Math.max(1, ...weekly.map((day) => number(day.hours)))
-  const latestSubmission = submissions[0] || null
-  const latestSubmissionCourseId = latestSubmission?.course?.id || latestSubmission?.courseId || activeCourse?.id || ''
   const activeCoursePlayerHref = activeCourse ? `/player/${activeCourse.id}` : '/courses'
-  const activeCourseAssessmentsHref = latestSubmissionCourseId ? `/course/${latestSubmissionCourseId}/assessments` : '/questions'
-  const certificatesEarned = number(analytics.certificates) || completedCourses
+  const activeCourseAssessmentsHref = '/assignments'
+  const certificatesEarned = number(analytics.certificates) || certificates.length
 
   const kpis = [
     {
@@ -137,8 +183,8 @@ export default function StudentDashboard() {
     },
     {
       title: 'Assignments Available',
-      value: assignments.length,
-      detail: 'course work items',
+      value: availableAssignments.length,
+      detail: availableAssignments.length ? 'open or reopened assignments' : 'no open assignments right now',
       icon: CalendarCheck,
       tone: 'cyan',
       href: activeCourseAssessmentsHref,
@@ -150,14 +196,6 @@ export default function StudentDashboard() {
       icon: Award,
       tone: 'amber',
       href: '/certificates',
-    },
-    {
-      title: 'Quiz Score',
-      value: `${number(analytics.quiz)}%`,
-      detail: 'average assessment performance',
-      icon: Target,
-      tone: 'violet',
-      href: activeCourseAssessmentsHref,
     },
     {
       title: 'Study Streak',
@@ -178,7 +216,7 @@ export default function StudentDashboard() {
   ]
 
   return (
-    <section className="mx-auto w-full max-w-[1440px] space-y-6 pb-16">
+    <section className="learner-dashboard-v2 mx-auto w-full max-w-[1440px] space-y-6 pb-16">
       <header className="admin-panel overflow-hidden p-5 sm:p-7">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
@@ -188,17 +226,17 @@ export default function StudentDashboard() {
               Continue your courses, review progress, complete assignments, and turn learning into verified achievement.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Button onClick={() => navigate(activeCoursePlayerHref)}>
+          <div className="flex flex-nowrap items-center gap-2 overflow-x-auto pb-1 lg:overflow-visible lg:pb-0">
+            <Button onClick={() => navigate(activeCoursePlayerHref)} className="shrink-0 whitespace-nowrap">
               {activeCourse ? 'Continue learning' : 'Find a course'} <ArrowRight size={16} />
             </Button>
-            <Button variant="secondary" onClick={() => navigate('/courses')}>
+            <Button variant="secondary" onClick={() => navigate('/courses')} className="shrink-0 whitespace-nowrap">
               <Compass size={16} /> Explore courses
             </Button>
-            <Button variant="secondary" onClick={() => navigate('/support')}>
+            <Button variant="secondary" onClick={() => navigate('/support')} className="shrink-0 whitespace-nowrap">
               <LifeBuoy size={16} /> Support
             </Button>
-            <Button variant="secondary" onClick={() => navigate('/contact')}>
+            <Button variant="secondary" onClick={() => navigate('/contact')} className="shrink-0 whitespace-nowrap">
               <Mail size={16} /> Contact Us
             </Button>
           </div>
@@ -222,7 +260,12 @@ export default function StudentDashboard() {
         </div>
       </DashboardSection>
 
-      <DashboardSection eyebrow="Continue Learning" title="Your active courses" action={<Button variant="secondary" onClick={() => navigate('/courses')}>Browse courses</Button>}>
+      <DashboardSection
+        id="active-courses"
+        eyebrow="Continue Learning"
+        title="Your active courses"
+        action={<Button variant="secondary" onClick={() => navigate('/courses')}>Browse courses</Button>}
+      >
         <div className="grid gap-3">
           {loading
             ? (
@@ -262,7 +305,7 @@ export default function StudentDashboard() {
               icon={TrendingUp}
               tone="blue"
               loading={loading}
-              onClick={() => navigate(activeCoursePlayerHref)}
+              onClick={() => navigate('/dashboard#active-courses')}
             />
             <KpiCard
               title="Study time"
@@ -271,16 +314,7 @@ export default function StudentDashboard() {
               icon={Clock3}
               tone="teal"
               loading={loading}
-              onClick={() => navigate(activeCoursePlayerHref)}
-            />
-            <KpiCard
-              title="Average assessment"
-              value={`${number(analytics.quiz)}%`}
-              detail="quiz performance"
-              icon={Target}
-              tone="amber"
-              loading={loading}
-              onClick={() => navigate(activeCourseAssessmentsHref)}
+              onClick={() => navigate('/dashboard#active-courses')}
             />
           </div>
           <div className="theme-subcard flex min-h-[32rem] flex-col rounded-xl p-5">
@@ -361,9 +395,9 @@ export default function StudentDashboard() {
   )
 }
 
-function DashboardSection({ eyebrow, title, action, children, compact = false }) {
+function DashboardSection({ id, eyebrow, title, action, children, compact = false }) {
   return (
-    <section className={`admin-panel h-full ${compact ? 'p-5' : 'p-5 sm:p-6'}`}>
+    <section id={id} className={`admin-panel h-full ${compact ? 'p-5' : 'p-5 sm:p-6'}`}>
       <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">{eyebrow}</p>

@@ -303,6 +303,7 @@ function AnimatedRoutes() {
 
          <Route element={<ProtectedRoute allowedRoles={['learner']} />}>
           <Route path="/player/:courseId" element={<MainLayout><LearningPlayerPage /></MainLayout>} />
+          <Route path="/assignments" element={<MainLayout><AssessmentsPage /></MainLayout>} />
           <Route path="/course/:courseId/assessments" element={<MainLayout><AssessmentsPage /></MainLayout>} />
         </Route>
 

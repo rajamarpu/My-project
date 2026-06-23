@@ -92,6 +92,7 @@ model User {
   activityLogs   ActivityLog[]
   savedCourses   SavedCourse[]
   preference     UserPreference?
+  certificatesIssued Certificate[] @relation("CertificateIssuer")
   liveSessionsCreated LiveSession[] @relation("LiveSessionInstructor")
   communityTopics CommunityTopic[]
   communityPosts CommunityPost[]
@@ -561,16 +562,24 @@ model AnalyticsEvent {
 }
 
 model Certificate {
-  id             String            @id @default(cuid())
-  userId         Int
-  courseId       String
-  certificateNo  String            @unique
-  status         CertificateStatus @default(ISSUED)
-  issuedAt       DateTime          @default(now())
-  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course         Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  id               String            @id @default(cuid())
+  userId           Int
+  courseId         String
+  certificateNo    String            @unique
+  verificationCode String            @unique
+  status           CertificateStatus @default(ISSUED)
+  issuedAt         DateTime          @default(now())
+  completionDate   DateTime?
+  issuedById       Int?
+  learnerSnapshot  Json?
+  courseSnapshot   Json?
+  issueMetadata    Json?
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course           Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  issuedBy         User?             @relation("CertificateIssuer", fields: [issuedById], references: [id], onDelete: SetNull)
 
   @@unique([userId, courseId])
   @@index([issuedAt])
+  @@index([issuedById])
   @@map("certificates")
 }

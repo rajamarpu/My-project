@@ -8,6 +8,7 @@ import { toggleWishlist, setWishlist, enrollCourse, unenrollCourse } from '../..
 import { resolveCourseThumbnail } from '../../utils/courseThumbnail.js'
 import { formatRupeesFromPaise } from '../../utils/money.js'
 import { getCourseAssignments, getCourseLessons, getCourseModules, getLessonOutcomes } from '../../utils/courseContent.js'
+import { notifyDashboardRefresh } from '../../utils/dashboardRefresh.js'
 
 export default function CourseDetailPage() {
   const { courseId } = useParams()
@@ -65,7 +66,7 @@ export default function CourseDetailPage() {
   const priceCents = Number(course?.priceCents || 0)
   const priceLabel = priceCents > 0 ? formatRupeesFromPaise(priceCents) : 'Free'
 
-  const handleEnroll = async ({ openPlayer = false } = {}) => {
+  const handleEnroll = async ({ openPlayer = false, instructorId = null } = {}) => {
     if (!auth.user) {
       navigate('/login')
       return
@@ -73,26 +74,46 @@ export default function CourseDetailPage() {
     try {
       setEnrollmentBusy(true)
       setError('')
-      const response = await enrollCourseRequest(course.id, { instructorId: selectedInstructorId ? Number(selectedInstructorId) : undefined })
+      const payload = Number.isInteger(instructorId) ? { instructorId } : {}
+      const response = await enrollCourseRequest(course.id, payload)
       dispatch(enrollCourse(response.data.enrollment.courseId))
       setCourse((current) => {
         const currentCount = Number(current?.enrollmentCount ?? current?._count?.enrollments ?? 0)
         const nextCount = response.data?.enrollmentCount ?? (current?.isEnrolled ? currentCount : currentCount + 1)
         return { ...current, isEnrolled: true, enrollmentCount: nextCount, _count: { ...(current?._count || {}), enrollments: nextCount } }
       })
+      notifyDashboardRefresh({ source: 'course-enroll', courseId: course.id })
       setNotice('You are enrolled in this course.')
       if (openPlayer) navigate(`/player/${course.id}`)
     } catch (err) {
-      if (err?.response?.status === 402) {
+      let errorToHandle = err
+      if (err?.response?.status === 400 && Number.isInteger(instructorId)) {
+        try {
+          const response = await enrollCourseRequest(course.id)
+          dispatch(enrollCourse(response.data.enrollment.courseId))
+          setCourse((current) => {
+            const currentCount = Number(current?.enrollmentCount ?? current?._count?.enrollments ?? 0)
+            const nextCount = response.data?.enrollmentCount ?? (current?.isEnrolled ? currentCount : currentCount + 1)
+            return { ...current, isEnrolled: true, enrollmentCount: nextCount, _count: { ...(current?._count || {}), enrollments: nextCount } }
+          })
+          notifyDashboardRefresh({ source: 'course-enroll', courseId: course.id })
+          setNotice('You are enrolled in this course.')
+          if (openPlayer) navigate(`/player/${course.id}`)
+          return
+        } catch (fallbackError) {
+          errorToHandle = fallbackError
+        }
+      }
+      if (errorToHandle?.response?.status === 402) {
         try {
           const checkout = await createCheckout({ courseId: course.id }, window.crypto.randomUUID())
           if (checkout.data?.checkoutUrl) window.location.assign(checkout.data.checkoutUrl)
           else setError(`Secure checkout could not be opened. Cost to enroll is ${priceLabel}.`)
         } catch (checkoutError) {
-          setError(checkoutError?.response?.data?.message || err.response.data?.message || `Payment required. Cost to enroll is ${priceLabel}.`)
+          setError(checkoutError?.response?.data?.message || errorToHandle?.response?.data?.message || `Payment required. Cost to enroll is ${priceLabel}.`)
         }
       } else {
-        setError(err?.response?.data?.message || err.message || 'Enrollment failed.')
+        setError(errorToHandle?.response?.data?.message || errorToHandle?.message || 'Enrollment failed.')
       }
     } finally {
       setEnrollmentBusy(false)
@@ -112,6 +133,7 @@ export default function CourseDetailPage() {
       dispatch(unenrollCourse(course.id))
       const nextCount = response.data?.enrollmentCount ?? Math.max(0, Number(enrollmentCount) - 1)
       setCourse((current) => ({ ...current, isEnrolled: false, enrollmentCount: nextCount, _count: { ...(current?._count || {}), enrollments: nextCount } }))
+      notifyDashboardRefresh({ source: 'course-unenroll', courseId: course.id })
       setNotice('You are unenrolled from this course.')
     } catch (err) {
       setError(err?.response?.data?.message || err.message || 'Unenrollment failed.')
@@ -519,7 +541,12 @@ export default function CourseDetailPage() {
                   </div>
                 ) : null}
 
-                <Button onClick={() => handleEnroll({ openPlayer: true })} disabled={!selectedInstructorId} loading={enrollmentBusy} loadingLabel="Updating..." className="mt-4 w-full">
+                <Button
+                  onClick={() => handleEnroll({ openPlayer: true, instructorId: selectedInstructorId ? Number(selectedInstructorId) : null })}
+                  loading={enrollmentBusy}
+                  loadingLabel="Updating..."
+                  className="mt-4 w-full"
+                >
                   {isEnrolled ? `Continue with ${selectedInstructor?.name || 'Selected Instructor'}` : priceCents > 0 ? `Pay ${priceLabel} to Enroll` : `Enroll with ${selectedInstructor?.name || 'Selected Instructor'}`}
                 </Button>
               </div>

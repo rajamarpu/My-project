@@ -71,6 +71,7 @@ export default function InstructorDashboard() {
               tone={metric.name === 'Courses' ? 'blue' : metric.name === 'Revenue' ? 'violet' : 'teal'}
               variant="admin"
               className="min-h-[170px]"
+              href={metric.name === 'Courses' ? '/instructor/courses' : '/support'}
             />
           ))}
         </div>

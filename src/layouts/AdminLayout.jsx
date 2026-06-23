@@ -1,6 +1,6 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { Bell, ChevronDown, LogOut, Menu, PanelLeftClose, PanelLeftOpen, Search, Settings, UserCircle, X } from 'lucide-react'
+import { ChevronDown, LogOut, Menu, Search, Settings, UserCircle, X } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { logout } from '../store/slices/authSlice.js'
 import { cn } from '../utils/classNames.js'
@@ -12,15 +12,12 @@ import { adminNavigationSections } from '../constants/navigation.jsx'
 export default function AdminLayout({ children }) {
   const dispatch = useDispatch()
   const user = useSelector((state) => state.auth.user)
-  const notifications = useSelector((state) => state.auth.notifications)
   const navigate = useNavigate()
   const [navOpen, setNavOpen] = useState(false)
-  const [collapsed, setCollapsed] = useState(() => window.localStorage.getItem('uptoskills-admin-sidebar') === 'collapsed')
   const [searchQuery, setSearchQuery] = useState('')
   const [searchOpen, setSearchOpen] = useState(false)
   const [activeResult, setActiveResult] = useState(-1)
   const [profileOpen, setProfileOpen] = useState(false)
-  const unreadNotifications = Array.isArray(notifications) ? notifications.filter((notification) => !notification.read).length : 0
   const searchableRoutes = useMemo(() => adminNavigationSections.flatMap((section) => section.items.map((item) => ({ ...item, section: section.label }))), [])
   const searchResults = useMemo(() => {
     const needle = searchQuery.trim().toLowerCase()
@@ -57,14 +54,6 @@ export default function AdminLayout({ children }) {
     return () => { document.body.style.overflow = previousOverflow }
   }, [navOpen])
 
-  function toggleCollapsed() {
-    setCollapsed((current) => {
-      const next = !current
-      window.localStorage.setItem('uptoskills-admin-sidebar', next ? 'collapsed' : 'expanded')
-      return next
-    })
-  }
-
   function openAdminRoute(href) {
     setSearchOpen(false)
     setSearchQuery('')
@@ -87,7 +76,7 @@ export default function AdminLayout({ children }) {
   }
 
   return (
-    <div className="admin-shell min-h-screen text-[var(--text-primary)]" style={{ '--admin-sidebar-width': collapsed ? '112px' : '276px' }}>
+    <div className="admin-shell min-h-screen text-[var(--text-primary)]" style={{ '--admin-sidebar-width': '292px' }}>
       <RouteProgress />
       <div className="min-h-screen lg:block">
         <div className="sticky top-0 z-30 border-b border-[var(--border-color)] bg-[var(--bg-elevated)]/95 p-4 backdrop-blur lg:hidden">
@@ -109,19 +98,21 @@ export default function AdminLayout({ children }) {
 
         {navOpen ? <button type="button" aria-label="Close admin menu overlay" onClick={() => setNavOpen(false)} className="fixed inset-0 z-30 bg-slate-950/40 backdrop-blur-sm lg:hidden" /> : null}
 
-        <aside className={`${navOpen ? 'flex animate-upto-fade-slide' : 'hidden'} fixed inset-x-3 top-20 z-40 max-h-[calc(100dvh-6rem)] flex-col overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-3 shadow-soft backdrop-blur-xl transition-[width] duration-200 sm:inset-x-4 sm:p-4 lg:inset-y-0 lg:left-0 lg:top-0 lg:flex lg:h-screen ${collapsed ? 'lg:w-[112px] lg:p-3' : 'lg:w-[276px] lg:p-5'} lg:max-h-none lg:rounded-none lg:border-x-0 lg:border-y-0 lg:border-r lg:shadow-none`}>
-          <div className="shrink-0 flex items-center justify-between gap-3">
-            <Logo to="/admin" />
+        <aside className={`${navOpen ? 'flex animate-upto-fade-slide' : 'hidden'} fixed inset-x-3 top-20 z-40 max-h-[calc(100dvh-6rem)] flex-col overflow-hidden rounded-2xl border border-[var(--border-color)] bg-[var(--bg-elevated)] shadow-[0_20px_60px_rgba(15,23,42,0.12)] backdrop-blur-xl transition-[width] duration-200 sm:inset-x-4 lg:inset-y-0 lg:left-0 lg:top-0 lg:flex lg:h-screen lg:w-[292px] lg:max-h-none lg:rounded-none lg:border-x-0 lg:border-y-0 lg:border-r`}>
+          <div className="shrink-0 border-b border-[var(--border-color)] px-3 py-4">
+            <div className="flex items-center justify-start gap-3">
+              <Logo to="/admin" className="shrink-0" />
+            </div>
           </div>
-          <button type="button" onClick={toggleCollapsed} className="mt-4 hidden min-h-10 w-full items-center justify-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] text-xs font-bold text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] lg:flex" aria-label={collapsed ? 'Expand admin sidebar' : 'Collapse admin sidebar'} aria-expanded={!collapsed}>
-            {collapsed ? <PanelLeftOpen size={18} /> : <><PanelLeftClose size={18} /><span>Collapse sidebar</span></>}
-          </button>
 
-          <nav className="admin-scrollbar mt-7 min-h-0 flex-1 space-y-6 overflow-y-auto pr-1 lg:mt-5 lg:space-y-4" aria-label="Admin navigation">
+          <nav className="admin-scrollbar min-h-0 flex-1 space-y-4 overflow-y-auto px-3 py-4 lg:space-y-5 lg:px-3" aria-label="Admin navigation">
             {adminNavigationSections.map((section) => (
-              <div key={section.label}>
-                <p className={`${collapsed ? 'lg:sr-only' : ''} px-3 text-[0.68rem] font-bold uppercase tracking-[0.18em] text-[var(--text-muted)]`}>{section.label}</p>
-                <div className="mt-2 grid gap-1">
+              <div key={section.label} className="space-y-2">
+                <div className="flex items-center gap-2 px-3">
+                  <p className="text-[0.68rem] font-black uppercase tracking-[0.18em] text-[var(--text-muted)]">{section.label}</p>
+                  <span className="h-px flex-1 bg-[var(--border-color)]" />
+                </div>
+                <div className="grid gap-1.5">
                   {section.items.map((item) => (
                     <NavLink
                       key={item.href}
@@ -133,18 +124,20 @@ export default function AdminLayout({ children }) {
                         setSearchOpen(false)
                         setProfileOpen(false)
                       }}
-                      title={collapsed ? item.label : undefined}
                       className={({ isActive }) =>
                         cn(
-                          'admin-nav-link',
+                          'group relative overflow-hidden rounded-xl border transition',
                           isActive
-                            ? 'admin-nav-link-active'
-                            : 'text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]',
+                            ? 'border-[var(--accent-primary)]/20 bg-[var(--accent-soft)] text-[var(--accent-primary)] shadow-[0_8px_24px_rgba(37,99,235,0.08)]'
+                            : 'border-transparent text-[var(--text-secondary)] hover:border-[var(--border-color)] hover:bg-[var(--bg-subtle)] hover:text-[var(--text-primary)]',
+                          'flex min-h-12 items-center gap-3 px-4',
                         )
                       }
                     >
-                      <item.icon size={17} />
-                      <span className={`${collapsed ? 'lg:hidden' : ''} truncate`}>{item.label}</span>
+                      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-[var(--bg-elevated)] transition">
+                        <item.icon size={17} />
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-sm font-semibold">{item.label}</span>
                     </NavLink>
                   ))}
                 </div>
@@ -158,11 +151,10 @@ export default function AdminLayout({ children }) {
               dispatch(logout())
               navigate('/admin-login')
             }}
-            className={`mt-5 shrink-0 flex w-full items-center ${collapsed ? 'lg:justify-center lg:px-2' : 'gap-3 px-4'} rounded-xl border border-red-500/20 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-500/10 dark:text-red-200`}
-            title={collapsed ? 'Logout' : undefined}
+            className="m-3 mt-auto flex w-[calc(100%-1.5rem)] items-center gap-3 rounded-xl border border-red-500/20 px-4 py-3 text-sm font-semibold text-red-600 transition hover:bg-red-500/10 dark:text-red-200"
           >
             <LogOut size={18} />
-            <span className={collapsed ? 'lg:hidden' : ''}>Logout</span>
+            <span>Logout</span>
           </button>
         </aside>
 
@@ -188,10 +180,6 @@ export default function AdminLayout({ children }) {
 
             <div className="flex shrink-0 items-center gap-2">
               <p className="hidden text-right 2xl:block"><span className="block text-xs font-bold text-[var(--text-primary)]">{new Intl.DateTimeFormat('en-IN', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date())}</span><span className="block text-[0.68rem] text-[var(--text-muted)]">Admin workspace</span></p>
-              <button type="button" onClick={() => navigate('/admin/notifications')} className="relative grid h-11 w-11 place-items-center rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] text-[var(--text-primary)]" aria-label={`Open admin notifications${unreadNotifications ? `, ${unreadNotifications} unread` : ''}`}>
-                <Bell size={18} />
-                {unreadNotifications ? <span className="absolute -right-1 -top-1 rounded-full bg-[var(--accent-primary)] px-1.5 py-0.5 text-[10px] font-bold text-white">{unreadNotifications}</span> : <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-[var(--accent-primary)]" aria-hidden="true" />}
-              </button>
               <ThemeToggleButton />
               <div className="relative">
                 <button type="button" onClick={() => setProfileOpen((current) => !current)} className="flex min-h-11 max-w-[15rem] items-center gap-3 rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] px-3 text-left" aria-haspopup="menu" aria-expanded={profileOpen}>

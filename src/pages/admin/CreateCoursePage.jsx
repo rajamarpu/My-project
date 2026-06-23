@@ -139,7 +139,7 @@ export default function CreateCoursePage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <Button type="button" onClick={saveCourse} disabled={busy}>Save draft</Button>
-              <Button type="button" variant="secondary" onClick={() => navigate('/course/c1')}>Preview</Button>
+              <Button type="button" variant="secondary" onClick={() => navigate('/admin/courses')}>Preview</Button>
             </div>
           </form>
           <aside className="theme-card space-y-5 rounded-[2rem] p-6">

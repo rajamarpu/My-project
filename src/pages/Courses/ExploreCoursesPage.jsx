@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { cloneElement, isValidElement, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
 import {
@@ -14,11 +14,13 @@ import {
 import { motion } from 'framer-motion'
 import CourseCard from '../../components/ui/Course/CourseCard.jsx'
 import Button from '../../components/common/Button/Button.jsx'
+import { useTheme } from '../../hooks/useTheme.js'
 import { fadeInUp } from '../../utils/animationVariants.js'
 import { createCheckout, enrollCourseRequest, fetchCourses, fetchSavedCourses, unenrollCourseRequest } from '../../api/api.js'
 import { enrollCourse, setWishlist, unenrollCourse } from '../../store/slices/authSlice.js'
 import { formatRupeesFromPaise } from '../../utils/money.js'
 import { resolveCourseThumbnail } from '../../utils/courseThumbnail.js'
+import { notifyDashboardRefresh } from '../../utils/dashboardRefresh.js'
 
 const levels = ['All', 'BEGINNER', 'INTERMEDIATE', 'ADVANCED']
 const priceFilters = ['All', 'Free', 'Paid']
@@ -39,6 +41,13 @@ export default function ExploreCoursesPage() {
   const navigate = useNavigate()
   const dispatch = useDispatch()
   const auth = useSelector((state) => state.auth)
+  const { theme: resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  const pageTextPrimary = isDark ? 'text-white' : 'text-[var(--text-primary)]'
+  const pageTextSecondary = isDark ? 'text-cyan-100' : 'text-[var(--text-secondary)]'
+  const pageTextMuted = isDark ? 'text-slate-300' : 'text-[var(--text-muted)]'
+  const pageAccentText = isDark ? 'text-cyan-300' : 'text-[var(--accent-primary)]'
+  const pageDarkSurface = 'dark:bg-[linear-gradient(135deg,rgba(15,23,42,0.94),rgba(8,47,73,0.88),rgba(30,41,59,0.92))]'
   const [searchParams, setSearchParams] = useSearchParams()
   const filterDrawerRef = useRef(null)
   const restoringUrlState = useRef(false)
@@ -159,6 +168,7 @@ export default function ExploreCoursesPage() {
             ? { ...item, isEnrolled: false, enrollmentCount: nextCount, _count: { ...(item._count || {}), enrollments: nextCount } }
             : item
         )))
+        notifyDashboardRefresh({ source: 'explore-unenroll', courseId: course.id })
         setNotice(`Unenrolled from ${course.title}.`)
       } else {
         const response = await enrollCourseRequest(course.id)
@@ -170,6 +180,7 @@ export default function ExploreCoursesPage() {
             ? { ...item, isEnrolled: true, enrollmentCount: nextCount, _count: { ...(item._count || {}), enrollments: nextCount } }
             : item
         )))
+        notifyDashboardRefresh({ source: 'explore-enroll', courseId: course.id })
         setNotice(`Enrolled in ${course.title}.`)
       }
     } catch (err) {
@@ -379,27 +390,27 @@ export default function ExploreCoursesPage() {
 
         <div className="h-full min-w-0 overflow-y-auto overflow-x-hidden overscroll-contain px-4 py-4 sm:px-5 lg:px-6">
           <div className="min-w-0 space-y-4">
-            <section className="course-hero-panel enterprise-mesh-panel rounded-xl border border-[var(--border-color)] p-4 shadow-soft sm:p-5">
+            <section className={`course-hero-panel enterprise-mesh-panel rounded-2xl border border-[color-mix(in_srgb,var(--accent-primary)_18%,var(--border-color))] bg-[linear-gradient(135deg,rgba(255,107,53,0.12),rgba(20,184,166,0.14),rgba(37,99,235,0.10))] p-4 shadow-[0_18px_45px_rgba(37,99,235,0.08)] sm:p-5 ${pageDarkSurface} dark:border-[color-mix(in_srgb,var(--accent-primary)_20%,var(--border-color))] dark:shadow-[0_22px_55px_rgba(15,23,42,0.42)]`}>
               <div className="grid gap-4">
                 <div>
-                  <p className="inline-flex items-center gap-2 rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-[var(--accent-primary)]">
+                  <p className={`inline-flex items-center gap-2 rounded-full border border-[color-mix(in_srgb,var(--accent-primary)_22%,transparent)] bg-white/80 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-[var(--accent-primary)] shadow-sm ${isDark ? 'border-cyan-400/30 bg-cyan-500/10 text-cyan-200' : ''} dark:border-[var(--border-color)] dark:bg-[var(--bg-elevated)]`}>
                     <Sparkles size={14} /> Explore courses
                   </p>
-                  <h1 className="mt-3 max-w-3xl text-3xl font-bold leading-tight text-[var(--text-primary)] sm:text-4xl">
-                    Unlock skills. <span className="text-[var(--accent-primary)]">Build your future.</span>
+                  <h1 className={`mt-3 max-w-3xl text-3xl font-bold leading-tight sm:text-4xl ${pageTextPrimary}`}>
+                    Unlock skills. <span className={pageAccentText}>Build your future.</span>
                   </h1>
-                  <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">
+                  <p className={`mt-3 max-w-3xl text-sm leading-6 ${pageTextSecondary}`}>
                     Discover your actual UptoSkills course catalog across categories, levels, instructors, pricing, and progress.
                   </p>
-                  <label className="relative mt-4 flex min-h-11 max-w-3xl items-center gap-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] px-4 shadow-sm focus-within:border-[var(--accent-primary)] focus-within:ring-4 focus-within:ring-[var(--focus-ring)]">
-                    <Search size={18} className="text-[var(--accent-primary)]" />
+                  <label className={`relative mt-4 flex min-h-11 max-w-3xl items-center gap-3 rounded-xl border border-[color-mix(in_srgb,var(--accent-primary)_16%,var(--border-color))] bg-white/92 px-4 shadow-[0_10px_28px_rgba(15,23,42,0.06)] focus-within:border-[var(--accent-primary)] focus-within:ring-4 focus-within:ring-[var(--focus-ring)] ${isDark ? 'border-cyan-400/25 bg-slate-950/55 shadow-[0_10px_28px_rgba(8,47,73,0.4)]' : ''} dark:border-[var(--border-color)] dark:bg-[var(--bg-secondary)]`}>
+                    <Search size={18} className={pageAccentText} />
                     <input
                       value={query}
                       onChange={(event) => { setQuery(event.target.value); setSearchOpen(true); setActiveSuggestion(-1) }}
                       onFocus={() => setSearchOpen(true)}
                       onBlur={() => window.setTimeout(() => setSearchOpen(false), 120)}
                       onKeyDown={handleSearchKeyDown}
-                      className="w-full bg-transparent text-sm outline-none placeholder:text-[var(--text-muted)]"
+                      className={`w-full bg-transparent text-sm outline-none placeholder:text-[var(--text-muted)] ${pageTextPrimary} ${isDark ? 'placeholder:text-slate-400' : ''}`}
                       placeholder="Search courses, instructors, or topics..."
                       aria-label="Search courses, instructors, or topics"
                       role="combobox"
@@ -409,13 +420,13 @@ export default function ExploreCoursesPage() {
                       aria-activedescendant={activeSuggestion >= 0 ? `course-suggestion-${activeSuggestion}` : undefined}
                     />
                     {searchOpen && query.trim() ? (
-                      <div id="course-search-suggestions" role="listbox" className="absolute inset-x-0 top-[calc(100%+0.5rem)] z-30 overflow-hidden rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-2 shadow-[var(--shadow-overlay)]">
+                      <div id="course-search-suggestions" role="listbox" className={`absolute inset-x-0 top-[calc(100%+0.5rem)] z-30 overflow-hidden rounded-xl border border-[color-mix(in_srgb,var(--accent-primary)_14%,var(--border-color))] bg-[var(--bg-elevated)] p-2 shadow-[var(--shadow-overlay)] ${isDark ? 'border-cyan-400/20 bg-slate-950/95' : ''}`}>
                         {searchSuggestions.length ? searchSuggestions.map((course, index) => (
-                          <button id={`course-suggestion-${index}`} key={course.id} type="button" role="option" aria-selected={activeSuggestion === index} onMouseEnter={() => setActiveSuggestion(index)} onMouseDown={(event) => { event.preventDefault(); openSuggestion(course) }} className={`flex min-h-16 w-full items-center gap-3 rounded-lg p-2 text-left transition ${activeSuggestion === index ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-subtle)]'}`}>
-                            <span className="grid h-14 w-24 shrink-0 place-items-center overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)]"><img src={resolveCourseThumbnail(course)} alt="" className="h-full w-full object-contain" /></span>
-                            <span className="min-w-0 flex-1"><span className="block truncate text-sm font-bold text-[var(--text-primary)]">{course.title}</span><span className="mt-1 block truncate text-xs text-[var(--text-secondary)]">{course.createdBy?.name || 'Instructor'} · {course.level || 'Beginner'} · {course.category || 'Course'}</span></span>
+                          <button id={`course-suggestion-${index}`} key={course.id} type="button" role="option" aria-selected={activeSuggestion === index} onMouseEnter={() => setActiveSuggestion(index)} onMouseDown={(event) => { event.preventDefault(); openSuggestion(course) }} className={`flex min-h-16 w-full items-center gap-3 rounded-lg p-2 text-left transition ${activeSuggestion === index ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-subtle)]'} ${isDark ? 'text-white hover:bg-cyan-500/10' : ''}`}>
+                            <span className="grid h-14 w-24 shrink-0 place-items-center overflow-hidden rounded-lg border border-[color-mix(in_srgb,var(--accent-primary)_14%,var(--border-color))] bg-[linear-gradient(135deg,rgba(255,107,53,0.08),rgba(20,184,166,0.08))]"><img src={resolveCourseThumbnail(course)} alt="" className="h-full w-full object-contain" /></span>
+                            <span className="min-w-0 flex-1"><span className={`block truncate text-sm font-bold ${pageTextPrimary}`}>{course.title}</span><span className={`mt-1 block truncate text-xs ${pageTextSecondary}`}>{course.createdBy?.name || 'Instructor'} · {course.level || 'Beginner'} · {course.category || 'Course'}</span></span>
                           </button>
-                        )) : <div className="p-4 text-sm text-[var(--text-secondary)]">No live suggestions match "{query.trim()}". Press Enter to keep filtering the catalog.</div>}
+                        )) : <div className={`p-4 text-sm ${pageTextSecondary}`}>No live suggestions match "{query.trim()}". Press Enter to keep filtering the catalog.</div>}
                       </div>
                     ) : null}
                   </label>
@@ -430,19 +441,19 @@ export default function ExploreCoursesPage() {
               </div>
             </section>
 
-            {notice ? <p className="rounded-lg border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-100">{notice}</p> : null}
-            {error && courses.length ? <p className="rounded-lg border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-100">{error}</p> : null}
+            {notice ? <p className={`rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 ${isDark ? 'border-emerald-300/30 bg-emerald-500/15 text-emerald-100' : ''}`}>{notice}</p> : null}
+            {error && courses.length ? <p className={`rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-700 ${isDark ? 'border-rose-300/30 bg-rose-500/15 text-rose-100' : ''}`}>{error}</p> : null}
 
-            <section className="course-toolbar-panel enterprise-glass-panel rounded-xl p-4 shadow-soft">
+            <section className={`course-toolbar-panel enterprise-glass-panel rounded-2xl border border-[color-mix(in_srgb,var(--accent-primary)_10%,var(--border-color))] bg-[linear-gradient(180deg,rgba(255,255,255,0.92),rgba(248,251,255,0.88))] p-4 shadow-[0_14px_34px_rgba(15,23,42,0.06)] ${isDark ? 'border-cyan-400/15 bg-[linear-gradient(180deg,rgba(2,6,23,0.92),rgba(15,23,42,0.88))] shadow-[0_18px_40px_rgba(8,47,73,0.34)]' : ''} dark:border-transparent dark:bg-transparent dark:shadow-soft`}>
               <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <span className="mr-2 text-xs font-bold text-[var(--text-primary)]">Trending Searches:</span>
+                  <span className={`mr-2 text-xs font-bold uppercase tracking-[0.12em] ${pageTextPrimary}`}>Trending Searches:</span>
                   {trendingSearches.map((tag) => (
                     <button
                       key={tag}
                       type="button"
                       onClick={() => setQuery(tag)}
-                      className="min-h-11 rounded-full bg-[var(--bg-subtle)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:text-[var(--accent-primary)]"
+                      className={`min-h-11 rounded-full border border-[color-mix(in_srgb,var(--accent-primary)_12%,var(--border-color))] bg-white/90 px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] transition hover:border-[var(--accent-primary)] hover:text-[var(--accent-primary)] ${isDark ? 'border-cyan-400/20 bg-cyan-500/10 text-cyan-100 hover:border-cyan-300 hover:text-white' : ''} dark:border-[var(--border-color)] dark:bg-[var(--bg-subtle)]`}
                     >
                       {tag}
                     </button>
@@ -453,32 +464,32 @@ export default function ExploreCoursesPage() {
                     {filtersOpen ? <X size={16} className="mr-2" /> : <SlidersHorizontal size={16} className="mr-2" />}
                     Filters {activeFilterCount ? `(${activeFilterCount})` : ''}
                   </Button>
-                  <div className="flex min-h-11 items-center gap-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] px-3 shadow-sm">
-                    <span className="whitespace-nowrap text-xs font-semibold text-[var(--text-muted)]">Sort by</span>
+                  <div className={`flex min-h-11 items-center gap-2 rounded-xl border border-[color-mix(in_srgb,var(--accent-primary)_12%,var(--border-color))] bg-white/90 px-3 shadow-sm ${isDark ? 'border-cyan-400/20 bg-slate-950/70 shadow-[0_10px_24px_rgba(8,47,73,0.28)]' : ''} dark:border-[var(--border-color)] dark:bg-[var(--bg-secondary)]`}>
+                    <span className={`whitespace-nowrap text-xs font-semibold ${pageTextMuted}`}>Sort by</span>
                     <label className="relative">
                       <span className="sr-only">Sort courses by</span>
                       <select
                         value={sortBy}
                         onChange={(event) => setSortBy(event.target.value)}
-                        className="min-h-0 w-32 appearance-none border-0 bg-transparent py-1 pl-0 pr-6 text-sm font-semibold text-[var(--text-primary)] outline-none"
+                        className={`min-h-0 w-32 appearance-none border-0 bg-transparent py-1 pl-0 pr-6 text-sm font-semibold outline-none ${pageTextPrimary}`}
                       >
                         <option value="popular">Most Popular</option>
                         <option value="rating">Highest Rated</option>
                         <option value="price-low">Lowest Price</option>
                         <option value="newest">Newest</option>
                       </select>
-                      <ChevronDown className="pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" size={15} />
+                      <ChevronDown className={`pointer-events-none absolute right-0 top-1/2 -translate-y-1/2 ${pageTextMuted}`} size={15} />
                     </label>
                   </div>
-                  <span className="hidden h-10 w-10 shrink-0 place-items-center rounded-lg bg-[var(--accent-soft)] text-[var(--accent-primary)] sm:grid">
+                  <span className={`hidden h-10 w-10 shrink-0 place-items-center rounded-xl border border-[color-mix(in_srgb,var(--accent-primary)_14%,var(--border-color))] bg-[linear-gradient(135deg,rgba(255,107,53,0.12),rgba(20,184,166,0.12))] text-[var(--accent-primary)] shadow-sm ${isDark ? 'border-cyan-400/20 bg-cyan-500/10 text-cyan-200' : ''} sm:grid`}>
                     <Grid2X2 size={18} />
                   </span>
                 </div>
               </div>
 
-              <div className="mt-5 flex items-center justify-between border-t border-[var(--border-color)] pt-4">
-                <p className="text-sm font-bold text-[var(--text-primary)]">{sortedCourses.length} courses found</p>
-                {activeFilterCount ? <button type="button" onClick={resetFilters} className="text-sm font-semibold text-[var(--accent-primary)]">Clear filters</button> : null}
+              <div className={`mt-5 flex items-center justify-between border-t border-[var(--border-color)] pt-4 ${isDark ? 'border-cyan-400/15' : ''}`}>
+                <p className={`text-sm font-bold ${pageTextPrimary}`}>{sortedCourses.length} courses found</p>
+                {activeFilterCount ? <button type="button" onClick={resetFilters} className={`text-sm font-semibold ${pageAccentText}`}>Clear filters</button> : null}
               </div>
             </section>
 
@@ -488,9 +499,9 @@ export default function ExploreCoursesPage() {
               ) : error && !courses.length ? (
                 <div className="col-span-full platform-empty-state" role="alert">
                   <div>
-                    <X className="mx-auto text-[var(--danger)]" size={34} />
-                    <p className="mt-3 text-base font-bold text-[var(--text-primary)]">Courses could not be loaded</p>
-                    <p className="mt-1 max-w-md text-sm text-[var(--text-secondary)]">{error}</p>
+                    <X className={`mx-auto ${isDark ? 'text-rose-300' : 'text-[var(--danger)]'}`} size={34} />
+                    <p className={`mt-3 text-base font-bold ${pageTextPrimary}`}>Courses could not be loaded</p>
+                    <p className={`mt-1 max-w-md text-sm ${pageTextSecondary}`}>{error}</p>
                     <Button className="mt-5" onClick={loadCourses}>Try again</Button>
                   </div>
                 </div>
@@ -508,9 +519,9 @@ export default function ExploreCoursesPage() {
               ) : (
                 <div className="col-span-full platform-empty-state">
                   <div>
-                    <Search className="mx-auto text-[var(--text-muted)]" size={36} />
-                    <p className="mt-3 text-base font-bold text-[var(--text-primary)]">No matching courses found</p>
-                    <p className="mt-1 max-w-md text-sm text-[var(--text-secondary)]">
+                    <Search className={`mx-auto ${pageTextMuted}`} size={36} />
+                    <p className={`mt-3 text-base font-bold ${pageTextPrimary}`}>No matching courses found</p>
+                    <p className={`mt-1 max-w-md text-sm ${pageTextSecondary}`}>
                       Try a different keyword or clear filters to discover more learning paths.
                     </p>
                     <Button variant="secondary" className="mt-5" onClick={resetFilters}>Clear filters</Button>
@@ -526,11 +537,16 @@ export default function ExploreCoursesPage() {
 }
 
 function FilterGroup({ title, children }) {
+  const { theme: resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  const titleColor = isDark ? 'text-white' : 'text-[var(--text-primary)]'
+  const mutedColor = isDark ? 'text-cyan-200' : 'text-[var(--text-muted)]'
+
   return (
-    <div className="border-t border-[var(--border-color)] pt-4">
+    <div className="border-t border-[color-mix(in_srgb,var(--accent-primary)_10%,var(--border-color))] pt-4">
       <div className="mb-3 flex items-center justify-between">
-        <p className="text-xs font-bold text-[var(--text-primary)]">{title}</p>
-        <ChevronDown size={14} className="text-[var(--text-muted)]" aria-hidden="true" />
+        <p className={`text-xs font-black uppercase tracking-[0.16em] ${titleColor}`}>{title}</p>
+        <ChevronDown size={14} className={mutedColor} aria-hidden="true" />
       </div>
       <div className="space-y-2">{children}</div>
     </div>
@@ -538,24 +554,40 @@ function FilterGroup({ title, children }) {
 }
 
 function FilterOption({ checked, label, count, onClick, icon }) {
+  const { theme: resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  const optionTone = isDark ? 'text-white' : 'text-[var(--text-secondary)]'
+  const countTone = isDark ? 'text-cyan-100' : 'text-[var(--text-secondary)]'
+
   return (
-    <button type="button" onClick={onClick} aria-pressed={checked} className="flex min-h-11 w-full items-center gap-2 rounded-lg px-1 text-left text-xs text-[var(--text-secondary)] transition hover:bg-[var(--bg-subtle)]">
-      <span className={`grid h-4 w-4 shrink-0 place-items-center rounded border ${checked ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white' : 'border-[var(--border-muted)] bg-[var(--bg-secondary)]'}`}>
+    <button type="button" onClick={onClick} aria-pressed={checked} className={`flex min-h-11 w-full items-center gap-2 rounded-xl px-2 text-left text-xs transition ${checked ? 'border border-[color-mix(in_srgb,var(--accent-primary)_20%,var(--border-color))] bg-[color-mix(in_srgb,var(--accent-soft)_60%,white)] text-[var(--text-primary)] shadow-sm dark:border-cyan-400/20 dark:bg-cyan-500/10 dark:text-white' : `text-[var(--text-secondary)] hover:bg-[var(--bg-subtle)] ${isDark ? 'text-cyan-100 hover:bg-cyan-500/10' : ''}`}`}>
+      <span className={`grid h-4 w-4 shrink-0 place-items-center rounded border ${checked ? 'border-[var(--accent-primary)] bg-[var(--accent-primary)] text-white dark:border-cyan-300 dark:bg-cyan-300 dark:text-slate-950' : 'border-[var(--border-muted)] bg-[var(--bg-secondary)] dark:border-cyan-400/30 dark:bg-slate-950/60'}`}>
         {checked ? <Check size={11} /> : null}
       </span>
-      <span className="min-w-0 flex-1 truncate">{icon || label}</span>
-      <span>{count ?? 0}</span>
+      <span className={`min-w-0 flex-1 truncate ${optionTone}`}>{icon || label}</span>
+      <span className={countTone}>{count ?? 0}</span>
     </button>
   )
 }
 
 function Metric({ value, label, icon }) {
+  const { theme: resolvedTheme } = useTheme()
+  const isDark = resolvedTheme === 'dark'
+  const textColor = isDark ? '#ffffff' : '#000000'
+  const iconNode = isValidElement(icon)
+    ? cloneElement(icon, {
+        color: textColor,
+        className: `${icon.props.className || ''} ${isDark ? 'text-white' : 'text-black'}`.trim(),
+        style: { ...(icon.props.style || {}), color: textColor, fill: 'none' },
+      })
+    : icon
+
   return (
-    <div className="enterprise-glow-card rounded-lg border border-[var(--border-color)] bg-[var(--bg-card)] px-3 py-2.5">
-      <p className="flex items-center gap-1 text-xl font-bold text-[var(--accent-primary)]">
-        {value}{icon}
+    <div className="enterprise-glow-card rounded-xl border border-[color-mix(in_srgb,var(--accent-primary)_12%,var(--border-color))] bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(255,247,241,0.92))] px-3 py-2.5 shadow-[0_12px_26px_rgba(15,23,42,0.06)] dark:border-[var(--border-color)] dark:bg-[linear-gradient(135deg,rgba(15,23,42,0.92),rgba(30,41,59,0.88))]">
+      <p className="flex items-center gap-1 text-xl font-black" style={{ color: textColor, WebkitTextFillColor: textColor }}>
+        {value}{iconNode}
       </p>
-      <p className="mt-1 text-xs font-semibold text-[var(--text-secondary)]">{label}</p>
+      <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em]" style={{ color: textColor, WebkitTextFillColor: textColor, opacity: 0.82 }}>{label}</p>
     </div>
   )
 }

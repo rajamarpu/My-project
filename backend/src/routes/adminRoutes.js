@@ -766,7 +766,14 @@ router.get('/instructor-changes', async (_req, res, next) => {
 
 router.get('/certificates', async (_req, res, next) => {
   try {
-    const certificates = await prisma.certificate.findMany({ include: { user: { select: userSelect }, course: true }, orderBy: { issuedAt: 'desc' } })
+    const certificates = await prisma.certificate.findMany({
+      include: {
+        user: { select: userSelect },
+        course: { include: { createdBy: { select: { id: true, name: true, email: true } } } },
+        issuedBy: { select: { id: true, name: true, email: true } },
+      },
+      orderBy: { issuedAt: 'desc' },
+    })
     res.json({ success: true, certificates })
   } catch (error) {
     next(error)

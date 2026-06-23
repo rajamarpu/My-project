@@ -3,13 +3,13 @@ import { Bar, BarChart, CartesianGrid, Line, LineChart, ResponsiveContainer, Too
 import { useNavigate } from 'react-router-dom'
 import {
   Activity, Award, BadgeIndianRupee, BookOpenCheck, ClipboardCheck,
-  CreditCard, FileBarChart2, GraduationCap, Search, UserPlus, Users,
+  GraduationCap, Search, UserPlus, Users,
 } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
 import { fetchAdminAssessmentSubmissions, fetchAdminOverview } from '../../api/api.js'
 import {
   AdminEmptyState, AdminLoadingState, AdminMetricCard, AdminNotice,
-  AdminPageHeader, AdminQuickAction,
+  AdminPageHeader,
 } from '../../components/admin/AdminUI.jsx'
 
 const zeroMetrics = {
@@ -24,12 +24,6 @@ const managementActions = [
   { label: 'Upload Course', description: 'Create and publish learning content', icon: BookOpenCheck, href: '/admin/upload-course', keywords: 'create course catalog publish' },
   { label: 'Add Learner', description: 'Create learner or intern access', icon: UserPlus, href: '/admin/add-learner', keywords: 'student intern user' },
   { label: 'Add Instructor', description: 'Onboard and assign an instructor', icon: GraduationCap, href: '/admin/add-instructor', keywords: 'teacher creator' },
-  { label: 'Manage Users', description: 'Review accounts and approvals', icon: Users, href: '/admin/users', keywords: 'approvals learners instructors' },
-  { label: 'Manage Courses', description: 'Edit catalog and publishing status', icon: BookOpenCheck, href: '/admin/courses', keywords: 'draft curriculum category' },
-  { label: 'Evaluate Assessments', description: 'Review learner submissions', icon: ClipboardCheck, href: '/admin/evaluations', keywords: 'assignments submissions review' },
-  { label: 'Payments', description: 'Review revenue and payment status', icon: CreditCard, href: '/admin/payments', keywords: 'pending paid finance' },
-  { label: 'Certificates', description: 'Manage issued credentials', icon: Award, href: '/admin/certificates', keywords: 'generate credentials' },
-  { label: 'Reports', description: 'Open detailed platform reporting', icon: FileBarChart2, href: '/admin/reports', keywords: 'analytics activity progress' },
 ]
 
 function normalizeOverview(payload) {
@@ -114,8 +108,8 @@ export default function AdminDashboard() {
     { label: 'Revenue', value: money(metrics.revenueCents), detail: 'confirmed payments', icon: BadgeIndianRupee, href: '/admin/revenue', tone: 'violet' },
     { label: 'Certificates', value: compact(metrics.totalCertificates), detail: 'issued credentials', icon: Award, href: '/admin/certificates', tone: 'sky' },
     { label: 'Assignments', value: compact(assignmentCount), detail: 'unique assigned assessments', icon: ClipboardCheck, href: '/admin/evaluations', tone: 'emerald' },
-    { label: 'Assessments', value: compact(submissions.length), detail: 'learner submissions', icon: FileBarChart2, href: '/admin/evaluations', tone: 'amber' },
-  ], [assignmentCount, metrics, submissions.length])
+    { label: 'Published courses', value: compact(metrics.publishedCourses), detail: `${metrics.publishRate}% of catalog live`, icon: Activity, href: '/admin/courses', tone: 'amber' },
+  ], [assignmentCount, metrics])
 
   const chartData = useMemo(() => metrics.growth.slice(-Number(range)), [metrics.growth, range])
   const courseResults = useMemo(() => {
@@ -273,10 +267,22 @@ export default function AdminDashboard() {
         </div>
       </DashboardSection>
 
-      <DashboardSection eyebrow="Management section" title="Administration tools" description="All management actions, organized in one searchable workspace.">
+      <DashboardSection eyebrow="Management section" title="Quick Actions" description="All management actions, organized in one searchable workspace.">
         {actionResults.length ? (
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {actionResults.map((item, index) => <AdminQuickAction key={item.href} icon={item.icon} label={item.label} description={item.description} tone={index === 0 && !searchQuery ? 'primary' : 'secondary'} onClick={() => navigate(item.href)} />)}
+            {actionResults.map((item, index) => (
+              <AdminMetricCard
+                key={item.href}
+                label={item.label}
+                value={String(index + 1).padStart(2, '0')}
+                detail={item.description}
+                icon={item.icon}
+                tone={['blue', 'teal', 'orange', 'rose', 'violet', 'emerald', 'sky', 'amber', 'cyan'][index % 9]}
+                onClick={() => navigate(item.href)}
+                compact
+                className="cursor-pointer"
+              />
+            ))}
           </div>
         ) : <AdminEmptyState title="No management tools found" message="Try a broader search term such as users, courses, or reports." actionLabel="Clear search" onAction={() => setSearchQuery('')} />}
       </DashboardSection>

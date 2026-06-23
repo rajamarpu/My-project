@@ -66,66 +66,87 @@ function MetricCardContent({
   trendLabel,
   trendValue,
   variant = 'admin',
+  compact = false,
   className = '',
 }) {
   const { theme: resolvedTheme } = useTheme()
   const isDark = resolvedTheme === 'dark'
   const palette = tones[tone] || tones.blue
   const detailText = typeof detail === 'string' ? detail.trim() : detail
-  const foreground = isDark ? '#ffffff' : '#000000'
-  const textStyle = {
-    color: foreground,
-    opacity: 1,
-    WebkitTextFillColor: foreground,
-  }
+  const textColor = isDark ? '#ffffff' : '#000000'
+  const textToneClass = isDark ? 'text-white' : 'text-black'
   const badgeBackground = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.98)'
   const badgeBorder = isDark ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.82)'
   const pillBackground = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.98)'
   const pillBorder = isDark ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.75)'
-  const pillTextColor = isDark ? '#ffffff' : '#000000'
+  const pillTextColor = textColor
   const cardClasses = variant === 'learner'
     ? `rounded-[18px] border border-white/12 bg-gradient-to-br shadow-[0_18px_42px_rgba(15,23,42,0.16)] ${palette.strip}`
     : `rounded-[16px] bg-gradient-to-br shadow-[0_16px_36px_rgba(15,23,42,0.14)] ${palette.strip}`
+  const minHeightClass = compact ? 'min-h-[138px]' : 'min-h-[178px]'
 
   return (
     <div className={`group relative isolate overflow-hidden ${cardClasses} ${className}`}>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.24),transparent_28%),radial-gradient(circle_at_bottom_right,rgba(255,255,255,0.08),transparent_26%),linear-gradient(180deg,rgba(255,255,255,0.04),rgba(2,6,23,0.12))]" />
-      <div className="relative flex min-h-[178px] flex-col p-5">
+      <div className={`relative flex ${minHeightClass} flex-col p-5`}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="text-[0.78rem] font-black uppercase tracking-[0.34em]" style={textStyle}>{title}</p>
-            <p className="mt-3 text-[clamp(2.1rem,3.2vw,2.55rem)] font-black leading-none tracking-[-0.04em]" style={textStyle}>
+            <p className={`font-black uppercase tracking-[0.34em] ${compact ? 'text-[0.7rem]' : 'text-[0.78rem]'} ${textToneClass}`} style={{ color: textColor, WebkitTextFillColor: textColor }}>
+              {title}
+            </p>
+            <p
+              className={`${compact ? 'mt-2 text-[clamp(1.55rem,2.6vw,2.05rem)]' : 'mt-3 text-[clamp(2.1rem,3.2vw,2.55rem)]'} font-black leading-none tracking-[-0.04em] ${textToneClass}`}
+              style={{ color: textColor, WebkitTextFillColor: textColor }}
+            >
               {loading ? <span className="skeleton inline-block h-8 w-20 rounded bg-white/25" /> : value}
             </p>
-            {detailText ? <p className="mt-2 max-w-[16rem] text-sm font-semibold leading-5" style={textStyle}>{detailText}</p> : null}
+            {detailText ? (
+              <p
+                className={`max-w-[16rem] font-semibold leading-5 ${compact ? 'mt-1.5 text-xs' : 'mt-2 text-sm'} ${textToneClass}`}
+                style={{ color: textColor, WebkitTextFillColor: textColor }}
+              >
+                {detailText}
+              </p>
+            ) : null}
           </div>
           {Icon ? (
             <span
-              className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border shadow-[0_12px_28px_rgba(15,23,42,0.18)] backdrop-blur-md"
+              className={`grid shrink-0 place-items-center rounded-2xl border shadow-[0_12px_28px_rgba(15,23,42,0.18)] backdrop-blur-md ${compact ? 'h-10 w-10' : 'h-12 w-12'}`}
               style={{
                 backgroundColor: badgeBackground,
                 borderColor: badgeBorder,
-                color: foreground,
+                color: textColor,
               }}
             >
-              <Icon size={23} strokeWidth={2.4} className="shrink-0" color={foreground} style={{ color: foreground }} aria-hidden="true" />
+              <Icon
+                size={compact ? 18 : 23}
+                strokeWidth={2.4}
+                className={textToneClass}
+                color={textColor}
+                style={{ color: textColor, fill: 'none' }}
+                aria-hidden="true"
+              />
             </span>
           ) : null}
         </div>
-        <div className="mt-auto flex items-center gap-2 pt-4 text-xs font-semibold">
-          <span
-            className="inline-flex min-h-7 items-center rounded-full border px-3 font-black shadow-[0_1px_2px_rgba(15,23,42,0.16)]"
-            style={{
-              backgroundColor: pillBackground,
-              borderColor: pillBorder,
-              color: pillTextColor,
-              WebkitTextFillColor: pillTextColor,
-            }}
-          >
-            {trendValue || 'Live data'}
-          </span>
-          <span style={textStyle}>{trendLabel || 'vs last 30 days'}</span>
-        </div>
+        {trendValue || trendLabel ? (
+          <div className="mt-auto flex items-center gap-2 pt-4 text-xs font-semibold">
+            {trendValue ? (
+              <span
+                className="inline-flex min-h-7 items-center rounded-full border px-3 font-black shadow-[0_1px_2px_rgba(15,23,42,0.16)]"
+                style={{
+                  backgroundColor: pillBackground,
+                  borderColor: pillBorder,
+                  color: pillTextColor,
+                  WebkitTextFillColor: pillTextColor,
+                }}
+              >
+                {trendValue}
+              </span>
+            ) : null}
+            {trendLabel ? <span className={textToneClass} style={{ color: textColor, WebkitTextFillColor: textColor }}>{trendLabel}</span> : null}
+          </div>
+        ) : null}
       </div>
     </div>
   )

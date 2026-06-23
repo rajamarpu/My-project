@@ -3,6 +3,7 @@ import { CheckCircle2, ClipboardCheck, Download, Eye, RotateCcw, Save, Search, S
 import Button from '../../components/common/Button/Button.jsx'
 import { AdminEmptyState, AdminGuidancePanel, AdminLoadingState, AdminMetricCard, AdminNotice, AdminPageHeader } from '../../components/admin/AdminUI.jsx'
 import { downloadAssessmentSubmissionUrl, evaluateAssessmentSubmission, fetchAdminAssessmentSubmissions, grantAssessmentRetake } from '../../api/api.js'
+import { notifyDashboardRefresh } from '../../utils/dashboardRefresh.js'
 
 const statusOptions = [
   { value: 'ALL', label: 'All statuses' },
@@ -78,6 +79,7 @@ export default function AssessmentEvaluationsPage() {
       const response = await evaluateAssessmentSubmission(selected.id, evaluations)
       setSelected(response.data.submission)
       setNotice({ type: 'success', message: 'Evaluation saved and results published.' })
+      notifyDashboardRefresh({ source: 'assessment-evaluated', submissionId: selected.id, courseId: selected.courseId })
       await loadSubmissions()
     } catch (err) {
       setNotice({ type: 'error', message: err?.response?.data?.message || err.message || 'Could not save evaluation.' })
@@ -97,6 +99,7 @@ export default function AssessmentEvaluationsPage() {
       })
       setNotice({ type: 'success', message: response.data.message || 'Retake opened for this student.' })
       setRetakeTarget(null)
+      notifyDashboardRefresh({ source: 'assessment-retake-opened', submissionId: submission.id, courseId: submission.courseId, assignmentId: submission.assignmentId })
       await loadSubmissions()
     } catch (err) {
       setNotice({ type: 'error', message: err?.response?.data?.message || err.message || 'Could not reopen this assignment.' })
@@ -255,51 +258,21 @@ export default function AssessmentEvaluationsPage() {
                 <Button type="button" onClick={saveEvaluation} loading={saving} loadingLabel="Saving..."><Save size={16} /> Save Evaluation</Button>
               </div>
 
-              <div className="grid gap-3 sm:grid-cols-4">
-                <AdminMetricCard
-                  label="Score"
-                  value={`${selected.obtainedMarks}/${selected.totalMarks}`}
-                  detail="raw marks on this submission"
-                  icon={ClipboardCheck}
-                  tone="blue"
-                  className="min-h-[150px]"
-                  trendLabel="marks awarded"
-                  trendValue="Result"
-                  href="/admin/evaluations"
-                />
-                <AdminMetricCard
-                  label="Percentage"
-                  value={`${selected.percentage}%`}
-                  detail="overall score percentage"
-                  icon={TrendingUp}
-                  tone="teal"
-                  className="min-h-[150px]"
-                  trendLabel="performance indicator"
-                  trendValue="Percent"
-                  href="/admin/evaluations"
-                />
-                <AdminMetricCard
-                  label="Status"
-                  value={selected.status.replaceAll('_', ' ')}
-                  detail="current evaluation state"
-                  icon={CheckCircle2}
-                  tone={selected.status === 'PASSED' ? 'emerald' : selected.status === 'FAILED' ? 'rose' : 'amber'}
-                  className="min-h-[150px]"
-                  trendLabel="workflow state"
-                  trendValue="Live"
-                  href="/admin/evaluations"
-                />
-                <AdminMetricCard
-                  label="Manual items"
-                  value={(selected.questionReviews || []).filter((review) => review.needsManualEvaluation || review.questionType === 'DESCRIPTIVE').length}
-                  detail="questions needing human grading"
-                  icon={Sparkles}
-                  tone="violet"
-                  className="min-h-[150px]"
-                  trendLabel="evaluation queue"
-                  trendValue="Review"
-                  href="/admin/evaluations"
-                />
+              <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+                <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--text-secondary)]">
+                  <span className="rounded-full bg-[var(--bg-elevated)] px-3 py-1 font-semibold text-[var(--text-primary)]">
+                    Score: {selected.obtainedMarks}/{selected.totalMarks}
+                  </span>
+                  <span className="rounded-full bg-[var(--bg-elevated)] px-3 py-1 font-semibold text-[var(--text-primary)]">
+                    Percentage: {selected.percentage}%
+                  </span>
+                  <span className="rounded-full bg-[var(--bg-elevated)] px-3 py-1 font-semibold text-[var(--text-primary)]">
+                    Status: {selected.status.replaceAll('_', ' ')}
+                  </span>
+                  <span className="rounded-full bg-[var(--bg-elevated)] px-3 py-1 font-semibold text-[var(--text-primary)]">
+                    Manual items: {(selected.questionReviews || []).filter((review) => review.needsManualEvaluation || review.questionType === 'DESCRIPTIVE').length}
+                  </span>
+                </div>
               </div>
 
               <div className="grid gap-4">
