@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Button from '../../components/common/Button/Button.jsx'
 import { AdminEmptyState, AdminLoadingState, AdminNotice } from '../../components/admin/AdminUI.jsx'
+import { getCourseTitle } from '../../utils/courseTitle.js'
 import { StudentQuestionCard } from '../../components/questions/QuestionRenderer.jsx'
 import { DIFFICULTY_LABELS, QUESTION_TYPE_LABELS } from '../../components/questions/questionUtils.js'
 import { fetchCourses, fetchQuestions, validateQuestionAnswer } from '../../api/api.js'
@@ -73,7 +74,7 @@ export default function QuestionPracticePage() {
       <div className="theme-card grid gap-3 rounded-lg p-4 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1fr)_220px_180px_auto]">
         <select aria-label="Filter questions by course" className="admin-input" value={filters.courseId} onChange={(event) => setFilters((current) => ({ ...current, courseId: event.target.value, page: 1 }))}>
           <option value="ALL">All courses</option>
-          {courses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}
+          {courses.map((course) => <option key={course.id} value={course.id}>{getCourseTitle(course)}</option>)}
         </select>
         <select aria-label="Filter questions by type" className="admin-input" value={filters.type} onChange={(event) => setFilters((current) => ({ ...current, type: event.target.value, page: 1 }))}>
           <option value="ALL">All question types</option>

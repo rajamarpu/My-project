@@ -203,60 +203,60 @@ function CertificatePreview({ certificate, fullscreen = false }) {
     : 'Date'
 
   return (
-    <article className={`relative overflow-hidden rounded-[18px] border border-[#98d5ff] bg-white p-6 text-slate-700 shadow-soft ${fullscreen ? 'w-full max-w-[1200px] aspect-[16/11]' : 'min-w-[860px]'}`}>
+    <article className={`relative w-full max-w-[1200px] overflow-hidden rounded-[18px] border border-[#98d5ff] bg-white p-4 text-slate-700 shadow-soft sm:p-6 ${fullscreen ? 'aspect-[16/11]' : 'aspect-[16/11]'}`}>
       <div className="absolute inset-4 rounded-[14px] border border-[#f7b28e]" />
       <div className="absolute inset-0 rounded-[18px] border-2 border-[#8fe0db]" />
-      <div className="relative z-10 flex h-full min-h-full flex-col rounded-[12px] p-3 sm:p-4">
+      <div className="relative z-10 flex h-full min-h-full flex-col rounded-[12px] p-2 sm:p-4">
         <div className="flex items-start justify-between gap-4">
           <UptoSkillsMark compact />
-          <div className="pt-2 text-right text-xs font-semibold uppercase tracking-[0.42em] text-[#2962ff]">Verified Certificate</div>
+          <div className="pt-2 text-right text-[0.62rem] font-semibold uppercase tracking-[0.28em] text-[#2962ff] sm:text-xs sm:tracking-[0.42em]">Verified Certificate</div>
         </div>
 
         <div className="flex-1">
-          <div className="mt-14 text-center">
-            <p className="text-sm font-semibold uppercase tracking-[0.5em] text-[#ff4f96]">Certificate of Completion</p>
-            <h2 className="mt-10 text-4xl font-semibold text-[#21b8b1] sm:text-5xl">{studentName}</h2>
-            <div className="mx-auto mt-5 h-px w-60 bg-[#c9ecea]" />
-            <p className="mx-auto mt-10 max-w-4xl text-lg leading-9 text-slate-600">
+          <div className="mt-8 text-center sm:mt-14">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.32em] text-[#ff4f96] sm:text-sm sm:tracking-[0.5em]">Certificate of Completion</p>
+            <h2 className="mt-6 text-2xl font-semibold leading-tight text-[#21b8b1] sm:mt-10 sm:text-5xl">{studentName}</h2>
+            <div className="mx-auto mt-4 h-px w-40 bg-[#c9ecea] sm:mt-5 sm:w-60" />
+            <p className="mx-auto mt-6 max-w-4xl text-sm leading-7 text-slate-600 sm:mt-10 sm:text-lg sm:leading-9">
               This is to certify that <span className="font-semibold text-slate-800">{studentName}</span> has successfully completed the course <span className="font-semibold text-slate-800">"{courseName}"</span> offered by UptoSkills.
             </p>
-            <p className="mx-auto mt-8 max-w-4xl text-lg leading-9 text-slate-600">
+            <p className="mx-auto mt-5 max-w-4xl text-sm leading-7 text-slate-600 sm:mt-8 sm:text-lg sm:leading-9">
               During this course, the learner demonstrated dedication, commitment, and proficiency in the concepts, practical skills, and industry-relevant knowledge covered throughout the program.
             </p>
-            <p className="mx-auto mt-8 max-w-4xl text-lg leading-9 text-slate-600">
+            <p className="mx-auto mt-5 max-w-4xl text-sm leading-7 text-slate-600 sm:mt-8 sm:text-lg sm:leading-9">
               This certificate is awarded in recognition of the successful completion of all required coursework and assessments.
             </p>
           </div>
 
-          <div className="mt-16 grid gap-8 sm:grid-cols-[1fr_auto] sm:items-end">
+          <div className="mt-8 grid gap-4 text-sm sm:mt-16 sm:grid-cols-[1fr_auto] sm:items-end sm:gap-8">
             <div className="space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.42em] text-slate-500">Date of Completion</p>
-              <p className="text-xl font-semibold text-slate-800">{issuedDate}</p>
+              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:text-xs sm:tracking-[0.42em]">Date of Completion</p>
+              <p className="text-base font-semibold text-slate-800 sm:text-xl">{issuedDate}</p>
             </div>
             <div className="text-left sm:text-right">
-              <p className="text-xs font-semibold uppercase tracking-[0.42em] text-slate-500">Certificate ID</p>
-              <p className="text-xl font-semibold text-slate-800">{certificate.certificateNo || 'Certificate Number'}</p>
+              <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:text-xs sm:tracking-[0.42em]">Certificate ID</p>
+              <p className="text-base font-semibold text-slate-800 sm:text-xl">{certificate.certificateNo || 'Certificate Number'}</p>
             </div>
           </div>
 
-          <p className="mx-auto mt-16 max-w-4xl text-center text-lg leading-9 text-slate-600">
+          <p className="mx-auto mt-8 max-w-4xl text-center text-sm leading-7 text-slate-600 sm:mt-16 sm:text-lg sm:leading-9">
             We congratulate {studentName} on this achievement and wish them continued success in their learning journey and future career endeavors.
           </p>
         </div>
 
-        <div className="mt-16 grid gap-8 border-t border-transparent pt-2 sm:grid-cols-3 sm:items-end">
+        <div className="mt-8 grid gap-5 border-t border-transparent pt-2 sm:mt-16 sm:grid-cols-3 sm:items-end sm:gap-8">
           <div className="space-y-2">
             <UptoSkillsMark compact />
             <p className="text-sm font-semibold text-[#1b8f87]">Empowering Learners. Building Futures.</p>
           </div>
           <div className="text-center">
-            <div className="mx-auto mb-3 h-px w-48 bg-slate-900/85" />
-            <p className="font-semibold text-slate-800">Authorized Signature</p>
+            <div className="mx-auto mb-3 h-px w-36 bg-slate-900/85 sm:w-48" />
+            <p className="text-sm font-semibold text-slate-800 sm:text-base">Authorized Signature</p>
             <p className="mt-1 text-sm text-slate-500">UptoSkills</p>
           </div>
           <div className="text-center">
-            <div className="mx-auto mb-3 h-px w-48 bg-slate-900/85" />
-            <p className="font-semibold text-slate-800">Course Instructor</p>
+            <div className="mx-auto mb-3 h-px w-36 bg-slate-900/85 sm:w-48" />
+            <p className="text-sm font-semibold text-slate-800 sm:text-base">Course Instructor</p>
             <p className="mt-1 text-sm text-slate-500">{instructorName}</p>
           </div>
         </div>

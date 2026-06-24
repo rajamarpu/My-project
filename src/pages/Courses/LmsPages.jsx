@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSelector } from 'react-redux'
 import { AlertCircle, ArrowRight, Award, BadgeCheck, BarChart3, Bell, BookOpenCheck, Bookmark, BriefcaseBusiness, CalendarDays, CheckCircle2, ClipboardCheck, Clock3, Compass, CreditCard, FileQuestion, GraduationCap, Headphones, Layers3, LifeBuoy, LockKeyhole, Mail, MessageSquare, MonitorPlay, Newspaper, PlayCircle, RefreshCw, Rocket, Search, Send, Settings, ShieldCheck, Sparkles, Star, Target, Trophy, UserPlus, Users, Video } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
-import { createAdminUser, createCertificate, createCheckout, createCommunityPost, createLiveSession, fetchAdminCourses, fetchAdminLearners, fetchCommunityPosts, fetchCourses, fetchInstructors, fetchInstructorCourses, fetchLearnerReport, fetchLiveSessions, fetchPaymentHistory, fetchPlatformSettings, fetchPortalNotifications, fetchPreferences, fetchSavedCourses, markPortalNotificationRead, removeSavedCourseRequest, reportCommunityPost, savePlatformSettings, savePreferences as savePreferencesRequest, submitContactRequest, uploadAdminCourseAsset } from '../../api/api.js'
+import { createAdminUser, createCertificate, createCheckout, createCommunityPost, createLiveSession, fetchAdminCourses, fetchAdminEnrollments, fetchAdminLearners, fetchCommunityPosts, fetchCourses, fetchInstructors, fetchInstructorCourses, fetchLearnerReport, fetchLiveSessions, fetchPaymentHistory, fetchPlatformSettings, fetchPortalNotifications, fetchPreferences, fetchSavedCourses, markPortalNotificationRead, removeSavedCourseRequest, reportCommunityPost, savePlatformSettings, savePreferences as savePreferencesRequest, submitContactRequest, uploadAdminCourseAsset } from '../../api/api.js'
 import { AdminNotice, AdminPageHeader, FieldError } from '../../components/admin/AdminUI.jsx'
 import MetricCard from '../../components/ui/Dashboard/MetricCard.jsx'
 import { UptoSkillsMark } from '../../components/ui/Navbar/Logo.jsx'
@@ -99,7 +99,7 @@ function MetricStrip({ metrics }) {
           key={metric.label}
           title={metric.label}
           value={metric.value}
-          detail={metric.detail || ''}
+          detail={metric.detail || defaultMetricDetail(metric.label)}
           tone={tones[index % tones.length]}
           variant="learner"
           className="min-h-[150px]"
@@ -108,6 +108,25 @@ function MetricStrip({ metrics }) {
       ))}
     </div>
   )
+}
+
+function defaultMetricDetail(label) {
+  const normalized = String(label || '').toLowerCase().trim()
+  const fallbackDetails = {
+    'learners supported': 'Learners currently supported on the platform',
+    'industry mentors': 'Active instructors and mentors guiding courses',
+    'learning resources': 'Courses, lessons, and study materials',
+    'reported satisfaction': 'Learner feedback collected across the platform',
+    'live now': 'Sessions happening right now',
+    upcoming: 'Sessions scheduled to start next',
+    recordings: 'Recorded sessions available to revisit',
+    'total sessions': 'All sessions shown in this view',
+    'courses enrolled': 'Active course enrollments in your report',
+    'courses completed': 'Enrollments marked as complete',
+    'time studied': 'Total tracked watch time across lessons',
+    'assessment average': 'Average score across submitted assessments',
+  }
+  return fallbackDetails[normalized] || ''
 }
 
 export function AboutPage() {
@@ -133,10 +152,10 @@ export function AboutPage() {
   ]
 
   const metrics = [
-    { value: '500K+', label: 'learners supported' },
-    { value: '1K+', label: 'industry mentors' },
-    { value: '5K+', label: 'learning resources' },
-    { value: '95%', label: 'reported satisfaction' },
+    { value: '500K+', label: 'learners supported', detail: 'Learners currently supported on the platform' },
+    { value: '1K+', label: 'industry mentors', detail: 'Active instructors and mentors guiding courses' },
+    { value: '5K+', label: 'learning resources', detail: 'Courses, lessons, and study materials' },
+    { value: '95%', label: 'reported satisfaction', detail: 'Learner feedback collected across the platform' },
   ]
 
   return (
@@ -2686,7 +2705,12 @@ export function LiveSessionsPage() {
   return <Shell eyebrow={isInstructor ? 'Instructor workspace' : 'Live learning'} title="Live Sessions" description={isInstructor ? 'Schedule classes for assigned courses and manage upcoming or recorded teaching sessions.' : 'Join scheduled classes, review completed sessions, and continue learning from available recordings.'} action={isInstructor ? <Button onClick={() => setShowCreate((value) => !value)}>Schedule session</Button> : null}>
     <div className="space-y-8">
       {isInstructor && showCreate ? <form onSubmit={scheduleSession} className="glass-card grid gap-4 rounded-xl p-6 shadow-soft sm:grid-cols-2"><h2 className="text-2xl font-bold text-[var(--text-primary)] sm:col-span-2">Schedule a live session</h2><label className="admin-label">Title<input className="admin-input" required value={sessionForm.title} onChange={(event) => setSessionForm((current) => ({ ...current, title: event.target.value }))} /></label><label className="admin-label">Course<select className="admin-input" value={sessionForm.courseId} onChange={(event) => setSessionForm((current) => ({ ...current, courseId: event.target.value }))}><option value="">Open session</option>{assignedCourses.map((course) => <option key={course.id} value={course.id}>{course.title}</option>)}</select></label><label className="admin-label">Starts at<input className="admin-input" type="datetime-local" required value={sessionForm.startsAt} onChange={(event) => setSessionForm((current) => ({ ...current, startsAt: event.target.value }))} /></label><label className="admin-label">Ends at<input className="admin-input" type="datetime-local" required value={sessionForm.endsAt} onChange={(event) => setSessionForm((current) => ({ ...current, endsAt: event.target.value }))} /></label><label className="admin-label sm:col-span-2">Meeting URL<input className="admin-input" type="url" required value={sessionForm.meetingUrl} onChange={(event) => setSessionForm((current) => ({ ...current, meetingUrl: event.target.value }))} placeholder="https://" /></label><label className="admin-label sm:col-span-2">Description<textarea className="admin-input min-h-24 resize-y" value={sessionForm.description} onChange={(event) => setSessionForm((current) => ({ ...current, description: event.target.value }))} /></label><div className="flex gap-3 sm:col-span-2"><Button type="submit">Create session</Button><Button type="button" variant="secondary" onClick={() => setShowCreate(false)}>Cancel</Button></div></form> : null}
-      <MetricStrip metrics={[{ value: grouped.ongoing.length, label: 'live now', href: '/live-sessions' }, { value: grouped.upcoming.length, label: 'upcoming', href: '/live-sessions' }, { value: grouped.recorded.length, label: 'recordings', href: '/live-sessions' }, { value: sessions.length, label: 'total sessions', href: '/live-sessions' }]} />
+      <MetricStrip metrics={[
+        { value: grouped.ongoing.length, label: 'live now', detail: 'Sessions happening right now', href: '/live-sessions' },
+        { value: grouped.upcoming.length, label: 'upcoming', detail: 'Sessions scheduled to start next', href: '/live-sessions' },
+        { value: grouped.recorded.length, label: 'recordings', detail: 'Recorded sessions available to revisit', href: '/live-sessions' },
+        { value: sessions.length, label: 'total sessions', detail: 'All sessions shown in this view', href: '/live-sessions' },
+      ]} />
       {state.loading ? <div className="grid gap-4 md:grid-cols-2">{[0, 1, 2, 3].map((item) => <span key={item} className="skeleton h-52 rounded-xl" />)}</div> : null}
       {state.error ? <div className="glass-card p-8 text-center"><AlertCircle className="mx-auto text-red-500" /><p className="mt-3 text-[var(--text-secondary)]">{state.error}</p><Button className="mt-4" onClick={load}><RefreshCw size={16} /> Retry</Button></div> : null}
       {!state.loading && !state.error && ['ongoing', 'upcoming', 'recorded', 'completed'].map((group) => grouped[group].length ? <section key={group}>
@@ -2734,7 +2758,7 @@ export function LearnerReportsPage() {
   return <Shell eyebrow="Learning analytics" title="Your Learning Report" description="Track course completion, study time, assessment performance, and earned credentials.">
     {state.loading ? <div className="space-y-5"><span className="skeleton block h-28 rounded-xl" /><span className="skeleton block h-72 rounded-xl" /></div> : null}
     {state.error ? <div className="glass-card p-8 text-center"><p className="text-[var(--text-secondary)]">{state.error}</p><Button className="mt-4" onClick={load}>Retry</Button></div> : null}
-    {!state.loading && !state.error && report ? <div className="space-y-8"><MetricStrip metrics={[{ value: summary.enrolled || 0, label: 'courses enrolled', href: '/dashboard' }, { value: summary.completed || 0, label: 'courses completed', href: '/certificates' }, { value: `${Math.round((summary.watchedSeconds || 0) / 3600)}h`, label: 'time studied', href: '/dashboard' }, { value: `${summary.assessmentAverage || 0}%`, label: 'assessment average', href: '/assignments' }]} /><section className="glass-card rounded-xl p-6"><h2 className="text-2xl font-bold text-[var(--text-primary)]">Course progress</h2><div className="mt-5 space-y-4">{report.courses?.map((item) => <div key={item.id} className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4"><div className="flex justify-between gap-4"><p className="font-bold text-[var(--text-primary)]">{item.course.title}</p><span className="font-bold text-[var(--accent-primary)]">{item.completionPct}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--border-color)]"><span className="block h-full rounded-full bg-[var(--accent-primary)]" style={{ width: `${Math.min(100, item.completionPct)}%` }} /></div></div>)}{!report.courses?.length ? <p className="text-sm text-[var(--text-secondary)]">Enroll in a course to begin building your report.</p> : null}</div></section></div> : null}
+    {!state.loading && !state.error && report ? <div className="space-y-8"><MetricStrip metrics={[{ value: summary.enrolled || 0, label: 'courses enrolled', detail: 'Active course enrollments in your report', href: '/dashboard' }, { value: summary.completed || 0, label: 'courses completed', detail: 'Enrollments marked as complete', href: '/certificates' }, { value: `${Math.round((summary.watchedSeconds || 0) / 3600)}h`, label: 'time studied', detail: 'Total tracked watch time across lessons', href: '/dashboard' }, { value: `${summary.assessmentAverage || 0}%`, label: 'assessment average', detail: 'Average score across submitted assessments', href: '/assignments' }]} /><section className="glass-card rounded-xl p-6"><h2 className="text-2xl font-bold text-[var(--text-primary)]">Course progress</h2><div className="mt-5 space-y-4">{report.courses?.map((item) => <div key={item.id} className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4"><div className="flex justify-between gap-4"><p className="font-bold text-[var(--text-primary)]">{item.course.title}</p><span className="font-bold text-[var(--accent-primary)]">{item.completionPct}%</span></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--border-color)]"><span className="block h-full rounded-full bg-[var(--accent-primary)]" style={{ width: `${Math.min(100, item.completionPct)}%` }} /></div></div>)}{!report.courses?.length ? <p className="text-sm text-[var(--text-secondary)]">Enroll in a course to begin building your report.</p> : null}</div></section></div> : null}
   </Shell>
 }
 
@@ -3319,19 +3343,19 @@ export function AdminManageLearnersPage() {
 }
 
 export function AdminGenerateCertificatePage() {
-  const today = new Date().toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
   const isoToday = new Date().toISOString().slice(0, 10)
   const [certificate, setCertificate] = useState({
     userId: '',
     courseId: '',
     studentName: 'Student Name',
     courseName: 'Course Name',
-    completionDate: today,
+    completionDate: isoToday,
     certificateNo: `UPTO-${new Date().getFullYear()}-0001`,
     instructorName: 'Course Instructor',
   })
   const [learners, setLearners] = useState([])
   const [courses, setCourses] = useState([])
+  const [enrollments, setEnrollments] = useState([])
   const [status, setStatus] = useState({ type: '', message: '' })
   const [saving, setSaving] = useState(false)
   const updateCertificate = (key, value) => setCertificate((current) => ({ ...current, [key]: value }))
@@ -3344,9 +3368,11 @@ export function AdminGenerateCertificatePage() {
           fetchAdminLearners().catch(() => ({ data: { learners: [] } })),
           fetchCourses().catch(() => ({ data: { courses: [] } })),
         ])
+        const enrollmentsRes = await fetchAdminEnrollments().catch(() => ({ data: { enrollments: [] } }))
         if (!mounted) return
         setLearners(learnersRes.data?.learners || learnersRes.data?.users || [])
         setCourses(coursesRes.data?.courses || [])
+        setEnrollments(enrollmentsRes.data?.enrollments || [])
       } catch {
         if (mounted) setStatus({ type: 'error', message: 'Could not load learners or courses.' })
       }
@@ -3373,13 +3399,36 @@ export function AdminGenerateCertificatePage() {
       courseId,
       courseName: course?.title || current.courseName,
       instructorName: course?.createdBy?.name || current.instructorName,
+      userId: current.userId && isLearnerEligibleForCourse(current.userId, courseId) ? current.userId : '',
     }))
   }
+
+  function isLearnerEligibleForCourse(userId, courseId) {
+    if (!userId || !courseId) return false
+    return enrollments.some((enrollment) =>
+      String(enrollment.userId || enrollment.user?.id) === String(userId)
+      && String(enrollment.courseId || enrollment.course?.id) === String(courseId))
+  }
+
+  const eligibleLearners = useMemo(() => {
+    if (!certificate.courseId) return learners
+    const enrolledLearnerIds = new Set(
+      enrollments
+        .filter((enrollment) => String(enrollment.courseId || enrollment.course?.id) === String(certificate.courseId))
+        .map((enrollment) => String(enrollment.userId || enrollment.user?.id))
+        .filter(Boolean),
+    )
+    return learners.filter((learner) => enrolledLearnerIds.has(String(learner.id)))
+  }, [certificate.courseId, enrollments, learners])
 
   async function generateCertificate(event) {
     event.preventDefault()
     if (!certificate.userId || !certificate.courseId) {
       setStatus({ type: 'error', message: 'Select a learner and course before generating.' })
+      return
+    }
+    if (!isLearnerEligibleForCourse(certificate.userId, certificate.courseId)) {
+      setStatus({ type: 'error', message: 'The selected learner is not enrolled in this course. Choose an enrolled learner or enroll them first.' })
       return
     }
     try {
@@ -3403,7 +3452,7 @@ export function AdminGenerateCertificatePage() {
         instructorName: issued?.course?.createdBy?.name || current.instructorName,
         certificateNo: issued?.certificateNo || current.certificateNo,
         completionDate: issued?.completionDate
-          ? new Date(issued.completionDate).toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
+          ? new Date(issued.completionDate).toISOString().slice(0, 10)
           : current.completionDate,
       }))
       setStatus({ type: 'success', message: 'Certificate generated and saved to PostgreSQL.' })
@@ -3445,7 +3494,7 @@ export function AdminGenerateCertificatePage() {
             Select learner
             <select className="admin-input" value={certificate.userId} onChange={(event) => selectLearner(event.target.value)}>
               <option value="">Choose learner</option>
-              {learners.map((learner) => (
+              {eligibleLearners.map((learner) => (
                 <option key={learner.id} value={learner.id}>{learner.name || learner.fullName || learner.email}</option>
               ))}
             </select>
@@ -3491,59 +3540,60 @@ export function AdminGenerateCertificatePage() {
 }
 
 function CertificatePreview({ certificate }) {
+  const completionDate = formatCertificateDate(certificate.completionDate)
   return (
-    <article className="relative min-w-[860px] overflow-hidden rounded-lg border border-cyan-200 bg-white p-10 text-slate-950 shadow-soft">
+    <article className="relative w-full max-w-[1200px] overflow-hidden rounded-lg border border-cyan-200 bg-white p-4 text-slate-950 shadow-soft sm:p-10">
       <div className="absolute inset-4 rounded-lg border-2 border-teal-500/35" />
       <div className="absolute inset-8 rounded-lg border border-orange-400/35" />
       <div className="relative z-10">
-        <div className="flex items-center justify-between gap-6">
+        <div className="flex flex-wrap items-center justify-between gap-4 sm:gap-6">
           <UptoSkillsWordmark />
-          <div className="text-right text-xs font-semibold uppercase tracking-[0.26em] text-cyan-700">Verified Certificate</div>
+          <div className="text-right text-[0.62rem] font-semibold uppercase tracking-[0.14em] text-cyan-700 sm:text-xs sm:tracking-[0.26em]">Verified Certificate</div>
         </div>
 
-        <div className="mt-12 text-center">
-          <p className="text-sm font-semibold uppercase tracking-[0.36em] text-orange-600">Certificate of Completion</p>
-          <h2 className="mt-8 text-4xl font-semibold text-slate-950">{certificate.studentName || 'Student Name'}</h2>
-          <div className="mx-auto mt-4 h-px w-72 bg-gradient-to-r from-transparent via-teal-500 to-transparent" />
-          <p className="mx-auto mt-8 max-w-3xl text-lg leading-8 text-slate-700">
+        <div className="mt-8 text-center sm:mt-12">
+          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.24em] text-orange-600 sm:text-sm sm:tracking-[0.36em]">Certificate of Completion</p>
+          <h2 className="mt-6 text-2xl font-semibold text-slate-950 sm:mt-8 sm:text-4xl">{certificate.studentName || 'Student Name'}</h2>
+          <div className="mx-auto mt-4 h-px w-40 bg-gradient-to-r from-transparent via-teal-500 to-transparent sm:w-72" />
+          <p className="mx-auto mt-6 max-w-3xl text-sm leading-7 text-slate-700 sm:mt-8 sm:text-lg sm:leading-8">
             This is to certify that <span className="font-semibold text-slate-950">{certificate.studentName || 'Student Name'}</span> has successfully completed the course <span className="font-semibold text-slate-950">"{certificate.courseName || 'Course Name'}"</span> offered by UptoSkills.
           </p>
-          <p className="mx-auto mt-5 max-w-3xl leading-7 text-slate-600">
+          <p className="mx-auto mt-4 max-w-3xl text-sm leading-7 text-slate-600 sm:mt-5">
             During this course, the learner demonstrated dedication, commitment, and proficiency in the concepts, practical skills, and industry-relevant knowledge covered throughout the program.
           </p>
-          <p className="mx-auto mt-5 max-w-3xl leading-7 text-slate-600">
+          <p className="mx-auto mt-4 max-w-3xl text-sm leading-7 text-slate-600 sm:mt-5">
             This certificate is awarded in recognition of the successful completion of all required coursework and assessments.
           </p>
         </div>
 
-        <div className="mt-10 grid grid-cols-2 gap-8 text-sm text-slate-700">
+        <div className="mt-8 grid gap-4 text-sm text-slate-700 sm:mt-10 sm:grid-cols-2 sm:gap-8">
           <div>
-            <p className="font-semibold uppercase tracking-[0.18em] text-slate-500">Date of Completion</p>
-            <p className="mt-2 text-lg font-semibold text-slate-950">{certificate.completionDate || 'Date'}</p>
+            <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:text-xs sm:tracking-[0.18em]">Date of Completion</p>
+            <p className="mt-1 text-base font-semibold text-slate-950 sm:mt-2 sm:text-lg">{completionDate || 'Date'}</p>
           </div>
-          <div className="text-right">
-            <p className="font-semibold uppercase tracking-[0.18em] text-slate-500">Certificate ID</p>
-            <p className="mt-2 text-lg font-semibold text-slate-950">{certificate.certificateNo || 'Certificate Number'}</p>
+          <div className="text-left sm:text-right">
+            <p className="text-[0.62rem] font-semibold uppercase tracking-[0.12em] text-slate-500 sm:text-xs sm:tracking-[0.18em]">Certificate ID</p>
+            <p className="mt-1 text-base font-semibold text-slate-950 sm:mt-2 sm:text-lg">{certificate.certificateNo || 'Certificate Number'}</p>
           </div>
         </div>
 
-        <p className="mx-auto mt-10 max-w-3xl text-center leading-7 text-slate-600">
+        <p className="mx-auto mt-8 max-w-3xl text-center text-sm leading-7 text-slate-600 sm:mt-10">
           We congratulate {certificate.studentName || 'Student Name'} on this achievement and wish them continued success in their learning journey and future career endeavors.
         </p>
 
-        <div className="mt-12 flex items-end justify-between gap-8">
+        <div className="mt-8 flex flex-col gap-6 sm:mt-12 sm:flex-row sm:items-end sm:justify-between sm:gap-8">
           <div>
             <UptoSkillsWordmark compact />
             <p className="mt-2 text-sm font-semibold text-teal-700">Empowering Learners. Building Futures.</p>
           </div>
-          <div className="w-64 text-center">
+          <div className="w-full text-center sm:w-64">
             <div className="mb-3 h-px bg-slate-900" />
-            <p className="font-semibold text-slate-950">Authorized Signature</p>
+            <p className="text-sm font-semibold text-slate-950 sm:text-base">Authorized Signature</p>
             <p className="mt-1 text-sm text-slate-600">UptoSkills</p>
           </div>
-          <div className="w-64 text-center">
+          <div className="w-full text-center sm:w-64">
             <div className="mb-3 h-px bg-slate-900" />
-            <p className="font-semibold text-slate-950">Course Instructor</p>
+            <p className="text-sm font-semibold text-slate-950 sm:text-base">Course Instructor</p>
             <p className="mt-1 text-sm text-slate-600">{certificate.instructorName || 'Course Instructor'}</p>
           </div>
         </div>
@@ -3552,13 +3602,18 @@ function CertificatePreview({ certificate }) {
   )
 }
 
+function formatCertificateDate(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return String(value)
+  return date.toLocaleDateString('en-IN', { year: 'numeric', month: 'long', day: 'numeric' })
+}
+
 function UptoSkillsWordmark({ compact = false }) {
   return <UptoSkillsMark compact={compact} />
 }
 
-export function AdminReportsPage() {
-  return <Shell eyebrow="Admin" title="Analytics reports" description="A protected analytics surface for platform health and learning operations."><CardGrid items={[{ icon: BarChart3, title: 'Revenue', text: 'Connect billing data here.' }, { icon: Users, title: 'Learners', text: 'Track active learners and growth.' }, { icon: CheckCircle2, title: 'Completion', text: 'Monitor course outcomes.' }]} /></Shell>
-}
+export { default as AdminReportsPage } from '../Admin/AdminReportsPage.jsx'
 
 
 

@@ -27,6 +27,13 @@ const benefits = [
   { title: 'Career readiness', text: 'Connect practical skills to employability outcomes.', icon: BriefcaseBusiness },
 ]
 
+const journeySteps = [
+  { title: 'Discover', text: 'Choose the right course and learning path.', icon: Compass },
+  { title: 'Learn', text: 'Follow structured lessons with expert guidance.', icon: BookOpen },
+  { title: 'Practice', text: 'Complete assignments and skill assessments.', icon: Target },
+  { title: 'Prove', text: 'Earn certificates and visible progress records.', icon: Award },
+]
+
 function enrollmentCount(course) {
   return Number(course.enrollmentCount ?? course._count?.enrollments ?? course.enrollments?.length ?? 0)
 }
@@ -93,17 +100,19 @@ export default function LandingPage() {
               <Sparkles size={16} />
               Practical learning for real careers
             </span>
-            <h1 className="mt-5 max-w-2xl text-[clamp(2.2rem,4vw,4rem)] font-black leading-[0.98] tracking-[-0.06em] text-[var(--text-primary)]">
-              Build skills.
-              {' '}
-              <span className="upto-brand-text">Track progress.</span>
-              {' '}
-              <span className="block">Move your career forward.</span>
-            </h1>
-            <p className="mt-5 max-w-2xl text-[0.98rem] leading-7 text-[var(--text-secondary)] sm:text-[1.03rem]">
-              Learn through structured courses, practical assignments, assessments, expert guidance, and certificates designed for employability.
-            </p>
-            <div className="mt-7 flex flex-wrap gap-3">
+            <div className="mt-5 max-w-2xl space-y-4">
+              <h1 className="text-[clamp(2.35rem,4.2vw,4.25rem)] font-black leading-[0.94] tracking-[-0.07em] text-[var(--text-primary)]">
+                Build skills.
+                {' '}
+                <span className="upto-brand-text">Track progress.</span>
+                {' '}
+                <span className="block">Move your career forward.</span>
+              </h1>
+              <p className="max-w-2xl text-[1rem] leading-7 text-[var(--text-secondary)] sm:text-[1.05rem]">
+                Learn through structured courses, practical assignments, assessments, expert guidance, and certificates designed for employability.
+              </p>
+            </div>
+            <div className="mt-8 flex flex-wrap gap-3">
               <Button onClick={startLearning} className="min-h-12">
                 {auth.user ? 'Open dashboard' : 'Start learning'}
                 <ArrowRight size={17} />
@@ -112,13 +121,17 @@ export default function LandingPage() {
                 <Compass size={17} />
                 Explore courses
               </Button>
+              <Button variant="secondary" onClick={() => navigate('/dashboard')} className="min-h-12">
+                <GraduationCap size={17} />
+                View progress
+              </Button>
             </div>
-            <div className="mt-7 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               {heroStats.map((item) => (
-                <div key={item.label} className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-elevated)]/85 p-3.5 shadow-soft backdrop-blur">
+                <div key={item.label} className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-elevated)]/88 p-4 shadow-soft backdrop-blur">
                   <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">{item.label}</p>
-                  <p className="mt-1.5 text-[1.55rem] font-black leading-none text-[var(--text-primary)]">{item.value}</p>
-                  <p className="mt-1 text-xs text-[var(--text-muted)]">Live platform snapshot</p>
+                  <p className="mt-1.5 text-[1.5rem] font-black leading-none text-[var(--text-primary)]">{item.value}</p>
+                  <p className="mt-1.5 text-xs text-[var(--text-muted)]">Live platform snapshot</p>
                 </div>
               ))}
             </div>
@@ -144,15 +157,17 @@ export default function LandingPage() {
           </div>
 
           <div className="mt-5 grid gap-3">
-            {[
-              ['Discover', 'Choose the right course and learning path.', Compass],
-              ['Learn', 'Follow structured lessons with expert guidance.', BookOpen],
-              ['Practice', 'Complete assignments and skill assessments.', Target],
-              ['Prove', 'Earn certificates and visible progress records.', Award],
-            ].map(([title, text, Icon], index) => (
-              <div key={title} className="theme-subcard flex items-center gap-3 rounded-xl p-3">
-                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[var(--accent-soft)] text-[var(--accent-primary)]"><Icon size={18} /></span>
-                <span className="min-w-0 flex-1"><strong className="block text-sm text-[var(--text-primary)]">{index + 1}. {title}</strong><span className="mt-0.5 block text-xs leading-5 text-[var(--text-secondary)]">{text}</span></span>
+            {journeySteps.map((step, index) => (
+              <div key={step.title} className="theme-subcard grid grid-cols-[auto,minmax(0,1fr),auto] items-center gap-3 rounded-2xl p-4">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[var(--accent-soft)] text-[var(--accent-primary)]">
+                  <step.icon size={18} />
+                </span>
+                <span className="min-w-0">
+                  <strong className="block text-sm text-[var(--text-primary)]">
+                    {index + 1}. {step.title}
+                  </strong>
+                  <span className="mt-0.5 block text-xs leading-5 text-[var(--text-secondary)]">{step.text}</span>
+                </span>
                 <CheckCircle2 size={17} className="shrink-0 text-[var(--color-success)]" />
               </div>
             ))}
@@ -165,8 +180,8 @@ export default function LandingPage() {
               className="mt-5 rounded-2xl border border-[var(--accent-primary)]/20 bg-[var(--accent-soft)] p-4 text-left transition hover:border-[var(--accent-primary)]"
             >
               <span className="text-xs font-black uppercase tracking-[0.14em] text-[var(--accent-primary)]">Featured course</span>
-              <span className="mt-2 flex items-center justify-between gap-3">
-                <strong className="truncate text-sm text-[var(--text-primary)]">{featuredCourse.title}</strong>
+              <span className="mt-2 flex items-start justify-between gap-3">
+                <strong className="line-clamp-2 text-sm leading-6 text-[var(--text-primary)]">{featuredCourse.title}</strong>
                 <ArrowRight size={16} className="shrink-0 text-[var(--accent-primary)]" />
               </span>
               <p className="mt-2 text-xs text-[var(--text-secondary)]">
@@ -174,6 +189,9 @@ export default function LandingPage() {
                 {' '}
                 {enrollmentCount(featuredCourse) ? `· ${enrollmentCount(featuredCourse)} learners` : ''}
               </p>
+              <span className="mt-4 block h-2 overflow-hidden rounded-full bg-[var(--bg-elevated)]">
+                <span className="block h-full w-[72%] rounded-full bg-[var(--brand-gradient)]" />
+              </span>
             </button>
           ) : null}
 

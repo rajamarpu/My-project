@@ -3,12 +3,13 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { CheckCircle2, ClipboardList, Star, Heart, Users, Clock, BarChart3, FileText, MessageSquare } from 'lucide-react'
 import { useDispatch, useSelector } from 'react-redux'
 import Button from '../../components/common/Button/Button.jsx'
-import { createCheckout, enrollCourseRequest, fetchCourseById, fetchCourseInstructors, fetchSavedCourses, removeSavedCourseRequest, saveCourseRequest, unenrollCourseRequest } from '../../api/api.js'
+import { createCheckout, enrollCourseRequest, fetchCourseById, fetchCourseInstructors, fetchSavedCourses, invalidateApiCachePrefix, readApiCache, removeSavedCourseRequest, saveCourseRequest, unenrollCourseRequest } from '../../api/api.js'
 import { toggleWishlist, setWishlist, enrollCourse, unenrollCourse } from '../../store/slices/authSlice.js'
 import { resolveCourseThumbnail } from '../../utils/courseThumbnail.js'
 import { formatRupeesFromPaise } from '../../utils/money.js'
 import { getCourseAssignments, getCourseLessons, getCourseModules, getLessonOutcomes } from '../../utils/courseContent.js'
 import { notifyDashboardRefresh } from '../../utils/dashboardRefresh.js'
+import { getCourseTitle } from '../../utils/courseTitle.js'
 
 export default function CourseDetailPage() {
   const { courseId } = useParams()
@@ -16,12 +17,12 @@ export default function CourseDetailPage() {
   const dispatch = useDispatch()
   const auth = useSelector((state) => state.auth)
   const wishlist = useSelector((state) => state.auth.wishlist)
-  const [course, setCourse] = useState(null)
-  const [instructors, setInstructors] = useState([])
+  const [course, setCourse] = useState(() => readApiCache(`course:${courseId}`)?.course || null)
+  const [instructors, setInstructors] = useState(() => readApiCache(`course-instructors:${courseId}`)?.instructors || [])
   const [selectedInstructorId, setSelectedInstructorId] = useState('')
   const [switchPanelOpen, setSwitchPanelOpen] = useState(false)
   const [notice, setNotice] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => !readApiCache(`course:${courseId}`)?.course)
   const [enrollmentBusy, setEnrollmentBusy] = useState(false)
   const [error, setError] = useState('')
   const [activeTab, setActiveTab] = useState('overview')
@@ -65,6 +66,7 @@ export default function CourseDetailPage() {
   const isEnrolled = Boolean(course?.isEnrolled)
   const priceCents = Number(course?.priceCents || 0)
   const priceLabel = priceCents > 0 ? formatRupeesFromPaise(priceCents) : 'Free'
+  const courseTitle = getCourseTitle(course)
 
   const handleEnroll = async ({ openPlayer = false, instructorId = null } = {}) => {
     if (!auth.user) {
@@ -77,6 +79,9 @@ export default function CourseDetailPage() {
       const payload = Number.isInteger(instructorId) ? { instructorId } : {}
       const response = await enrollCourseRequest(course.id, payload)
       dispatch(enrollCourse(response.data.enrollment.courseId))
+      invalidateApiCachePrefix('learner-dashboard')
+      invalidateApiCachePrefix('courses')
+      invalidateApiCachePrefix(`course:${course.id}`)
       setCourse((current) => {
         const currentCount = Number(current?.enrollmentCount ?? current?._count?.enrollments ?? 0)
         const nextCount = response.data?.enrollmentCount ?? (current?.isEnrolled ? currentCount : currentCount + 1)
@@ -91,6 +96,9 @@ export default function CourseDetailPage() {
         try {
           const response = await enrollCourseRequest(course.id)
           dispatch(enrollCourse(response.data.enrollment.courseId))
+          invalidateApiCachePrefix('learner-dashboard')
+          invalidateApiCachePrefix('courses')
+          invalidateApiCachePrefix(`course:${course.id}`)
           setCourse((current) => {
             const currentCount = Number(current?.enrollmentCount ?? current?._count?.enrollments ?? 0)
             const nextCount = response.data?.enrollmentCount ?? (current?.isEnrolled ? currentCount : currentCount + 1)
@@ -131,6 +139,9 @@ export default function CourseDetailPage() {
       setNotice('')
       const response = await unenrollCourseRequest(course.id)
       dispatch(unenrollCourse(course.id))
+      invalidateApiCachePrefix('learner-dashboard')
+      invalidateApiCachePrefix('courses')
+      invalidateApiCachePrefix(`course:${course.id}`)
       const nextCount = response.data?.enrollmentCount ?? Math.max(0, Number(enrollmentCount) - 1)
       setCourse((current) => ({ ...current, isEnrolled: false, enrollmentCount: nextCount, _count: { ...(current?._count || {}), enrollments: nextCount } }))
       notifyDashboardRefresh({ source: 'course-unenroll', courseId: course.id })
@@ -149,6 +160,7 @@ export default function CourseDetailPage() {
       dispatch(toggleWishlist(course.id))
       if (isSaved) await removeSavedCourseRequest(course.id)
       else await saveCourseRequest(course.id)
+      invalidateApiCachePrefix('saved-courses')
     } catch (err) {
       dispatch(toggleWishlist(course.id))
       setError(err?.response?.data?.message || 'Could not update saved courses.')
@@ -190,7 +202,7 @@ export default function CourseDetailPage() {
         <div className="grid gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(24rem,0.85fr)] lg:items-start">
           <div className="space-y-4">
             <p className="text-sm uppercase tracking-[0.3em] text-[var(--accent-primary)]">Course detail</p>
-            <h1 className="text-4xl font-semibold text-[var(--text-primary)]">{course.title}</h1>
+            <h1 className="text-4xl font-semibold text-[var(--text-primary)]">{courseTitle}</h1>
             <p className="max-w-2xl text-[var(--text-secondary)]">{course.description}</p>
 
             <div className="flex flex-wrap items-center gap-3 pt-1">
@@ -271,7 +283,7 @@ export default function CourseDetailPage() {
 
           <div className="platform-card space-y-3 p-4">
             <div className="aspect-[16/9] overflow-hidden rounded-xl bg-slate-900 relative">
-              <img src={cover} alt={course.title} className="h-full w-full object-contain" />
+              <img src={cover} alt={courseTitle} className="h-full w-full object-contain" />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 to-transparent" />
               <div className="absolute bottom-4 left-4 flex items-center gap-3">
                 <img

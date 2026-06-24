@@ -122,7 +122,7 @@ export default function UserPage() {
   const readinessCount = accountReadiness.filter((item) => item[1]).length
   const readinessPct = Math.round((readinessCount / accountReadiness.length) * 100)
 
-  const activeCourseCount = Array.isArray(enrolledCourses) ? enrolledCourses.length : 0
+  const activeCourseCount = Number(learningData.analytics?.enrolledCourseCount ?? (Array.isArray(enrolledCourses) ? enrolledCourses.length : 0))
   const completedCourseCount = Number(user?.completedCourses || user?.completedCourseCount || 0)
   const certificatesForProfile = learningData.certificates.filter((certificate) => !isAdminProfile || Number(certificate.user?.id || certificate.userId) === Number(user?.id))
   const certificateCount = Number(learningData.analytics?.certificates ?? certificatesForProfile.length ?? user?.certificates ?? user?.certificateCount ?? 0)

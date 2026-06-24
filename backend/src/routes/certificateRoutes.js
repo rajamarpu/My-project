@@ -59,6 +59,14 @@ router.post('/', requireAuth, requireRole('admin'), async (req, res, next) => {
     if (!learner) return res.status(404).json({ success: false, message: 'Learner not found.' })
     if (!course) return res.status(404).json({ success: false, message: 'Course not found.' })
 
+    const enrollmentCount = await prisma.enrollment.count({ where: { userId, courseId } })
+    if (!enrollmentCount) {
+      return res.status(409).json({
+        success: false,
+        message: 'This learner is not enrolled in the selected course. Enroll the learner before issuing a certificate.',
+      })
+    }
+
     const certificateNo = String(req.body.certificateNo || '').trim() || `UPTO-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`
     const verificationCode = String(req.body.verificationCode || '').trim() || buildVerificationCode()
     const issueMetadata = {

@@ -3,9 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { useSelector } from 'react-redux'
 import { CheckCircle2, ClipboardList, Eye, FileText, LockKeyhole, RotateCcw, Timer, XCircle } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
-import { fetchCourseById, fetchLearnerDashboard, fetchMyAssessmentSubmissions, fetchQuestions, submitStructuredAssessment } from '../../api/api.js'
+import { fetchCourseById, fetchLearnerDashboard, fetchMyAssessmentSubmissions, fetchQuestions, invalidateApiCachePrefix, submitStructuredAssessment } from '../../api/api.js'
 import { getCourseAssignments } from '../../utils/courseContent.js'
 import { notifyDashboardRefresh } from '../../utils/dashboardRefresh.js'
+import { getCourseTitle } from '../../utils/courseTitle.js'
 
 export default function AssessmentsPage() {
   const { courseId } = useParams()
@@ -82,20 +83,8 @@ export default function AssessmentsPage() {
     const timer = window.setTimeout(() => {
       void loadData()
     }, 0)
-    const refreshInterval = window.setInterval(() => {
-      void loadData()
-    }, 30000)
-    const handleFocus = () => { void loadData() }
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') void loadData()
-    }
-    window.addEventListener('focus', handleFocus)
-    document.addEventListener('visibilitychange', handleVisibility)
     return () => {
       window.clearTimeout(timer)
-      window.clearInterval(refreshInterval)
-      window.removeEventListener('focus', handleFocus)
-      document.removeEventListener('visibilitychange', handleVisibility)
     }
   }, [loadData])
 
@@ -193,6 +182,9 @@ export default function AssessmentsPage() {
         assignmentId: item.id,
         answers: payload,
       })
+      invalidateApiCachePrefix('assessment-submissions')
+      invalidateApiCachePrefix('learner-dashboard')
+      invalidateApiCachePrefix('user-analytics')
       setSelectedReview(response.data.submission)
       setAnswers((current) => clearItemAnswers(current, item))
       setMessage('Assignment submitted successfully. Review is ready.')
@@ -291,7 +283,7 @@ export default function AssessmentsPage() {
                   <div className="flex flex-wrap gap-2">
                     <StatusBadge icon={canAttempt ? ClipboardList : LockKeyhole} label={canAttempt ? 'Open assignment' : 'Closed'} tone={canAttempt ? 'open' : 'closed'} />
                     {reopened ? <StatusBadge icon={RotateCcw} label="Retake opened" tone="reopened" /> : null}
-                    {item.course?.title ? <StatusBadge icon={ClipboardList} label={item.course.title} tone="open" /> : null}
+                    {getCourseTitle(item.course, '') ? <StatusBadge icon={ClipboardList} label={getCourseTitle(item.course)} tone="open" /> : null}
                   </div>
                   <h2 className="mt-3 text-xl font-semibold text-slate-950 dark:text-white">{item.title}</h2>
                   <p className="mt-2 whitespace-pre-line text-slate-600 dark:text-slate-300">{item.prompt}</p>

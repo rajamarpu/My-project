@@ -5,24 +5,25 @@ import { motion } from 'framer-motion'
 import { fadeInUp } from '../../utils/animationVariants.js'
 import Button from '../../components/common/Button/Button.jsx'
 import ChatInterface from '../../components/ui/Dashboard/ChatInterface.jsx'
-import { fetchCourseById, fetchCourseInstructors, fetchUserProgress, switchCourseInstructor, updateUserProgress } from '../../api/api.js'
+import { fetchCourseById, fetchCourseInstructors, fetchUserProgress, readApiCache, switchCourseInstructor, updateUserProgress } from '../../api/api.js'
 import { getCourseAssignments, getCourseLessons, getCourseModules, getLessonKind, getLessonOutcomes, getLessonResources, lessonMeta } from '../../utils/courseContent.js'
 import { notifyDashboardRefresh } from '../../utils/dashboardRefresh.js'
+import { getCourseTitle } from '../../utils/courseTitle.js'
 import { ChevronLeft, ChevronRight, Download, FileText } from 'lucide-react'
 
 export default function LearningPlayerPage() {
   const { courseId } = useParams()
   const navigate = useNavigate()
   const auth = useSelector((state) => state.auth)
-  const [course, setCourse] = useState(null)
+  const [course, setCourse] = useState(() => readApiCache(`course:${courseId}`)?.course || null)
   const [enrollment, setEnrollment] = useState(null)
-  const [instructors, setInstructors] = useState([])
+  const [instructors, setInstructors] = useState(() => readApiCache(`course-instructors:${courseId}`)?.instructors || [])
   const [lessonProgress, setLessonProgress] = useState([])
   const [activeLessonIndex, setActiveLessonIndex] = useState(0)
   const [selectedInstructorId, setSelectedInstructorId] = useState('')
   const [switchingInstructor, setSwitchingInstructor] = useState(false)
   const [switchPanelOpen, setSwitchPanelOpen] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(() => !readApiCache(`course:${courseId}`)?.course)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [playbackSpeed, setPlaybackSpeed] = useState('1')
@@ -76,6 +77,7 @@ export default function LearningPlayerPage() {
   const activeOutcomes = getLessonOutcomes(activeLesson)
   const activeVideoUrl = resolveActiveLessonVideoUrl(activeLesson, activeInstructor)
   const certificateReady = progressPct >= 100 && lessons.length > 0
+  const courseTitle = getCourseTitle(course)
 
   useEffect(() => {
     if (!course?.id || !activeLesson?.id) return
@@ -159,7 +161,7 @@ export default function LearningPlayerPage() {
   }
 
   if (course && !course.isEnrolled && !enrollment) {
-    return <section className="glass-card rounded-2xl p-8 text-center shadow-glow"><h1 className="text-3xl font-black text-[var(--text-primary)]">Enrollment required</h1><p className="mx-auto mt-3 max-w-xl text-[var(--text-secondary)]">Enroll in {course.title} before opening its lessons, assessments, notes, and community workspace.</p><div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row"><Button onClick={() => navigate(`/course/${course.id}`)}>View enrollment options</Button><Button variant="secondary" onClick={() => navigate('/explore')}>Back to courses</Button></div></section>
+    return <section className="glass-card rounded-2xl p-8 text-center shadow-glow"><h1 className="text-3xl font-black text-[var(--text-primary)]">Enrollment required</h1><p className="mx-auto mt-3 max-w-xl text-[var(--text-secondary)]">Enroll in {courseTitle} before opening its lessons, assessments, notes, and community workspace.</p><div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row"><Button onClick={() => navigate(`/course/${course.id}`)}>View enrollment options</Button><Button variant="secondary" onClick={() => navigate('/explore')}>Back to courses</Button></div></section>
   }
 
   return (
@@ -167,9 +169,9 @@ export default function LearningPlayerPage() {
       <nav className="sticky top-[76px] z-20 flex flex-col gap-3 rounded-xl border border-[var(--border-color)] bg-[var(--navbar-bg)] p-3 shadow-soft backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between" aria-label="Course player navigation">
         <div className="flex min-w-0 items-center gap-2">
           <Button variant="secondary" onClick={() => navigate(`/course/${course.id}`)}><ChevronLeft size={16} /> Course details</Button>
-          <span className="hidden truncate text-sm font-semibold text-[var(--text-secondary)] lg:block">{activeLesson?.title || course.title}</span>
+          <span className="hidden truncate text-sm font-semibold text-[var(--text-secondary)] lg:block">{activeLesson?.title || courseTitle}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-start gap-2 sm:justify-end">
           <div className="hidden min-w-44 items-center gap-3 sm:flex"><span className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--bg-subtle)]"><span className="block h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${progressPct}%` }} /></span><span className="text-xs font-bold text-[var(--text-secondary)]">{progressPct}%</span></div>
           <Button variant="secondary" onClick={() => setActiveLessonIndex((index) => Math.max(0, index - 1))} disabled={activeLessonIndex <= 0} aria-label="Previous lesson"><ChevronLeft size={16} /> Previous</Button>
           <Button variant="secondary" aria-label="Next lesson" onClick={() => setActiveLessonIndex((index) => Math.min(lessons.length - 1, index + 1))} disabled={activeLessonIndex >= lessons.length - 1}>Next <ChevronRight size={16} /></Button>
@@ -181,7 +183,7 @@ export default function LearningPlayerPage() {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--accent-primary)]">Learning player</p>
-                <h1 className="mt-2 text-3xl font-bold text-[var(--text-primary)]">{course.title}</h1>
+                <h1 className="mt-2 text-3xl font-bold text-[var(--text-primary)]">{courseTitle}</h1>
                 <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
                   Watch lessons, save notes, track progress, and discuss with other learners in one focused workspace.
                 </p>

@@ -80,6 +80,7 @@ function MetricCardContent({
   const pillBackground = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.98)'
   const pillBorder = isDark ? 'rgba(255,255,255,0.20)' : 'rgba(255,255,255,0.75)'
   const pillTextColor = textColor
+  const safeValue = value === null || value === undefined || value === '' ? 0 : value
   const cardClasses = variant === 'learner'
     ? `rounded-[18px] border border-white/12 bg-gradient-to-br shadow-[0_18px_42px_rgba(15,23,42,0.16)] ${palette.strip}`
     : `rounded-[16px] bg-gradient-to-br shadow-[0_16px_36px_rgba(15,23,42,0.14)] ${palette.strip}`
@@ -91,18 +92,18 @@ function MetricCardContent({
       <div className={`relative flex ${minHeightClass} flex-col p-5`}>
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className={`font-black uppercase tracking-[0.34em] ${compact ? 'text-[0.7rem]' : 'text-[0.78rem]'} ${textToneClass}`} style={{ color: textColor, WebkitTextFillColor: textColor }}>
+            <p className={`max-w-full whitespace-normal break-words font-black uppercase tracking-[0.16em] ${compact ? 'text-[0.68rem] leading-tight' : 'text-[0.72rem] leading-tight'} ${textToneClass}`} style={{ color: textColor, WebkitTextFillColor: textColor }}>
               {title}
             </p>
             <p
               className={`${compact ? 'mt-2 text-[clamp(1.55rem,2.6vw,2.05rem)]' : 'mt-3 text-[clamp(2.1rem,3.2vw,2.55rem)]'} font-black leading-none tracking-[-0.04em] ${textToneClass}`}
               style={{ color: textColor, WebkitTextFillColor: textColor }}
             >
-              {loading ? <span className="skeleton inline-block h-8 w-20 rounded bg-white/25" /> : value}
+              {loading ? <span className="skeleton inline-block h-8 w-20 rounded bg-white/25" /> : safeValue}
             </p>
             {detailText ? (
               <p
-                className={`max-w-[16rem] font-semibold leading-5 ${compact ? 'mt-1.5 text-xs' : 'mt-2 text-sm'} ${textToneClass}`}
+                className={`max-w-[16rem] font-semibold leading-5 ${compact ? 'mt-1.5 text-[0.72rem]' : 'mt-2 text-[0.88rem]'} ${textToneClass}`}
                 style={{ color: textColor, WebkitTextFillColor: textColor }}
               >
                 {detailText}

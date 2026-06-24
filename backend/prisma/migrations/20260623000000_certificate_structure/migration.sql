@@ -1,11 +1,11 @@
 -- Add structured certificate storage
 ALTER TABLE "certificates"
-  ADD COLUMN "verificationCode" TEXT,
-  ADD COLUMN "completionDate" TIMESTAMP(3),
-  ADD COLUMN "issuedById" INTEGER,
-  ADD COLUMN "learnerSnapshot" JSONB,
-  ADD COLUMN "courseSnapshot" JSONB,
-  ADD COLUMN "issueMetadata" JSONB;
+  ADD COLUMN IF NOT EXISTS "verificationCode" TEXT,
+  ADD COLUMN IF NOT EXISTS "completionDate" TIMESTAMP(3),
+  ADD COLUMN IF NOT EXISTS "issuedById" INTEGER,
+  ADD COLUMN IF NOT EXISTS "learnerSnapshot" JSONB,
+  ADD COLUMN IF NOT EXISTS "courseSnapshot" JSONB,
+  ADD COLUMN IF NOT EXISTS "issueMetadata" JSONB;
 
 -- Backfill a stable verification code for existing certificates
 UPDATE "certificates"
@@ -43,17 +43,27 @@ SET
     'migratedAt', to_jsonb(NOW()),
     'legacyIssuedAt', to_jsonb(c."issuedAt")
   )
-FROM "users" u
-JOIN "courses" co ON co.id = c."courseId"
+FROM "users" u,
+     "courses" co
 LEFT JOIN "users" cu ON cu.id = co."createdById"
-WHERE u.id = c."userId";
+WHERE u.id = c."userId"
+  AND co.id = c."courseId";
 
 ALTER TABLE "certificates"
   ALTER COLUMN "verificationCode" SET NOT NULL;
 
-CREATE UNIQUE INDEX "certificates_verificationCode_key" ON "certificates"("verificationCode");
-CREATE INDEX "certificates_issuedById_idx" ON "certificates"("issuedById");
+CREATE UNIQUE INDEX IF NOT EXISTS "certificates_verificationCode_key" ON "certificates"("verificationCode");
+CREATE INDEX IF NOT EXISTS "certificates_issuedById_idx" ON "certificates"("issuedById");
 
-ALTER TABLE "certificates"
-  ADD CONSTRAINT "certificates_issuedById_fkey"
-  FOREIGN KEY ("issuedById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'certificates_issuedById_fkey'
+  ) THEN
+    ALTER TABLE "certificates"
+      ADD CONSTRAINT "certificates_issuedById_fkey"
+      FOREIGN KEY ("issuedById") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+  END IF;
+END $$;

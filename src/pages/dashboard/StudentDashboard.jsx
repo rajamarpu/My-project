@@ -6,9 +6,7 @@ import {
   Award,
   BookOpenCheck,
   CalendarCheck,
-  Clock3,
   Compass,
-  Flame,
   GraduationCap,
   LifeBuoy,
   Mail,
@@ -17,9 +15,10 @@ import {
 } from 'lucide-react'
 import Button from '../../components/common/Button/Button.jsx'
 import KpiCard from '../../components/ui/Dashboard/KpiCard.jsx'
-import { fetchCertificates, fetchCourses, fetchLearnerDashboard, fetchMyAssessmentSubmissions, fetchUserAnalytics } from '../../api/api.js'
+import { fetchCertificates, fetchCourses, fetchLearnerDashboard, fetchMyAssessmentSubmissions, fetchUserAnalytics, invalidateApiCachePrefix, readApiCache } from '../../api/api.js'
 import { getCourseAssignments } from '../../utils/courseContent.js'
 import { DASHBOARD_REFRESH_EVENT } from '../../utils/dashboardRefresh.js'
+import { getCourseTitle } from '../../utils/courseTitle.js'
 
 const emptyAnalytics = {
   completion: 0,
@@ -40,15 +39,70 @@ function progressFor(enrollment) {
   return Math.max(0, Math.min(100, Math.round(number(enrollment?.completionPct ?? enrollment?.progress))))
 }
 
+function getCourseRouteId(course) {
+  return course?.id || course?.courseId || course?.enrollment?.courseId || course?.enrollment?.course?.id || ''
+}
+
+function normalizeAnalytics(payload = {}) {
+  const hasEnrolledCourseCount = payload.enrolledCourseCount !== undefined && payload.enrolledCourseCount !== null
+  return {
+    ...emptyAnalytics,
+    completion: number(payload.completion),
+    hoursStudied: number(payload.hoursStudied),
+    quiz: number(payload.quiz),
+    streak: number(payload.streak),
+    certificates: number(payload.certificates),
+    enrolledCourseCount: hasEnrolledCourseCount ? number(payload.enrolledCourseCount) : null,
+    weekly: Array.isArray(payload.weekly)
+      ? payload.weekly.map((item) => ({
+          ...item,
+          day: item?.day || '',
+          hours: number(item?.hours),
+        }))
+      : [],
+    recent: Array.isArray(payload.recent) ? payload.recent : [],
+  }
+}
+
+function normalizeEnrollment(enrollment) {
+  const course = enrollment?.course || null
+  const courseId = course?.id || enrollment?.courseId || ''
+  const title = getCourseTitle({ ...course, enrollment })
+  return {
+    ...enrollment,
+    enrollmentId: enrollment?.id || '',
+    id: courseId || enrollment?.id || '',
+    courseId,
+    course: course
+      ? {
+          ...course,
+          id: course.id || courseId,
+          title,
+        }
+      : {
+          id: courseId,
+          title,
+          category: enrollment?.category || 'Course',
+          level: enrollment?.level || 'Beginner',
+          description: enrollment?.description || '',
+        },
+    progress: progressFor(enrollment),
+    isEnrolled: true,
+  }
+}
+
 export default function StudentDashboard() {
   const navigate = useNavigate()
   const location = useLocation()
   const user = useSelector((state) => state.auth.user)
-  const [analytics, setAnalytics] = useState(emptyAnalytics)
-  const [courses, setCourses] = useState([])
-  const [catalog, setCatalog] = useState([])
+  const [analytics, setAnalytics] = useState(() => normalizeAnalytics({
+    ...(readApiCache('user-analytics') || {}),
+    enrolledCourseCount: readApiCache('learner-dashboard')?.dashboard?.enrollments?.length || readApiCache('user-analytics')?.enrolledCourseCount || null,
+  }))
+  const [courses, setCourses] = useState(() => (readApiCache('learner-dashboard')?.dashboard?.enrollments || []).map(normalizeEnrollment).filter((course) => course?.id))
+  const [catalog, setCatalog] = useState(() => readApiCache('courses')?.courses || readApiCache('courses') || [])
   const [submissions, setSubmissions] = useState([])
-  const [certificates, setCertificates] = useState([])
+  const [certificates, setCertificates] = useState(() => readApiCache('certificates')?.certificates || readApiCache('certificates') || [])
   const [retakeGrants, setRetakeGrants] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -66,16 +120,18 @@ export default function StudentDashboard() {
       ])
       const enrollments = dashboardResponse.data?.dashboard?.enrollments || []
       const nextCourses = enrollments
-        .map((enrollment) => ({
-          ...enrollment.course,
-          enrollment,
-          progress: progressFor(enrollment),
-          isEnrolled: true,
-        }))
+        .map(normalizeEnrollment)
         .filter((course) => course?.id)
       setCourses(nextCourses)
-      setAnalytics({ ...emptyAnalytics, ...(analyticsResponse.data?.analytics || {}) })
-      setCatalog(catalogResponse.data?.courses || catalogResponse.data || [])
+      const nextCatalog = catalogResponse.data?.courses || catalogResponse.data || []
+      setCatalog(nextCatalog)
+      const catalogEnrolledCount = Array.isArray(nextCatalog)
+        ? nextCatalog.filter((course) => course?.isEnrolled || course?.enrollment?.id || course?.enrollment).length
+        : 0
+      setAnalytics(normalizeAnalytics({
+        ...(analyticsResponse.data?.analytics || {}),
+        enrolledCourseCount: enrollments.length || catalogEnrolledCount || analyticsResponse.data?.analytics?.enrolledCourseCount || null,
+      }))
       setSubmissions(assessmentResponse.data?.submissions || [])
       setCertificates(certificatesResponse.data?.certificates || [])
       setRetakeGrants(assessmentResponse.data?.retakeGrants || [])
@@ -92,21 +148,16 @@ export default function StudentDashboard() {
 
   useEffect(() => {
     const handleRefresh = () => {
+      invalidateApiCachePrefix('learner-dashboard')
+      invalidateApiCachePrefix('courses')
+      invalidateApiCachePrefix('assessment-submissions')
+      invalidateApiCachePrefix('certificates')
+      invalidateApiCachePrefix('user-analytics')
       void loadDashboard()
     }
-    const handleFocus = () => {
-      void loadDashboard()
-    }
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') void loadDashboard()
-    }
-    window.addEventListener(DASHBOARD_REFRESH_EVENT, handleRefresh)
-    window.addEventListener('focus', handleFocus)
-    document.addEventListener('visibilitychange', handleVisibility)
+    window.addEventListener('uptoskills:dashboard-refresh', handleRefresh)
     return () => {
-      window.removeEventListener(DASHBOARD_REFRESH_EVENT, handleRefresh)
-      window.removeEventListener('focus', handleFocus)
-      document.removeEventListener('visibilitychange', handleVisibility)
+      window.removeEventListener('uptoskills:dashboard-refresh', handleRefresh)
     }
   }, [])
 
@@ -122,10 +173,6 @@ export default function StudentDashboard() {
     [courses],
   )
   const activeCourse = sortedCourses.find((course) => course.progress < 100) || sortedCourses[0]
-  const averageProgress = courses.length
-    ? Math.round(courses.reduce((sum, course) => sum + course.progress, 0) / courses.length)
-    : number(analytics.completion)
-  const completedCourses = courses.filter((course) => course.progress >= 100).length
   const inProgressCourses = courses.filter((course) => course.progress > 0 && course.progress < 100).length
   const assignments = useMemo(
     () => courses.flatMap((course) => getCourseAssignments(course).map((assignment) => ({ ...assignment, course }))),
@@ -148,38 +195,20 @@ export default function StudentDashboard() {
   )
   const enrolledIds = useMemo(() => new Set(courses.map((course) => course.id)), [courses])
   const recommended = useMemo(() => catalog.filter((course) => !enrolledIds.has(course.id)).slice(0, 4), [catalog, enrolledIds])
-  const weekly = Array.isArray(analytics.weekly) && analytics.weekly.length
-    ? analytics.weekly
-    : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => ({ day, hours: 0 }))
-  const maxWeeklyHours = Math.max(1, ...weekly.map((day) => number(day.hours)))
-  const activeCoursePlayerHref = activeCourse ? `/player/${activeCourse.id}` : '/courses'
+  const activeCourseId = getCourseRouteId(activeCourse)
+  const activeCoursePlayerHref = activeCourseId ? `/player/${activeCourseId}` : '/courses'
   const activeCourseAssessmentsHref = '/assignments'
   const certificatesEarned = number(analytics.certificates) || certificates.length
+  const enrolledCourseCount = courses.length || catalog.filter((course) => course?.isEnrolled || course?.enrollment?.id || course?.enrollment).length || analytics.enrolledCourseCount || 0
 
   const kpis = [
     {
       title: 'Active Courses',
-      value: courses.length,
-      detail: `${inProgressCourses} in progress`,
+      value: enrolledCourseCount,
+      detail: enrolledCourseCount === 1 ? '1 enrolled course' : `${enrolledCourseCount} enrolled courses`,
       icon: BookOpenCheck,
       tone: 'blue',
-      href: activeCourse ? `/player/${activeCourse.id}` : '/courses',
-    },
-    {
-      title: 'Completed Courses',
-      value: completedCourses,
-      detail: 'finished learning paths',
-      icon: Award,
-      tone: 'emerald',
-      href: '/certificates',
-    },
-    {
-      title: 'In Progress',
-      value: inProgressCourses,
-      detail: 'currently underway',
-      icon: TrendingUp,
-      tone: 'cyan',
-      href: '/courses',
+      href: '/dashboard#active-courses',
     },
     {
       title: 'Assignments Available',
@@ -196,22 +225,6 @@ export default function StudentDashboard() {
       icon: Award,
       tone: 'amber',
       href: '/certificates',
-    },
-    {
-      title: 'Study Streak',
-      value: `${number(analytics.streak)}d`,
-      detail: 'current learning rhythm',
-      icon: Flame,
-      tone: 'orange',
-      href: activeCoursePlayerHref,
-    },
-    {
-      title: 'Hours Learned',
-      value: `${number(analytics.hoursStudied)}h`,
-      detail: 'tracked learning time',
-      icon: Clock3,
-      tone: 'teal',
-      href: activeCoursePlayerHref,
     },
   ]
 
@@ -253,7 +266,7 @@ export default function StudentDashboard() {
       ) : null}
 
       <DashboardSection eyebrow="Overview" title="Your learning metrics">
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {kpis.map((metric) => (
             <KpiCard key={metric.title} loading={loading} {...metric} />
           ))}
@@ -279,8 +292,14 @@ export default function StudentDashboard() {
                 <LearningCourseRow
                   key={course.id}
                   course={course}
-                  onContinue={() => navigate(`/player/${course.id}`)}
-                  onDetails={() => navigate(`/course/${course.id}`)}
+                  onContinue={() => {
+                    const courseRouteId = getCourseRouteId(course)
+                    if (courseRouteId) navigate(`/player/${courseRouteId}`)
+                  }}
+                  onDetails={() => {
+                    const courseRouteId = getCourseRouteId(course)
+                    if (courseRouteId) navigate(`/course/${courseRouteId}`)
+                  }}
                 />
               ))
               : (
@@ -292,79 +311,6 @@ export default function StudentDashboard() {
                   onAction={() => navigate('/courses')}
                 />
                 )}
-        </div>
-      </DashboardSection>
-
-      <DashboardSection eyebrow="Learning Progress" title="Progress and study activity">
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,0.72fr)_minmax(0,1.28fr)]">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-            <KpiCard
-              title="Average progress"
-              value={`${averageProgress}%`}
-              detail={`${courses.length} enrolled course${courses.length === 1 ? '' : 's'}`}
-              icon={TrendingUp}
-              tone="blue"
-              loading={loading}
-              onClick={() => navigate('/dashboard#active-courses')}
-            />
-            <KpiCard
-              title="Study time"
-              value={`${number(analytics.hoursStudied)}h`}
-              detail="tracked learning time"
-              icon={Clock3}
-              tone="teal"
-              loading={loading}
-              onClick={() => navigate('/dashboard#active-courses')}
-            />
-          </div>
-          <div className="theme-subcard flex min-h-[32rem] flex-col rounded-xl p-5">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-[var(--text-primary)]">This week</p>
-              <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-xs font-bold text-[var(--accent-primary)]">
-                {number(analytics.hoursStudied).toFixed(1)}h total
-              </span>
-            </div>
-            <div className="mt-5 flex flex-1 flex-col justify-between gap-4">
-              {weekly.map((day) => {
-                const hours = number(day.hours)
-                const width = hours ? Math.max(18, (hours / maxWeeklyHours) * 100) : 0
-                return (
-                  <div key={day.day} className="grid flex-1 grid-cols-[2.8rem_minmax(0,1fr)_3.5rem] items-center gap-4">
-                    <span className="text-sm font-bold text-[var(--text-secondary)] dark:text-slate-300">{day.day}</span>
-                    <span className="relative h-3 overflow-hidden rounded-full border border-[var(--border-color)] bg-[var(--bg-subtle)] shadow-[inset_0_1px_2px_rgba(15,23,42,0.08)] dark:bg-slate-800/90 dark:shadow-[inset_0_1px_2px_rgba(255,255,255,0.06)]">
-                      <span className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.18),transparent_35%,transparent_65%,rgba(255,255,255,0.12))] opacity-80" aria-hidden="true" />
-                      <span
-                        className="relative block h-full rounded-full bg-[linear-gradient(90deg,#2563eb_0%,#3b82f6_35%,#22d3ee_100%)] shadow-[0_0_0_1px_rgba(255,255,255,0.16),0_0_18px_rgba(59,130,246,0.35)]"
-                        style={{ width: `${width}%` }}
-                      />
-                    </span>
-                    <span className="text-right text-xs font-semibold text-[var(--text-muted)] dark:text-slate-400">{hours}h</span>
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      </DashboardSection>
-
-      <DashboardSection eyebrow="Learning Streak" title="Build a consistent learning rhythm">
-        <div className="grid gap-4 lg:grid-cols-[18rem_minmax(0,1fr)]">
-          <div className="flex items-center gap-4 rounded-xl bg-[var(--color-warning-soft)] p-5">
-            <span className="grid h-14 w-14 place-items-center rounded-2xl bg-[var(--bg-elevated)] text-[var(--color-warning)]">
-              <Flame size={28} />
-            </span>
-            <span>
-              <strong className="block text-3xl text-[var(--text-primary)]">{number(analytics.streak)} days</strong>
-              <span className="text-sm text-[var(--text-secondary)]">current streak</span>
-            </span>
-          </div>
-          <div className="theme-subcard rounded-xl p-5">
-            <p className="font-semibold text-[var(--text-primary)]">{number(analytics.streak) ? 'Keep your momentum going' : 'Start your streak today'}</p>
-            <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
-              Complete one lesson or practice activity today. Short, consistent sessions make course completion easier.
-            </p>
-            <Button className="mt-4" onClick={() => navigate(activeCoursePlayerHref)}>Learn now</Button>
-          </div>
         </div>
       </DashboardSection>
 
@@ -411,6 +357,8 @@ function DashboardSection({ id, eyebrow, title, action, children, compact = fals
 }
 
 function LearningCourseRow({ course, onContinue, onDetails }) {
+  const courseId = getCourseRouteId(course)
+  const title = getCourseTitle(course)
   return (
     <article className="theme-subcard grid gap-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-4 shadow-soft dark:bg-slate-950/80 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
       <div className="min-w-0">
@@ -420,13 +368,13 @@ function LearningCourseRow({ course, onContinue, onDetails }) {
           </span>
           <span className="text-xs font-semibold text-[var(--text-muted)]">{course.category || 'Course'}</span>
         </div>
-        <h3 className="mt-2 truncate font-bold text-[var(--text-primary)] dark:text-slate-100">{course.title}</h3>
+        <h3 className="mt-2 truncate font-bold text-[var(--text-primary)] dark:text-slate-100">{title}</h3>
         <div className="mt-3 flex items-center gap-3">
           <span className="relative h-3 flex-1 overflow-hidden rounded-full border border-[var(--border-color)] bg-[var(--bg-subtle)] shadow-[inset_0_1px_2px_rgba(15,23,42,0.08)] dark:bg-slate-800/90 dark:shadow-[inset_0_1px_2px_rgba(255,255,255,0.06)]">
             <span className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.18),transparent_35%,transparent_65%,rgba(255,255,255,0.1))] opacity-80" aria-hidden="true" />
-            <span className="relative block h-full rounded-full bg-[linear-gradient(90deg,#2563eb_0%,#3b82f6_35%,#22d3ee_100%)] shadow-[0_0_0_1px_rgba(255,255,255,0.16),0_0_18px_rgba(59,130,246,0.35)]" style={{ width: `${course.progress}%` }} />
+            <span className="relative block h-full rounded-full bg-[linear-gradient(90deg,#2563eb_0%,#3b82f6_35%,#22d3ee_100%)] shadow-[0_0_0_1px_rgba(255,255,255,0.16),0_0_18px_rgba(59,130,246,0.35)]" style={{ width: `${number(course.progress)}%` }} />
           </span>
-          <span className="w-12 rounded-full bg-[var(--accent-soft)] px-2 py-1 text-right text-xs font-bold text-[var(--accent-primary)] dark:bg-cyan-500/15 dark:text-cyan-300">{course.progress}%</span>
+          <span className="w-12 rounded-full bg-[var(--accent-soft)] px-2 py-1 text-right text-xs font-bold text-[var(--accent-primary)] dark:bg-cyan-500/15 dark:text-cyan-300">{number(course.progress)}%</span>
         </div>
       </div>
       <div className="flex gap-2">
@@ -448,7 +396,9 @@ function RecommendedCourse({ course, onOpen }) {
       <span className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--accent-primary)] dark:text-cyan-300">
         {course.category || 'Learning path'}
       </span>
-      <h3 className="mt-3 line-clamp-2 font-bold text-[var(--text-primary)] dark:text-slate-100">{course.title}</h3>
+      <h3 className="mt-3 line-clamp-2 font-bold text-[var(--text-primary)] dark:text-slate-100">
+        {course.title || course.courseTitle || course.name || 'Course unavailable'}
+      </h3>
       <p className="mt-2 line-clamp-2 text-sm leading-6 text-[var(--text-secondary)] dark:text-slate-300">
         {course.description || 'Build practical skills with guided lessons and assessments.'}
       </p>

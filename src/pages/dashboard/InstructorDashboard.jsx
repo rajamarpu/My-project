@@ -20,9 +20,9 @@ const restrictedPermissions = [
 export default function InstructorDashboard() {
   const navigate = useNavigate()
   const [metrics, setMetrics] = useState([
-    { name: 'Courses', value: 0 },
-    { name: 'Revenue', value: 0 },
-    { name: 'Students', value: 0 },
+    { name: 'Courses', value: 0, detail: 'published and draft courses', tone: 'blue', href: '/instructor/courses' },
+    { name: 'Revenue', value: money(0), detail: 'platform-wide confirmed payments', tone: 'violet', href: '/support' },
+    { name: 'Students', value: 0, detail: 'registered learners', tone: 'teal', href: '/support' },
   ])
 
   useEffect(() => {
@@ -36,9 +36,9 @@ export default function InstructorDashboard() {
         if (!isMounted) return
         const liveSummary = summaryRes.data?.summary || summaryRes.data || {}
         setMetrics([
-          { name: 'Courses', value: (coursesRes.data?.courses || coursesRes.data || []).length },
-          { name: 'Revenue', value: 0 },
-          { name: 'Students', value: liveSummary.totalLearners ?? 0 },
+          { name: 'Courses', value: (coursesRes.data?.courses || coursesRes.data || []).length, detail: 'published and draft courses', tone: 'blue', href: '/instructor/courses' },
+          { name: 'Revenue', value: money(liveSummary.revenueCents || 0), detail: 'platform-wide confirmed payments', tone: 'violet', href: '/support' },
+          { name: 'Students', value: liveSummary.totalLearners ?? 0, detail: 'registered learners', tone: 'teal', href: '/support' },
         ])
       } catch (error) {
         console.error('Failed to load instructor metrics:', error)
@@ -57,9 +57,9 @@ export default function InstructorDashboard() {
         <h1 className="mt-3 text-4xl font-semibold text-[var(--text-primary)]">
           Your creator console
         </h1>
-         <p className="mt-4 text-[var(--text-secondary)]">
-           Manage upskilling-focused lessons, review engagement analytics, and publish high-production courses.
-         </p>
+        <p className="mt-4 text-[var(--text-secondary)]">
+          Manage upskilling-focused lessons, review engagement analytics, and publish high-production courses.
+        </p>
 
         <div className="mt-10 grid gap-5 sm:grid-cols-3">
           {metrics.map((metric) => (
@@ -67,11 +67,11 @@ export default function InstructorDashboard() {
               key={metric.name}
               title={metric.name}
               value={metric.value}
-              detail={metric.name === 'Courses' ? 'published and draft courses' : metric.name === 'Revenue' ? 'live earnings snapshot' : 'enrolled learners'}
-              tone={metric.name === 'Courses' ? 'blue' : metric.name === 'Revenue' ? 'violet' : 'teal'}
+              detail={metric.detail}
+              tone={metric.tone}
               variant="admin"
               className="min-h-[170px]"
-              href={metric.name === 'Courses' ? '/instructor/courses' : '/support'}
+              href={metric.href}
             />
           ))}
         </div>
@@ -131,6 +131,14 @@ export default function InstructorDashboard() {
       </div>
     </section>
   )
+}
+
+function money(cents) {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    maximumFractionDigits: 0,
+  }).format((cents || 0) / 100)
 }
 
 

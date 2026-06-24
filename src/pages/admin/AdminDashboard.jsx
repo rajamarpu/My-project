@@ -95,8 +95,7 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     const initial = window.setTimeout(() => void loadAdminData(), 0)
-    const timer = window.setInterval(loadAdminData, 30000)
-    return () => { window.clearTimeout(initial); window.clearInterval(timer) }
+    return () => { window.clearTimeout(initial) }
   }, [])
 
   const assignmentCount = useMemo(() => new Set(submissions.map((item) => item.assignmentId).filter(Boolean)).size, [submissions])
@@ -108,7 +107,6 @@ export default function AdminDashboard() {
     { label: 'Revenue', value: money(metrics.revenueCents), detail: 'confirmed payments', icon: BadgeIndianRupee, href: '/admin/revenue', tone: 'violet' },
     { label: 'Certificates', value: compact(metrics.totalCertificates), detail: 'issued credentials', icon: Award, href: '/admin/certificates', tone: 'sky' },
     { label: 'Assignments', value: compact(assignmentCount), detail: 'unique assigned assessments', icon: ClipboardCheck, href: '/admin/evaluations', tone: 'emerald' },
-    { label: 'Published courses', value: compact(metrics.publishedCourses), detail: `${metrics.publishRate}% of catalog live`, icon: Activity, href: '/admin/courses', tone: 'amber' },
   ], [assignmentCount, metrics])
 
   const chartData = useMemo(() => metrics.growth.slice(-Number(range)), [metrics.growth, range])
@@ -173,7 +171,7 @@ export default function AdminDashboard() {
         </label>
       </div>
 
-      <DashboardSection eyebrow="KPI section" title="Platform performance" description="Eight core indicators for LMS operations.">
+      <DashboardSection eyebrow="KPI section" title="Platform performance" description="Seven core indicators for LMS operations.">
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {kpis.map((item) => <AdminMetricCard key={item.label} {...item} loading={loading} />)}
         </div>
@@ -212,11 +210,6 @@ export default function AdminDashboard() {
                   )}
                 </ResponsiveContainer>
               ) : <AdminEmptyState title="No analytics for this period" message="Activity will appear as learners register, enroll, complete courses, or make payments." />}
-            </div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-3">
-              <Ratio label="Enrollments" value={compact(metrics.totalEnrollments)} />
-              <Ratio label="Completion rate" value={`${metrics.completionRate}%`} />
-              <Ratio label="Published catalog" value={`${metrics.publishRate}%`} />
             </div>
           </div>
 
@@ -297,10 +290,6 @@ function DashboardSection({ eyebrow, title, description, children }) {
       {children}
     </section>
   )
-}
-
-function Ratio({ label, value }) {
-  return <div className="rounded-lg bg-[var(--bg-subtle)] p-3"><p className="text-xs font-semibold uppercase tracking-[0.12em] text-[var(--text-muted)]">{label}</p><p className="mt-1 text-lg font-bold text-[var(--text-primary)]">{value}</p></div>
 }
 
 function ActivityRow({ item }) {

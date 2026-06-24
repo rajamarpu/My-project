@@ -16,11 +16,13 @@ import CourseCard from '../../components/ui/Course/CourseCard.jsx'
 import Button from '../../components/common/Button/Button.jsx'
 import { useTheme } from '../../hooks/useTheme.js'
 import { fadeInUp } from '../../utils/animationVariants.js'
-import { createCheckout, enrollCourseRequest, fetchCourses, fetchSavedCourses, unenrollCourseRequest } from '../../api/api.js'
+import { createCheckout, enrollCourseRequest, fetchCourses, fetchSavedCourses, invalidateApiCachePrefix, unenrollCourseRequest } from '../../api/api.js'
 import { enrollCourse, setWishlist, unenrollCourse } from '../../store/slices/authSlice.js'
 import { formatRupeesFromPaise } from '../../utils/money.js'
 import { resolveCourseThumbnail } from '../../utils/courseThumbnail.js'
 import { notifyDashboardRefresh } from '../../utils/dashboardRefresh.js'
+import { getCourseTitle } from '../../utils/courseTitle.js'
+import { readApiCache } from '../../api/api.js'
 
 const levels = ['All', 'BEGINNER', 'INTERMEDIATE', 'ADVANCED']
 const priceFilters = ['All', 'Free', 'Paid']
@@ -51,8 +53,8 @@ export default function ExploreCoursesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const filterDrawerRef = useRef(null)
   const restoringUrlState = useRef(false)
-  const [courses, setCourses] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [courses, setCourses] = useState(() => readApiCache('courses')?.courses || readApiCache('courses') || [])
+  const [loading, setLoading] = useState(() => !(readApiCache('courses')?.courses || readApiCache('courses') || []).length)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [busyCourseId, setBusyCourseId] = useState('')
@@ -162,6 +164,9 @@ export default function ExploreCoursesPage() {
       if (course.isEnrolled) {
         const response = await unenrollCourseRequest(course.id)
         dispatch(unenrollCourse(course.id))
+        invalidateApiCachePrefix('courses')
+        invalidateApiCachePrefix('learner-dashboard')
+        invalidateApiCachePrefix(`course:${course.id}`)
         const nextCount = response.data?.enrollmentCount ?? Math.max(0, getEnrollmentCount(course) - 1)
         setCourses((items) => items.map((item) => (
           item.id === course.id
@@ -169,10 +174,13 @@ export default function ExploreCoursesPage() {
             : item
         )))
         notifyDashboardRefresh({ source: 'explore-unenroll', courseId: course.id })
-        setNotice(`Unenrolled from ${course.title}.`)
+        setNotice(`Unenrolled from ${getCourseTitle(course)}.`)
       } else {
         const response = await enrollCourseRequest(course.id)
         dispatch(enrollCourse(response.data.enrollment.courseId))
+        invalidateApiCachePrefix('courses')
+        invalidateApiCachePrefix('learner-dashboard')
+        invalidateApiCachePrefix(`course:${course.id}`)
         const currentCount = getEnrollmentCount(course)
         const nextCount = response.data?.enrollmentCount ?? currentCount + (response.data?.wasAlreadyEnrolled ? 0 : 1)
         setCourses((items) => items.map((item) => (
@@ -181,7 +189,7 @@ export default function ExploreCoursesPage() {
             : item
         )))
         notifyDashboardRefresh({ source: 'explore-enroll', courseId: course.id })
-        setNotice(`Enrolled in ${course.title}.`)
+        setNotice(`Enrolled in ${getCourseTitle(course)}.`)
       }
     } catch (err) {
       if (err?.response?.status === 402) {
@@ -222,7 +230,7 @@ export default function ExploreCoursesPage() {
   const searchSuggestions = useMemo(() => {
     const needle = query.trim().toLowerCase()
     if (!needle) return []
-    return courses.filter((course) => [course.title, course.category, course.level, course.createdBy?.name, ...(course.tags || [])].filter(Boolean).join(' ').toLowerCase().includes(needle)).slice(0, 6)
+    return courses.filter((course) => [getCourseTitle(course), course.category, course.level, course.createdBy?.name, ...(course.tags || [])].filter(Boolean).join(' ').toLowerCase().includes(needle)).slice(0, 6)
   }, [courses, query])
 
   function openSuggestion(course) {
@@ -257,7 +265,7 @@ export default function ExploreCoursesPage() {
     () =>
       courses.filter((course) => {
         const haystack = [
-          course.title,
+          getCourseTitle(course),
           course.description,
           course.category,
           course.level,
@@ -424,7 +432,7 @@ export default function ExploreCoursesPage() {
                         {searchSuggestions.length ? searchSuggestions.map((course, index) => (
                           <button id={`course-suggestion-${index}`} key={course.id} type="button" role="option" aria-selected={activeSuggestion === index} onMouseEnter={() => setActiveSuggestion(index)} onMouseDown={(event) => { event.preventDefault(); openSuggestion(course) }} className={`flex min-h-16 w-full items-center gap-3 rounded-lg p-2 text-left transition ${activeSuggestion === index ? 'bg-[var(--accent-soft)]' : 'hover:bg-[var(--bg-subtle)]'} ${isDark ? 'text-white hover:bg-cyan-500/10' : ''}`}>
                             <span className="grid h-14 w-24 shrink-0 place-items-center overflow-hidden rounded-lg border border-[color-mix(in_srgb,var(--accent-primary)_14%,var(--border-color))] bg-[linear-gradient(135deg,rgba(255,107,53,0.08),rgba(20,184,166,0.08))]"><img src={resolveCourseThumbnail(course)} alt="" className="h-full w-full object-contain" /></span>
-                            <span className="min-w-0 flex-1"><span className={`block truncate text-sm font-bold ${pageTextPrimary}`}>{course.title}</span><span className={`mt-1 block truncate text-xs ${pageTextSecondary}`}>{course.createdBy?.name || 'Instructor'} · {course.level || 'Beginner'} · {course.category || 'Course'}</span></span>
+                            <span className="min-w-0 flex-1"><span className={`block truncate text-sm font-bold ${pageTextPrimary}`}>{getCourseTitle(course)}</span><span className={`mt-1 block truncate text-xs ${pageTextSecondary}`}>{course.createdBy?.name || 'Instructor'} - {course.level || 'Beginner'} - {course.category || 'Course'}</span></span>
                           </button>
                         )) : <div className={`p-4 text-sm ${pageTextSecondary}`}>No live suggestions match "{query.trim()}". Press Enter to keep filtering the catalog.</div>}
                       </div>

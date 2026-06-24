@@ -179,13 +179,17 @@ app.get('/api/health', async (_req, res, next) => {
 
 app.get('/api/stats/summary', async (_req, res, next) => {
   try {
-    const [totalUsers, totalLearners, totalInstructors, totalCourses, totalCategories, totalEnrollments] = await Promise.all([
+    const [totalUsers, totalLearners, totalInstructors, totalCourses, totalCategories, totalEnrollments, totalCertificates, totalPayments, paidPayments, revenue] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { role: 'USER' } }),
       prisma.user.count({ where: { role: 'INSTRUCTOR' } }),
       prisma.course.count({ where: { isPublished: true } }),
       prisma.category.count(),
       prisma.enrollment.count(),
+      prisma.certificate.count(),
+      prisma.payment.count(),
+      prisma.payment.count({ where: { status: 'PAID' } }),
+      prisma.payment.aggregate({ where: { status: 'PAID' }, _sum: { amountCents: true } }),
     ])
     res.json({
       success: true,
@@ -196,6 +200,10 @@ app.get('/api/stats/summary', async (_req, res, next) => {
         totalCourses,
         totalCategories,
         totalEnrollments,
+        totalCertificates,
+        totalPayments,
+        paidPayments,
+        revenueCents: revenue._sum.amountCents || 0,
       },
     })
   } catch (error) {

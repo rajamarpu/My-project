@@ -150,6 +150,7 @@ const resources = {
 
 const dateColumns = new Set(['createdAt', 'updatedAt', 'deletedAt', 'enrolledAt', 'issuedAt', 'expiresAt', 'completedAt'])
 const peopleResources = new Set(['users', 'learners', 'instructors'])
+const noInsightResources = new Set(['instructor-changes', 'revenue', 'activity-logs'])
 
 function displayName(person) {
   return person?.name || person?.fullName || person?.email || ''
@@ -220,7 +221,7 @@ export default function AdminDataPage({ resource }) {
   const [modal, setModal] = useState(null)
   const [toasts, setToasts] = useState([])
   const hasActions = config.actions || ['users', 'learners', 'instructors', 'categories'].includes(resource)
-  const insights = buildInsights(resource, rows)
+  const insights = resource === 'categories' || noInsightResources.has(resource) ? [] : buildInsights(resource, rows)
   const guidance = buildGuidance(resource)
   const enterpriseSignals = peopleResources.has(resource) ? null : buildEnterpriseSignals(resource, rows)
 
@@ -423,7 +424,7 @@ export default function AdminDataPage({ resource }) {
       <AdminNotice type={notice.type || 'info'}>{notice.message}</AdminNotice>
 
       {resource === 'notifications' ? <NotificationsOverview rows={rows} /> : null}
-      <AdminInsightStrip items={insights} />
+      {insights.length ? <AdminInsightStrip items={insights} /> : null}
       <EnterpriseOperationsPanel signals={enterpriseSignals} />
       {resource === 'users' ? null : <AdminGuidancePanel title="Productivity workflow" items={guidance} />}
 

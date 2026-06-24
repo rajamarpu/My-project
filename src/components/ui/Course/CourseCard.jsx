@@ -7,6 +7,7 @@ import { formatRupeesFromPaise } from '../../../utils/money.js'
 import { getCourseLessons } from '../../../utils/courseContent.js'
 import { removeSavedCourseRequest, saveCourseRequest } from '../../../api/api.js'
 import { useState } from 'react'
+import { getCourseTitle } from '../../../utils/courseTitle.js'
 
 export default function CourseCard({ course, onViewDetails, onEnrollToggle, onContinue, enrollmentBusy = false }) {
   const dispatch = useDispatch()
@@ -18,6 +19,7 @@ export default function CourseCard({ course, onViewDetails, onEnrollToggle, onCo
   const progress = course.progress ?? 0
   const tags = course.tags || [course.category, teacher.expertise].filter(Boolean)
   const image = resolveCourseThumbnail(course)
+  const title = getCourseTitle(course)
   const isLogoImage = String(image).includes('.svg')
   const glowClass = teacher.colorTheme?.bg || 'from-cyan-400/20 via-violet-500/20 to-amber-300/10'
   const enrollmentCount = course.enrollmentCount ?? course._count?.enrollments ?? course.enrollments?.length ?? 0
@@ -47,13 +49,13 @@ export default function CourseCard({ course, onViewDetails, onEnrollToggle, onCo
         type="button"
         onClick={onViewDetails}
         className="course-card-overlay absolute inset-0 z-[1] cursor-pointer rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-[var(--accent-primary)]"
-        aria-label={`View details for ${course.title}`}
+        aria-label={`View details for ${title}`}
       />
       <div className={cn('pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-r opacity-40 blur-xl transition-opacity duration-150 group-hover:opacity-65', glowClass)} />
       <div className="relative aspect-video w-full shrink-0 overflow-hidden rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)]">
         <img
           src={image}
-          alt={course.title}
+          alt={title}
           className={cn(
             'h-full w-full object-contain opacity-95 transition-opacity duration-150 group-hover:opacity-100',
             isLogoImage ? 'p-6' : 'p-0',
@@ -78,7 +80,7 @@ export default function CourseCard({ course, onViewDetails, onEnrollToggle, onCo
       <div className="relative mt-4 flex items-start gap-3">
         <img src={teacher.avatarUrl || image} alt={`${teacher.name || 'Instructor'} avatar`} className="h-10 w-10 rounded-lg border border-[var(--border-color)] bg-[var(--bg-subtle)] object-contain p-1" />
         <div className="min-w-0">
-          <h3 className="line-clamp-2 text-base font-black leading-snug text-[var(--text-primary)]">{course.title}</h3>
+          <h3 className="line-clamp-2 text-base font-black leading-snug text-[var(--text-primary)]">{title}</h3>
           <p className="mt-1 line-clamp-2 text-xs text-[var(--text-secondary)]">
             Guided by {teacher.name || 'Instructor'}{teacher.bio ? ` - ${teacher.bio}` : ''}
           </p>
@@ -119,7 +121,7 @@ export default function CourseCard({ course, onViewDetails, onEnrollToggle, onCo
         {onEnrollToggle ? (
           <button
             type="button"
-            aria-label={isEnrolled ? `${progress > 0 ? 'Continue' : 'Start'} ${course.title}` : `Enroll in ${course.title}`}
+            aria-label={isEnrolled ? `${progress > 0 ? 'Continue' : 'Start'} ${title}` : `Enroll in ${title}`}
             disabled={enrollmentBusy}
             onClick={() => (isEnrolled ? onContinue?.(course) : onEnrollToggle(course))}
             className={cn(
@@ -133,7 +135,7 @@ export default function CourseCard({ course, onViewDetails, onEnrollToggle, onCo
         )}
         <button
           type="button"
-          aria-label={active ? `Remove ${course.title} from wishlist` : `Add ${course.title} to wishlist`}
+          aria-label={active ? `Remove ${title} from wishlist` : `Add ${title} to wishlist`}
           title={active ? 'Remove from wishlist' : 'Add to wishlist'}
           onClick={updateWishlist}
           disabled={savingWishlist || !user}

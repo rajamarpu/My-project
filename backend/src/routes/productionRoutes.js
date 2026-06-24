@@ -11,6 +11,11 @@ function slugify(value) {
   return String(value || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
+function toNumber(value) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
 function safeSettings(value) {
   return value && typeof value === 'object' && !Array.isArray(value) ? value : {}
 }
@@ -141,10 +146,12 @@ router.get('/learner-report', requireRole('learner'), async (req, res, next) => 
       prisma.assessmentSubmission.findMany({ where: { studentId: req.user.id }, orderBy: { submittedAt: 'desc' } }),
       prisma.certificate.findMany({ where: { userId: req.user.id }, include: { course: { select: { title: true } } } }),
     ])
-    const watchedSeconds = progress.reduce((sum, item) => sum + (item.watchedSeconds || 0), 0)
-    const assessmentAverage = submissions.length ? Math.round(submissions.reduce((sum, item) => sum + item.percentage, 0) / submissions.length) : 0
+    const watchedSeconds = progress.reduce((sum, item) => sum + toNumber(item.watchedSeconds), 0)
+    const assessmentAverage = submissions.length ? Math.round(submissions.reduce((sum, item) => sum + toNumber(item.percentage), 0) / submissions.length) : 0
+    const enrolled = enrollments.length
+    const completed = enrollments.filter((item) => item.completedAt || toNumber(item.completionPct) >= 100).length
     res.json({ success: true, report: {
-      summary: { enrolled: enrollments.length, completed: enrollments.filter((item) => item.completedAt || item.completionPct >= 100).length, watchedSeconds, assessmentAverage, certificates: certificates.length },
+      summary: { enrolled, completed, watchedSeconds, assessmentAverage, certificates: certificates.length },
       courses: enrollments, submissions: submissions.slice(0, 20), certificates,
     } })
   } catch (error) { next(error) }

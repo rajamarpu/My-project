@@ -7,6 +7,11 @@ const router = Router()
 
 const instructorSelect = { id: true, name: true, email: true, avatarUrl: true, bio: true, expertise: true, socialLinks: true }
 
+function toNumber(value) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
 router.get('/analytics/user', requireAuth, async (req, res, next) => {
   try {
     const [enrollments, certificates, recent] = await Promise.all([
@@ -20,14 +25,14 @@ router.get('/analytics/user', requireAuth, async (req, res, next) => {
       }),
     ])
 
-    const hoursStudied = enrollments.reduce((sum, item) => sum + item.hoursStudied, 0)
+    const hoursStudied = enrollments.reduce((sum, item) => sum + toNumber(item.hoursStudied), 0)
     const completion = enrollments.length
-      ? Math.round(enrollments.reduce((sum, item) => sum + item.completionPct, 0) / enrollments.length)
+      ? Math.round(enrollments.reduce((sum, item) => sum + toNumber(item.completionPct), 0) / enrollments.length)
       : 0
     const quiz = enrollments.length
-      ? Math.round(enrollments.reduce((sum, item) => sum + item.quizAverage, 0) / enrollments.length)
+      ? Math.round(enrollments.reduce((sum, item) => sum + toNumber(item.quizAverage), 0) / enrollments.length)
       : 0
-    const streak = enrollments.reduce((max, item) => Math.max(max, item.streakDays), 0)
+    const streak = enrollments.reduce((max, item) => Math.max(max, toNumber(item.streakDays)), 0)
     const weekStart = new Date()
     weekStart.setDate(weekStart.getDate() - 6)
     weekStart.setHours(0, 0, 0, 0)
@@ -38,6 +43,7 @@ router.get('/analytics/user', requireAuth, async (req, res, next) => {
     })
     const weeklyByDate = new Map(weekly.map((item) => [item.date, item]))
     recent.forEach((item) => {
+      if (!item.lastAccessedAt) return
       const bucket = weeklyByDate.get(item.lastAccessedAt.toISOString().slice(0, 10))
       if (bucket) bucket.hours += Number(((item.watchedSeconds || 0) / 3600).toFixed(2))
     })
@@ -45,11 +51,12 @@ router.get('/analytics/user', requireAuth, async (req, res, next) => {
     res.json({
       success: true,
       analytics: {
-        completion,
-        hoursStudied,
-        quiz,
-        streak,
-        certificates,
+        completion: toNumber(completion),
+        hoursStudied: toNumber(hoursStudied),
+        quiz: toNumber(quiz),
+        streak: toNumber(streak),
+        certificates: toNumber(certificates),
+        enrolledCourseCount: toNumber(enrollments.length),
         weekly,
         recent,
       },

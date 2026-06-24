@@ -4,6 +4,28 @@ Premium AI learning platform built with React, Vite, Express, Prisma, and Postgr
 
 Learning Management System repository for UptoSkills.
 
+## Project Structure
+
+```text
+.
+├── backend/           # Express API, Prisma schema, migrations, seed data
+├── public/            # Static files served directly by Vite
+├── scripts/           # One-off smoke tests and readiness checks
+├── src/               # React frontend
+│   ├── api/           # API client wrappers
+│   ├── components/   # Reusable UI pieces
+│   ├── constants/     # Routes, validation, and shared config
+│   ├── hooks/         # Shared React hooks
+│   ├── layouts/       # Page shells and navigation frames
+│   ├── pages/         # Route-level screens grouped by area
+│   ├── store/         # Redux store and slices
+│   ├── styles/        # Global design system and theme CSS
+│   └── utils/         # Shared helpers
+└── README.md
+```
+
+The frontend keeps route screens in `src/pages`, reusable UI in `src/components`, and shared helpers in `src/utils`. The backend keeps API logic in `backend/src/routes`, shared server helpers in `backend/src/utils`, and schema/migrations in `backend/prisma`.
+
 ## Stack
 
 - Frontend: React, Vite, Tailwind CSS, Redux Toolkit, Framer Motion
