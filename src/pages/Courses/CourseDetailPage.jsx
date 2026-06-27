@@ -320,7 +320,7 @@ export default function CourseDetailPage() {
       </div>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(22rem,0.42fr)] xl:items-start">
-        <div className="platform-card space-y-5 p-5 sm:p-6">
+        <div className="platform-card self-start space-y-4 p-5 sm:p-6">
           <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--text-secondary)]">
             {[
               ['Overview', 'overview'],
@@ -355,15 +355,15 @@ export default function CourseDetailPage() {
           </div>
 
           {activeTab === 'overview' && (
-            <div className="space-y-6 text-[var(--text-secondary)]">
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
-                <div>
+            <div className="space-y-5 text-[var(--text-secondary)]">
+              <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
+                <div className="max-w-3xl">
                   <h2 className="text-2xl font-semibold text-[var(--text-primary)]">What you will learn</h2>
-                  <p className="mt-3 leading-7">{course.description}</p>
+                  <p className="mt-2 leading-7">{course.description}</p>
                 </div>
-                <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
+                <div className="self-start rounded-xl border border-[var(--border-color)] bg-[var(--bg-subtle)] p-4">
                   <p className="text-sm font-semibold text-[var(--text-primary)]">Your learning setup</p>
-                  <div className="mt-4 grid gap-3 text-sm">
+                  <div className="mt-3 grid gap-2.5 text-sm">
                     <span className="flex items-center justify-between gap-3">
                       <span>Lessons</span>
                       <strong className="text-[var(--text-primary)]">{lessons.length}</strong>
@@ -389,7 +389,7 @@ export default function CourseDetailPage() {
                 ].map(([Icon, title, text]) => (
                   <div key={title} className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 shadow-sm">
                     <Icon size={18} className="text-[var(--accent-primary)]" />
-                    <p className="mt-3 text-sm font-semibold text-[var(--text-primary)]">{title}</p>
+                    <p className="mt-2.5 text-sm font-semibold text-[var(--text-primary)]">{title}</p>
                     <p className="mt-1 text-sm leading-5 text-[var(--text-secondary)]">{text}</p>
                   </div>
                 ))}
@@ -397,7 +397,7 @@ export default function CourseDetailPage() {
 
               <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-5">
                 <h3 className="text-lg font-semibold text-[var(--text-primary)]">Learning outcomes</h3>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="mt-4 grid gap-2.5 sm:grid-cols-2">
                   {(outcomes.length ? outcomes : [
                     `Understand the core concepts in ${course.category || 'this subject'}`,
                     `Apply ${course.level || 'guided'} skills through practical lessons`,
@@ -407,15 +407,15 @@ export default function CourseDetailPage() {
                 </div>
               </div>
 
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
-                <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(17rem,0.85fr)] xl:items-start">
+                <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 lg:p-5">
                   <div className="flex items-center justify-between gap-3">
                     <h3 className="font-semibold text-[var(--text-primary)]">Learning path preview</h3>
                     <button type="button" onClick={() => setActiveTab('curriculum')} className="text-sm font-semibold text-[var(--accent-primary)]">
                       View all
                     </button>
                   </div>
-                  <div className="mt-4 grid gap-3">
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
                     {(lessons.length ? lessons.slice(0, 4) : [
                       { id: 'intro', title: 'Course introduction', type: 'Overview' },
                       { id: 'practice', title: 'Guided practice checkpoint', type: 'Practice' },
@@ -436,7 +436,7 @@ export default function CourseDetailPage() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
+                <div className="self-start rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4">
                   <h3 className="font-semibold text-[var(--text-primary)]">Recommended next step</h3>
                   <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
                     {isEnrolled

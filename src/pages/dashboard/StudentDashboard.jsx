@@ -357,29 +357,39 @@ function DashboardSection({ id, eyebrow, title, action, children, compact = fals
 }
 
 function LearningCourseRow({ course, onContinue, onDetails }) {
-  const courseId = getCourseRouteId(course)
   const title = getCourseTitle(course)
+  const progress = Math.max(0, Math.min(100, number(course.progress)))
   return (
-    <article className="theme-subcard grid gap-4 rounded-xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-4 shadow-soft dark:bg-slate-950/80 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+    <article className="theme-subcard grid gap-5 rounded-2xl border border-[var(--border-color)] bg-[var(--bg-elevated)] p-5 shadow-soft dark:bg-slate-950/80 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:p-6">
       <div className="min-w-0">
-        <div className="flex flex-wrap gap-2">
-          <span className="rounded-full bg-[var(--accent-soft)] px-2.5 py-1 text-xs font-bold text-[var(--accent-primary)] dark:bg-cyan-500/15 dark:text-cyan-300">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1.5 text-xs font-bold text-[var(--accent-primary)] dark:bg-cyan-500/15 dark:text-cyan-300">
             {course.level || 'Beginner'}
           </span>
-          <span className="text-xs font-semibold text-[var(--text-muted)]">{course.category || 'Course'}</span>
+          <span className="text-sm font-semibold text-[var(--text-muted)]">{course.category || 'Course'}</span>
         </div>
-        <h3 className="mt-2 truncate font-bold text-[var(--text-primary)] dark:text-slate-100">{title}</h3>
-        <div className="mt-3 flex items-center gap-3">
-          <span className="relative h-3 flex-1 overflow-hidden rounded-full border border-[var(--border-color)] bg-[var(--bg-subtle)] shadow-[inset_0_1px_2px_rgba(15,23,42,0.08)] dark:bg-slate-800/90 dark:shadow-[inset_0_1px_2px_rgba(255,255,255,0.06)]">
+        <h3 className="mt-3 text-lg font-bold leading-8 text-[var(--text-primary)] dark:text-slate-100 sm:text-[1.35rem]">
+          {title}
+        </h3>
+        <div className="mt-4 flex flex-col gap-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-semibold text-[var(--text-secondary)]">Learning progress</span>
+            <span className="rounded-full bg-[var(--accent-soft)] px-3 py-1 text-sm font-bold text-[var(--accent-primary)] dark:bg-cyan-500/15 dark:text-cyan-300">
+              {progress}%
+            </span>
+          </div>
+          <span className="relative h-4 flex-1 overflow-hidden rounded-full border border-[var(--border-color)] bg-[color-mix(in_srgb,var(--bg-subtle)_82%,white)] shadow-[inset_0_1px_3px_rgba(15,23,42,0.12)] dark:bg-slate-800/90 dark:shadow-[inset_0_1px_2px_rgba(255,255,255,0.06)]">
             <span className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.18),transparent_35%,transparent_65%,rgba(255,255,255,0.1))] opacity-80" aria-hidden="true" />
-            <span className="relative block h-full rounded-full bg-[linear-gradient(90deg,#2563eb_0%,#3b82f6_35%,#22d3ee_100%)] shadow-[0_0_0_1px_rgba(255,255,255,0.16),0_0_18px_rgba(59,130,246,0.35)]" style={{ width: `${number(course.progress)}%` }} />
+            <span
+              className="relative block h-full min-w-[0.75rem] rounded-full bg-[linear-gradient(90deg,#2563eb_0%,#3b82f6_35%,#22d3ee_100%)] shadow-[0_0_0_1px_rgba(255,255,255,0.16),0_0_18px_rgba(59,130,246,0.35)]"
+              style={{ width: `${progress}%` }}
+            />
           </span>
-          <span className="w-12 rounded-full bg-[var(--accent-soft)] px-2 py-1 text-right text-xs font-bold text-[var(--accent-primary)] dark:bg-cyan-500/15 dark:text-cyan-300">{number(course.progress)}%</span>
         </div>
       </div>
-      <div className="flex gap-2">
-        <Button onClick={onContinue}>Continue</Button>
-        <Button variant="secondary" onClick={onDetails}>Details</Button>
+      <div className="flex flex-wrap gap-2 sm:flex-col sm:items-stretch">
+        <Button onClick={onContinue} className="min-h-12 min-w-[7.5rem] justify-center">Continue</Button>
+        <Button variant="secondary" onClick={onDetails} className="min-h-12 min-w-[7rem] justify-center">Details</Button>
       </div>
     </article>
   )
@@ -423,10 +433,11 @@ function EmptyState({ icon: Icon, title, text, action, onAction }) {
 
 function CourseSkeleton() {
   return (
-    <div className="theme-subcard grid gap-3 rounded-xl p-4">
-      <span className="skeleton h-5 w-2/3 rounded" />
-      <span className="skeleton h-2 w-full rounded-full" />
-      <span className="skeleton h-10 w-32 rounded-lg" />
+    <div className="theme-subcard grid gap-4 rounded-2xl p-5 sm:p-6">
+      <span className="skeleton h-5 w-32 rounded" />
+      <span className="skeleton h-8 w-3/4 rounded" />
+      <span className="skeleton h-4 w-full rounded-full" />
+      <span className="skeleton h-12 w-36 rounded-xl" />
     </div>
   )
 }

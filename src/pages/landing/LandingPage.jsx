@@ -91,28 +91,28 @@ export default function LandingPage() {
   }
 
   return (
-    <motion.section className="w-full space-y-10 pb-16 xl:space-y-14" variants={pageTransition} initial="hidden" animate="enter" exit="exit">
-      <section className="grid items-stretch gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(23rem,0.92fr)]">
-        <div className="enterprise-mesh-panel relative overflow-hidden rounded-3xl border border-[var(--border-color)] px-[clamp(20px,4vw,52px)] py-[clamp(28px,4vw,52px)] shadow-soft">
+    <motion.section className="landing-page w-full space-y-12 pb-16 md:space-y-14 xl:space-y-16" variants={pageTransition} initial="hidden" animate="enter" exit="exit">
+      <section className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.08fr)_minmax(23rem,0.92fr)]">
+        <div className="enterprise-mesh-panel relative overflow-hidden rounded-3xl border border-[var(--border-color)] px-[clamp(20px,4vw,52px)] py-[clamp(32px,4.5vw,56px)] shadow-soft">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(37,99,235,0.16),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(34,197,94,0.12),transparent_26%),linear-gradient(135deg,rgba(255,255,255,0.6),rgba(255,255,255,0))] dark:bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.18),transparent_26%),radial-gradient(circle_at_bottom_left,rgba(244,114,182,0.12),transparent_26%),linear-gradient(135deg,rgba(15,23,42,0.18),rgba(15,23,42,0))]" />
           <div className="relative max-w-3xl">
             <span className="inline-flex items-center gap-2 rounded-full border border-[var(--border-color)] bg-[var(--bg-elevated)] px-4 py-2 text-sm font-semibold text-[var(--accent-primary)] shadow-soft">
               <Sparkles size={16} />
               Practical learning for real careers
             </span>
-            <div className="mt-5 max-w-2xl space-y-4">
-              <h1 className="text-[clamp(2.35rem,4.2vw,4.25rem)] font-black leading-[0.94] tracking-[-0.07em] text-[var(--text-primary)]">
+            <div className="mt-6 max-w-2xl space-y-5">
+              <h1 className="text-[clamp(2.35rem,4.2vw,4.15rem)] font-black leading-[1.02] tracking-[-0.035em] text-[var(--text-primary)] sm:leading-[1]">
                 Build skills.
                 {' '}
                 <span className="upto-brand-text">Track progress.</span>
                 {' '}
                 <span className="block">Move your career forward.</span>
               </h1>
-              <p className="max-w-2xl text-[1rem] leading-7 text-[var(--text-secondary)] sm:text-[1.05rem]">
+              <p className="max-w-xl text-[1rem] leading-8 text-[var(--text-secondary)] sm:text-[1.08rem]">
                 Learn through structured courses, practical assignments, assessments, expert guidance, and certificates designed for employability.
               </p>
             </div>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-9 flex flex-wrap gap-3.5">
               <Button onClick={startLearning} className="min-h-12">
                 {auth.user ? 'Open dashboard' : 'Start learning'}
                 <ArrowRight size={17} />
@@ -126,7 +126,7 @@ export default function LandingPage() {
                 View progress
               </Button>
             </div>
-            <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mt-10 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               {heroStats.map((item) => (
                 <div key={item.label} className="rounded-2xl border border-[var(--border-color)] bg-[var(--bg-elevated)]/88 p-4 shadow-soft backdrop-blur">
                   <p className="text-[0.68rem] font-black uppercase tracking-[0.2em] text-[var(--text-muted)]">{item.label}</p>
@@ -135,7 +135,7 @@ export default function LandingPage() {
                 </div>
               ))}
             </div>
-            <div className="mt-7 flex flex-wrap gap-2">
+            <div className="mt-8 flex flex-wrap gap-2.5">
               {['Learner-first', 'AI mentor support', 'Career-focused', 'Mobile friendly'].map((chip) => (
                 <span key={chip} className="inline-flex items-center rounded-full border border-[var(--border-color)] bg-[var(--bg-elevated)] px-3 py-1.5 text-xs font-semibold text-[var(--text-secondary)] shadow-sm">
                   {chip}
@@ -149,7 +149,7 @@ export default function LandingPage() {
           <div className="flex items-start justify-between gap-4">
             <div>
               <p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.18em]">Your learning journey</p>
-              <h2 className="mt-2 text-[1.4rem] font-black leading-tight text-[var(--text-primary)] sm:text-[1.6rem]">From first lesson to career proof</h2>
+              <h2 className="mt-2 text-[1.4rem] font-black leading-[1.15] tracking-[-0.02em] text-[var(--text-primary)] sm:text-[1.6rem]">From first lesson to career proof</h2>
             </div>
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[var(--accent-soft)] text-[var(--accent-primary)]">
               <GraduationCap size={23} />
@@ -252,12 +252,12 @@ export default function LandingPage() {
 }
 
 function HomeSection({ eyebrow, title, action, children }) {
-  return <section className="w-full"><div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.2em]">{eyebrow}</p><h2 className="mt-2 text-2xl font-bold text-[var(--text-primary)] sm:text-3xl">{title}</h2></div>{action}</div>{children}</section>
+  return <section className="w-full"><div className="mb-7 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between"><div><p className="theme-eyebrow text-xs font-bold uppercase tracking-[0.2em]">{eyebrow}</p><h2 className="mt-2 text-2xl font-bold leading-tight tracking-[-0.02em] text-[var(--text-primary)] sm:text-3xl">{title}</h2></div>{action}</div>{children}</section>
 }
 
 function ContinueRow({ course, onContinue }) {
   const progress = Math.max(0, Math.min(100, Number(course.progress || 0)))
-  return <div className="theme-card grid gap-4 rounded-xl p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"><div className="min-w-0"><span className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--accent-primary)]">{course.category || 'Active course'}</span><h3 className="mt-2 truncate font-bold text-[var(--text-primary)]">{course.title}</h3><div className="mt-3 flex items-center gap-3"><span className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--bg-subtle)]"><span className="block h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${progress}%` }} /></span><span className="text-xs font-bold text-[var(--text-secondary)]">{progress}%</span></div></div><Button onClick={onContinue}>Continue <ArrowRight size={15} /></Button></div>
+  return <div className="theme-card grid gap-4 rounded-xl p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center"><div className="min-w-0"><span className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--accent-primary)]">{course.category || 'Active course'}</span><h3 className="mt-2 truncate text-[1.02rem] font-bold leading-7 text-[var(--text-primary)]">{course.title}</h3><div className="mt-3 flex items-center gap-3"><span className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--bg-subtle)]"><span className="block h-full rounded-full bg-[var(--brand-gradient)]" style={{ width: `${progress}%` }} /></span><span className="text-xs font-bold text-[var(--text-secondary)]">{progress}%</span></div></div><Button onClick={onContinue}>Continue <ArrowRight size={15} /></Button></div>
 }
 
 function CourseGrid({ courses, loading, onOpen, empty, columns = 'xl:grid-cols-3' }) {

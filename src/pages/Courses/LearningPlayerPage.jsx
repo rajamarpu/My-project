@@ -178,8 +178,8 @@ export default function LearningPlayerPage() {
         </div>
       </nav>
       <div className="enterprise-mesh-panel rounded-xl border border-[var(--border-color)] p-5 shadow-soft lg:p-6">
-        <div className="grid gap-8 lg:grid-cols-[1.5fr_0.9fr] lg:items-start">
-          <div className="space-y-5">
+        <div className="grid gap-8 lg:grid-cols-[1.5fr_0.9fr] lg:items-stretch">
+          <div className="flex h-full flex-col gap-5">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--accent-primary)]">Learning player</p>
@@ -196,7 +196,7 @@ export default function LearningPlayerPage() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 shadow-soft sm:p-5">
+            <div className="flex flex-1 flex-col rounded-xl border border-[var(--border-color)] bg-[var(--bg-card)] p-4 shadow-soft sm:p-5 lg:min-h-[33rem]">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.16em] text-[var(--accent-primary)]">{activeMeta.moduleTitle || 'Current lesson'}</p>
@@ -244,7 +244,7 @@ export default function LearningPlayerPage() {
                   )}
                 </div>
               ) : (
-                <div className="mt-3 platform-empty-state min-h-[10rem] text-sm leading-7">
+                <div className="mt-5 platform-empty-state min-h-[18rem] flex-1 text-sm leading-7 lg:min-h-[22rem]">
                   <div>
                     <p className="font-bold text-[var(--text-primary)]">No lessons yet</p>
                     <p className="mt-1 text-[var(--text-secondary)]">Add lessons from the admin course editor to activate the player experience.</p>
